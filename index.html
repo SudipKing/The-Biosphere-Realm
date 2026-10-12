@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Biosphere Realm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1 class="brand">The Biosphere Realm <small>a living world in your hands</small></h1>
+    <div class="year" id="year" aria-live="polite">Year 0</div>
+    <button class="chip" id="clockBtn" title="Skip ahead to the next part of the day">🌅 Dawn</button>
+    <button class="chip" id="weatherBtn" title="Change the weather">☀️ Clear</button>
+    <div class="seg" role="group" aria-label="Time speed">
+      <button data-speed="0" aria-label="Pause">II</button>
+      <button data-speed="1" aria-pressed="true" aria-label="Normal speed">1×</button>
+      <button data-speed="2" aria-label="Fast">3×</button>
+      <button data-speed="3" aria-label="Fastest">9×</button>
+    </div>
+    <button class="snd" id="musicBtn" aria-label="Music">🎵</button>
+    <button class="snd" id="sfxBtn" aria-label="Sound effects">🔊</button>
+    <button class="btn" id="newWorld">New world</button>
+    <button class="btn only-narrow" id="openSide">Chronicle</button>
+  </header>
+
+  <nav class="tools" id="tools" aria-label="Powers"></nav>
+
+  <main class="stage" id="stage">
+    <canvas id="cv" aria-label="The world. Use the selected power by tapping or dragging."></canvas>
+    <div class="inspect insp" id="inspect" hidden>
+      <button class="insp-x" id="inspClose" aria-label="Close details">×</button>
+      <div id="inspBody"></div>
+    </div>
+    <div class="codex" id="codex" hidden role="dialog" aria-label="Realm codex">
+      <div class="cx-head" id="cxHead"></div>
+      <div class="cx-tabs" id="cxTabs"></div>
+      <div class="cx-body" id="cxBody"></div>
+    </div>
+    <div class="zoom">
+      <button id="zin" aria-label="Zoom in">+</button>
+      <button id="zout" aria-label="Zoom out">−</button>
+      <button id="zfit" aria-label="Show whole world">◻</button>
+    </div>
+    <div class="tip" id="tip">Tap anywhere to turn on sound</div>
+  </main>
+
+  <div class="hint">
+    <p id="hint"></p>
+    <label>Brush <input type="range" id="brush" min="1" max="10" value="3" aria-label="Brush size"></label>
+  </div>
+
+  <aside class="side" id="side" aria-label="World overview">
+    <button class="btn close" id="closeSide">Close</button>
+    <section>
+      <div class="counts">
+        <div class="count"><b id="cPeople">0</b><span>people</span></div>
+        <div class="count"><b id="cKings">0</b><span>kingdoms</span></div>
+        <div class="count"><b id="cBoats">0</b><span>boats at sea</span></div>
+        <div class="count"><b id="cAnimals">0</b><span>animals</span></div>
+      </div>
+      <div class="races" id="races"></div>
+      <div class="fauna" id="fauna"></div>
+    </section>
+    <section><h2>Kingdoms</h2><ul class="list" id="kings"></ul></section>
+    <section><h2>Faiths</h2><div id="faiths"></div></section>
+    <section><h2>Chronicle</h2><ol class="log" id="log"></ol></section>
+  </aside>
+</div>
+<!--SCRIPTS-->
+<script src="src/data.js"></script>
+<script src="src/core.js"></script>
+<script src="src/sim.js"></script>
+<script src="src/culture.js"></script>
+<script src="src/terrain.js"></script>
+<script src="src/sprites.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/render.js"></script>
+<script src="src/codex.js"></script>
+<script src="src/ui.js"></script>
+<!--/SCRIPTS-->
+</body>
+</html>
