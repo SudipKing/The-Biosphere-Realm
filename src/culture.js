@@ -3,7 +3,7 @@
    Every race has its own pantheon. A kingdom's faith picks a patron god and a doctrine; devotion and a temple
    scale the blessing, which feeds back into combat, building, growth, diplomacy and stability. */
 const SEASONS=['Spring','Summer','Autumn','Winter'];
-const season=()=>year()%4;
+const season=()=>seasonLock>=0?seasonLock:year()%4;
 const SEASON_BOON=[{grow:.4,fert:.12},{ranged:.2,dmg:.04},{food:.2},{regen:.3,def:.08}];
 const SEASON_TEXT=['Spring wakes the forest: faster tree growth and births.','Summer light sharpens every arrow.','Autumn fills the granaries.','Winter starlight heals and shields.'];
 
@@ -203,6 +203,8 @@ function computeFx(T){
   if(rel.second)addFx(fx,rel.second.buff,s*.5);
   if(T.race==='elf')addFx(fx,SEASON_BOON[season()],.5);
   for(const v of T.values)addFx(fx,v.buff,1);
+  const ag=T.age||0;fx.def+=.03*ag;fx.mine+=.06*ag;fx.craft+=.03*ag;if(ag>=5){fx.stab+=.08;fx.dipl+=.1}
+  if(T.res&&T.res.gems>=10)fx.ranged+=.1;
   fx.art+=doc.art||0;fx.stab+=doc.stab/100;
   fx.dipl+=Math.min(.15,T.renown*.006);
   const CAP={lifesteal:.5,ranged:.6,mine:.7,stab:.6,dipl:.6};
@@ -248,7 +250,7 @@ function artTitle(T,form){
 function makeArt(T){
   const forms=ART_FORMS[T.race];let spot=-1,f;
   if(T.monuments<5&&R()<.4){
-    spot=sampleNear(T.cx,T.cy,Math.min(16,5+Math.sqrt(T.houses)*2),i=>canBuild(i,T.race),50);
+    spot=sampleNear(T.cx,T.cy,Math.min(16,5+Math.sqrt(T.houses)*2),i=>canBuild(i,T.race,T.id),50);
     if(spot>=0)f=forms.find(x=>x.phys);
   }
   if(!f)f=pick(forms.filter(x=>!x.phys));

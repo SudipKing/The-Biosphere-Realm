@@ -19,7 +19,7 @@ function newTribe(race,x,y,parent,opts){
     houses:0,hall:-1,temple:false,templeAt:-1,pop:0,members:[],alive:true,rel,motto:phrase(race),founded:year(),
     parent:parent?parent.id:-1,fish:0,stock:0,rebel,
     devo:50+((R()*20)|0),stab:55,values:rollValues(race),arts:[],renown:0,hist:[],foes:[],heroes:[],monuments:0,
-    nextFest:year()+3,bless:0,frenzy:0,legendIdx:(R()*2)|0,fx:zeroFx()};
+    nextFest:year()+3,bless:0,frenzy:0,legendIdx:(R()*2)|0,fx:zeroFx(),age:0,res:{stone:0,copper:0,iron:0,coal:0,silver:0,gold:0,gems:0},area:0};
   tribes.push(T);
   T.fx=computeFx(T);
   if(schism)log(`A schism split the ${parent.title}: the ${T.title} turned to the ${rel.name}, in the name of ${rel.patron.name}.`,DOMAINS[rel.domain].c);
@@ -36,7 +36,7 @@ function mkUnit(k,x,y){
 function addAnimal(sp,x,y,owner=-1,baby=false){
   const S=SPECIES[sp],u=mkUnit(1,x,y);
   u.sp=sp;u.owner=owner;u.maxhp=u.hp=S.hp;u.dmg=S.dmg||0;u.life=S.life*YEAR*(.7+R()*.6);
-  u.age=baby?0:(YEAR*2+R()*u.life*.3)|0;u.spd=S.spd;u.v=(R()*4)|0;u.male=R()<.5;
+  u.age=baby?0:(YEAR*2+R()*u.life*.3)|0;u.spd=S.spd;u.v=(R()*4)|0;u.male=R()<.5;u.amph=!!S.amph;u.fly=!!S.fly;u.fcd=0;
   return u;
 }
 function randGenes(r){const L=RACES[r];return{skin:(R()*L.skins.length)|0,hair:(R()*L.hairs.length)|0,str:.85+R()*.3,vit:.85+R()*.3,agi:.9+R()*.2}}
@@ -70,23 +70,28 @@ function die(u){
   if(u.k===0&&u.kills>=5){const T=tribes[u.tribe];log(`${u.name}, hero of the ${T.title}, has fallen after ${u.kills} victories.`,T.color);T.heroes.push({name:u.name,kills:u.kills,y:year()});T.renown+=1}
 }
 function setT(u,i){u.tx=(i%W)+.5;u.ty=((i/W)|0)+.5}
-function wander(u,cx,cy,r){const i=sampleNear(cx,cy,r,walk,15);if(i>=0)setT(u,i)}
+const canStand=(u,i)=>{if(SPECIES[u.sp]&&SPECIES[u.sp].fly)return true;const b=bio(hgt[i]);if(u.amph)return b>=1&&b<=3&&!lava[i];return walk(i)};
+function wander(u,cx,cy,r){const i=sampleNear(cx,cy,r,j=>canStand(u,j),15);if(i>=0)setT(u,i)}
 function moveToward(u,spd){
   const dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);
+  const bi=bm[tileOf(u)];if(bi){const f=BIOMES[bi].spd;if(f)spd*=f;if(bi===BM.PARA&&u.boost>step)spd*=1.6}
   if(Math.abs(dx)>.05)u.dir=dx>0?1:-1;
   if(d<=spd){u.x=u.tx;u.y=u.ty;return true}
   const nx=u.x+dx/d*spd,ny=u.y+dy/d*spd;
-  if(!inb(nx|0,ny|0)||!walk((ny|0)*W+(nx|0))){u.target=null;u.task=null;u.cd=0;wander(u,u.x,u.y,5);return false}
+  if(!inb(nx|0,ny|0)||!canStand(u,(ny|0)*W+(nx|0))){u.target=null;u.task=null;u.cd=0;wander(u,u.x,u.y,5);return false}
   u.x=nx;u.y=ny;u.moving=true;return false;
 }
 function hit(t,dmg,src){
   if(t.k===0){const df=tribes[t.tribe].fx;if(df.def)dmg/=1+df.def}
+  if(src.k===0||src.k===1){const sb=bm[tileOf(src)];if(sb===BM.CLOVER)dmg*=1.2}
+  if(t.k===0&&t.traits.includes('Giant'))dmg*=.8
   if(src.k===0&&t.k===0){const sf=tribes[src.tribe].fx;
     if(sf.raze&&R()<.12*sf.raze){const b=ringFind(t.x,t.y,3,i=>bld[i]===t.tribe&&btype[i]<4&&!fire[i]);if(b>=0)ignite(b,true)}}
   t.hp-=dmg;
   sfx(src.k===0&&t.k===0?'clang':'thud',t.x,t.y);
   if(t.hp<=0){
     die(t);
+    if(src.k===1&&src.sp==='zombie'&&t.k===0&&units.length<1600){const z=addAnimal('zombie',t.x|0,t.y|0);z.x=z.px=t.x;z.y=z.py=t.y;sfx('cry',t.x,t.y,'zombie')}
     if(t.k===1){const f=SPECIES[t.sp].food;if(src.k===0)tribes[src.tribe].food+=f;else src.hunger=0}
     else{if(src.k===1)src.hunger=0;else{src.kills=(src.kills||0)+1;const f=tribes[src.tribe].fx;if(f.lifesteal)src.hp=Math.min(src.maxhp,src.hp+src.maxhp*f.lifesteal)}}
     src.target=null;src.task=null;src.cd=0;
@@ -105,13 +110,17 @@ function chase(u,spd,dmg,range){
     }
   }else{u.tx=t.x;u.ty=t.y;moveToward(u,spd)}
 }
-const isThreat=v=>v.k===1&&SPECIES[v.sp].pred&&v.sp!=='fox';
+const isThreat=v=>v.k===1&&SPECIES[v.sp].pred&&!SPECIES[v.sp].minor;
 function enemyNear(u,r){return nearest(u,r,v=>isThreat(v)||(v.k===0&&v.tribe!==u.tribe&&hostile(v.tribe,u.tribe)))}
 
 /* ---------- people ---------- */
 function updPerson(u){
   const T=tribes[u.tribe],fx=T.fx;
   if(fx.regen&&u.hp<u.maxhp)u.hp=Math.min(u.maxhp,u.hp+fx.regen*.05);
+  if(u.odd){
+    if(u.traits.includes('Blessed')&&u.hp<u.maxhp)u.hp=Math.min(u.maxhp,u.hp+.06);
+    if(u.traits.includes('Cursed')){u.hp-=.03;if(u.hp<=0){die(u);return}}
+  }
   if(u.inside){
     if(bld[u.home]!==u.tribe||!isNight()){u.inside=false;u.cd=(R()*30)|0;u.task=null}
     else return;
@@ -123,7 +132,9 @@ function updPerson(u){
   if(--u.cd<=0){
     u.cd=12+((R()*10)|0);
     if(!u.target){
-      if(u.task&&++u.busy<20){if(adult(u)){const e=enemyNear(u,4);if(e){u.target=e;u.task='fight'}}}
+      if(u.odd&&u.traits.includes('Berserk')){const e=nearest(u,6,v=>v!==u&&!v.dead);if(e){u.target=e;u.task='fight'}}
+      if(u.target){}
+      else if(u.task&&++u.busy<20){if(adult(u)){const e=enemyNear(u,4);if(e){u.target=e;u.task='fight'}}}
       else{u.busy=0;decide(u,T)}
     }
   }
@@ -133,6 +144,8 @@ function updPerson(u){
     if(RACES[u.race].range>2)dm*=1+fx.ranged;
     if(fx.frenzy&&u.hp<u.maxhp*.5)dm*=1+fx.frenzy;
     if(T.frenzy>step)dm*=1.25;
+    dm*=1+.09*T.age;
+    if(u.odd){if(u.traits.includes('Berserk'))dm*=1.5}
     chase(u,sp*1.1,dm,u.task==='butcher'||u.task==='hunt'?Math.min(1.2,RACES[u.race].range):RACES[u.race].range);return;
   }
   if(moveToward(u,sp)&&u.task)doTask(u,T);
@@ -151,7 +164,7 @@ function decide(u,T){
   if(kid){if(R()<.4&&forage())return;u.task=null;wander(u,T.cx,T.cy,5);return}
   const getFood=()=>{
     if(T.stock>T.houses&&R()<.35){
-      const a=nearest(u,16,v=>v.k===1&&v.owner===T.id&&v.sp!=='horse'&&adult(v));
+      const a=nearest(u,16,v=>v.k===1&&v.owner===T.id&&!SPECIES[v.sp].nosl&&adult(v));
       if(a){u.target=a;u.task='butcher';return true}
     }
     if(R()<(u.race==='orc'?.65:.35)){
@@ -163,6 +176,7 @@ function decide(u,T){
   const r=R();
   if(T.food<T.pop*2+3&&getFood())return;
   if(r<.45&&tryBuild(u,T))return;
+  if(r<.4&&getOre(u,T))return;
   if(r<.75&&T.mat<16&&getMat(u,T))return;
   if(u.race==='elf'&&R()<.15){
     const t=sampleNear(T.cx,T.cy,13,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&burnt[i]<=step&&!nearBld(i),20);
@@ -180,6 +194,24 @@ function getMat(u,T){
   if(s>=0){setT(u,s);u.task='mine';return true}
   return false;
 }
+/* which deposit a kingdom needs next to climb the ages */
+function wantOre(T){
+  const r=T.res;
+  if(T.age===0)return ORE.STONE;
+  if(T.age===1)return ORE.COPPER;
+  if(T.age===2)return ORE.IRON;
+  if(T.age===3)return r.coal<10?ORE.COAL:ORE.IRON;
+  if(T.age===4)return r.gold<8?ORE.GOLD:ORE.SILVER;
+  return r.gems<20?ORE.GEMS:(R()<.5?ORE.GOLD:ORE.SILVER);
+}
+function getOre(u,T){
+  const want=wantOre(T);
+  const ok=i=>!fire[i]&&!lava[i]&&bld[i]===-1&&(own[i]<0||own[i]===T.id);
+  let t=ringFind(u.x,u.y,24,i=>ore[i]===want&&ok(i));
+  if(t<0)t=ringFind(u.x,u.y,16,i=>ore[i]>0&&ore[i]!==ORE.GEMS&&ok(i));
+  if(t<0)return false;
+  setT(u,t);u.task='mine';return true;
+}
 function bCost(T,type){const b=type===1?Math.max(4,RACES[T.race].cost):type===2?10:RACES[T.race].cost;return Math.max(2,Math.ceil(b*(1-clamp(T.fx.craft,0,.6))))}
 function tryBuild(u,T){
   let type=0;
@@ -188,12 +220,14 @@ function tryBuild(u,T){
   else if(T.houses>=Math.ceil(T.pop/3)+1)return false;
   if(T.mat<bCost(T,type))return false;
   const rad=type===1?4:Math.min(18,4+Math.sqrt(T.houses)*2.2);
-  const t=sampleNear(T.cx,T.cy,rad,i=>canBuild(i,T.race),60);
+  const t=sampleNear(T.cx,T.cy,rad,i=>canBuild(i,T.race,T.id),60);
   if(t<0)return false;
   setT(u,t);u.task='build';u.btype=type;return true;
 }
-function canBuild(i,race){
-  if(fire[i]||lava[i]||tree[i]||bld[i]!==-1||burnt[i]>step)return false;
+function canBuild(i,race,tid){
+  if(fire[i]||lava[i]||tree[i]||bld[i]!==-1||burnt[i]>step||bm[i]===BM.WASTE)return false;
+  if(tid!=null&&own[i]>=0&&own[i]!==tid&&!hostile(own[i],tid))return false;
+  if(ore[i]&&ore[i]!==ORE.STONE)return false;
   const b=bio(hgt[i]);if(!(b===3||b===4||(race==='dwarf'&&b===5)))return false;
   const x=i%W,y=(i/W)|0;
   for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const X=x+dx,Y=y+dy;if(inb(X,Y)&&bld[Y*W+X]!==-1)return false}
@@ -202,18 +236,26 @@ function canBuild(i,race){
 function doTask(u,T){
   const i=tileOf(u);
   switch(u.task){
-    case'forage':if(fertile(i)&&R()<.85)T.food+=gain((u.traits.includes('Wise')?2:1)*(1+T.fx.food));break;
-    case'chop':if(tree[i]&&!fire[i]){tree[i]=0;markTile(i);T.mat+=3;sfx('chop',u.x,u.y)}break;
+    case'forage':if(fertile(i)&&R()<.85){const bf=bm[i]?BIOMES[bm[i]].food:1;T.food+=gain((u.traits.includes('Wise')?2:1)*(1+T.fx.food)*(bm[i]===BM.PARA?.5+R()*1.5:bf))}break;
+    case'chop':if(tree[i]&&!fire[i]){tree[i]=0;markTile(i);T.mat+=3+(bm[i]===BM.BIRCH?2:bm[i]===BM.JUNGLE||bm[i]===BM.FOREST?1:0);sfx('chop',u.x,u.y)}break;
     case'gather':if(tree[i]){T.mat+=2;sfx('rustle',u.x,u.y)}break;
-    case'mine':if(bio(hgt[i])===5){T.mat+=gain(3*(1+T.fx.mine));sfx('mine',u.x,u.y)}break;
+    case'mine':
+      if(ore[i]){
+        const o=ore[i],mult=(1+T.fx.mine)*(bm[i]===BM.ROCK?1.5:1)*(u.race==='dwarf'?1.4:1);
+        const n=Math.min(oreAmt[i],gain(2*mult));
+        T.res[ORES[o].k]+=n;T.mat+=o===ORE.STONE?n*2:n;oreAmt[i]-=n;sfx('mine',u.x,u.y);
+        if(o===ORE.GOLD||o===ORE.GEMS||o===ORE.SILVER)T.food+=n;
+        if(oreAmt[i]<=0){ore[i]=0;markTile(i)}
+      }else if(bio(hgt[i])===5){T.mat+=gain(3*(1+T.fx.mine)*(bm[i]===BM.ROCK?1.5:1));sfx('mine',u.x,u.y)}
+      break;
     case'plant':if(fertile(i)&&!tree[i]&&bld[i]===-1){tree[i]=1;markTile(i)}break;
     case'sleep':if(bld[i]===T.id&&isNight()){u.inside=true;u.home=i;u.px=u.x;u.py=u.y;return}break;
     case'build':{
       const type=u.btype||0,cost=bCost(T,type);
-      if(T.mat<cost||!canBuild(i,T.race))break;
+      if(T.mat<cost||!canBuild(i,T.race,T.id))break;
       if(type===1&&T.hall>=0)break;
       if(type===2&&T.temple)break;
-      bld[i]=T.id;btype[i]=type;T.houses++;T.mat-=cost;bDirty=true;sfx('build',u.x,u.y);
+      bld[i]=T.id;btype[i]=type;btier[i]=T.age;T.houses++;T.mat-=cost;bDirty=true;ownDirty=true;sfx('build',u.x,u.y);
       if(type===1){T.hall=i;if(!T.hadHall){T.hadHall=true;log(`The ${T.title} raised a great hall.`,T.color);sfx('fanfare',u.x,u.y)}}
       if(type===2){T.temple=true;T.templeAt=i;log(`The ${T.title} consecrated a temple to ${T.rel.patron.name}, ${T.rel.patron.title}.`,DOMAINS[T.rel.domain].c);sfx('bell',u.x,u.y);effects.push({type:'rite',x:i%W+.5,y:((i/W)|0)+.5,c:DOMAINS[T.rel.domain].c,t:0,dur:60})}
       break;
@@ -227,13 +269,18 @@ function updAnimal(u){
   const S=SPECIES[u.sp];
   u.hunger++;
   const i=tileOf(u);
-  if(!S.pred&&fertile(i)&&R()<.06)u.hunger=Math.max(0,u.hunger-30);
+  if(S.monster)u.hunger=0;
+  else if(!S.pred&&fertile(i)&&R()<.06)u.hunger=Math.max(0,u.hunger-30);
+  if(bm[i]===BM.SAV&&!S.pred)u.hunger=Math.max(0,u.hunger-.4);
   if(u.hunger>(S.pred?2400:1800)){die(u);return}
   if(u.owner>=0&&!tribes[u.owner].alive)u.owner=-1;
   if(u.target&&u.target.dead)u.target=null;
   if(--u.cd<=0){
     u.cd=15+((R()*25)|0);u.mode=0;
-    if(S.pred){
+    if(S.monster){
+      if(!u.target){const p=nearest(u,S.sight||9,v=>!isMon(v));if(p)u.target=p}
+      if(!u.target)wander(u,u.x,u.y,8);
+    }else if(S.pred){
       if(!u.target){
         const night=isNight();
         if(u.hunger>(night?200:350)){
@@ -251,11 +298,34 @@ function updAnimal(u){
       else wander(u,u.x,u.y,6);
     }
   }
-  if(adult(u)&&u.hunger<400&&(cnt.sp[u.sp]||0)<S.cap&&R()<S.breed){addAnimal(u.sp,u.x|0,u.y|0,u.owner,true);cnt.sp[u.sp]=(cnt.sp[u.sp]||0)+1}
-  if(u.target){chase(u,S.chase,S.dmg,1.2);return}
+  if(adult(u)&&u.hunger<400&&(cnt.sp[u.sp]||0)<S.cap&&R()<S.breed*(bm[i]===BM.FLOWER?1.6:1)){addAnimal(u.sp,u.x|0,u.y|0,u.owner,true);cnt.sp[u.sp]=(cnt.sp[u.sp]||0)+1}
+  if(u.sp==='dragon'&&u.target&&--u.fcd<=0){
+    const t=u.target,d=Math.hypot(t.x-u.x,t.y-u.y);
+    if(d<7){u.fcd=34+((R()*30)|0);breathe(u,t)}else u.fcd=0;
+  }
+  if(u.target){chase(u,S.chase,S.dmg,u.sp==='dragon'?1.6:1.2);return}
   moveToward(u,u.mode?S.flee:S.spd);
 }
 
+function breathe(u,t){
+  effects.push({type:'flame',x0:u.x,y0:u.y-.9,x1:t.x,y1:t.y-.3,t:0,dur:16});
+  const tx=t.x|0,ty=t.y|0;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=tx+dx,Y=ty+dy;if(inb(X,Y)&&R()<.8)ignite(Y*W+X,true)}
+  hit(t,u.dmg*.5,u);sfx('cry',u.x,u.y,'dragon');
+}
+function paradox(u){
+  const r=R();
+  if(r<.55){const j=sampleNear(u.x,u.y,9,k=>canStand(u,k),12);if(j>=0){u.x=u.px=j%W+.5;u.y=u.py=((j/W)|0)+.5;u.tx=u.x;u.ty=u.y;u.target=null;u.task=null;u.cd=0;effects.push({type:'rite',x:u.x,y:u.y,c:[200,140,255],t:0,dur:30})}}
+  else if(r<.75)u.hp=u.maxhp;
+  else if(r<.9)u.hp*=.7;
+  else u.boost=step+200;
+}
+function biomeTick(u,b){
+  const B=BIOMES[b];
+  if(B.hp&&!isMon(u)){u.hp=Math.min(u.maxhp,u.hp-B.hp);if(u.hp<=0){die(u);return}}
+  if(b===BM.CORRUPT&&isMon(u))u.hp=Math.min(u.maxhp,u.hp+.1);
+  if(b===BM.PARA&&R()<.0015)paradox(u);
+}
 function updateUnits(){
   rebuildGrid();
   let dead=false;
@@ -264,9 +334,10 @@ function updateUnits(){
     u.age++;u.moving=false;
     if(!u.inside){
       const i=tileOf(u);
-      if(lava[i]||!walk(i)||(fire[i]&&R()<.15)){die(u);dead=true;continue}
+      if(!u.fly&&(lava[i]||!canStand(u,i)||(fire[i]&&R()<.15))){die(u);dead=true;continue}
+      const b=bm[i];if(b){biomeTick(u,b);if(u.dead){dead=true;continue}}
     }
-    if(u.age>u.life){die(u);dead=true;continue}
+    if(u.age>u.life&&!(u.odd&&u.traits.includes('Immortal'))){die(u);dead=true;continue}
     if(u.k===0)updPerson(u);else updAnimal(u);
     if(u.dead)dead=true;
   }
@@ -289,7 +360,7 @@ function updateTribes(){
     if(T.pop===0){
       T.alive=false;
       for(let i=0;i<N;i++)if(bld[i]===T.id){bld[i]=-2;btype[i]=3}
-      T.houses=0;T.hall=-1;bDirty=true;
+      T.houses=0;T.hall=-1;bDirty=true;ownDirty=true;
       wars=wars.filter(w=>w.a!==T.id&&w.b!==T.id);alliances=alliances.filter(a=>a.a!==T.id&&a.b!==T.id);
       log(`The ${T.title} has fallen into ruin.`,T.color);
       continue;
@@ -297,13 +368,17 @@ function updateTribes(){
     if(R()<T.houses*.0025)T.food++;
     if(T.temple&&R()<.004)T.food++;
     if(R()<T.stock*.0015)T.food++;
-    if((step+T.id)%20===0)T.fx=computeFx(T);
+    if((step+T.id)%20===0){checkAge(T);T.fx=computeFx(T)}
+    if(T.age>0&&T.mat>=3&&R()<.012){
+      const b=sampleNear(T.cx,T.cy,Math.min(20,5+Math.sqrt(T.houses)*2.4),i=>bld[i]===T.id&&btype[i]<3&&btier[i]<T.age,30);
+      if(b>=0){btier[b]++;T.mat-=2;bDirty=true;sfx('build',b%W+.5,((b/W)|0)+.5)}
+    }
     if(T.stab>70&&R()<.002*T.houses)T.food++;
     if(T.fx.grow>0&&R()<.025*T.fx.grow){const g=sampleNear(T.cx,T.cy,14,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&burnt[i]<=step&&!fire[i]&&!nearBld(i),10);if(g>=0){tree[g]=1;markTile(g)}}
     culturalTick(T);
     if(T.food>=8&&T.pop<Math.min(70,T.houses*3+2)&&cnt.people<650&&T.members.length&&!isNight()){
       const m=pick(T.members);
-      if(adult(m)&&!m.inside&&R()<.014*RACES[T.race].fert*(1+T.fx.fert)*(m.traits.includes('Fertile')?1.6:1)){
+      if(adult(m)&&!m.inside&&R()<.014*RACES[T.race].fert*(1+T.fx.fert)*(m.traits.includes('Fertile')?1.6:1)*(bm[tileOf(m)]===BM.FLOWER?1.5:1)){
         let mate=pick(T.members);if(!adult(mate))mate=m;
         addPerson(T,m.x|0,m.y|0,m,mate);T.food-=8;
       }
@@ -319,6 +394,16 @@ function updateTribes(){
     if(T.pop>=28&&T.houses>=8&&R()<.001*(1+T.fx.expand))settle(T);
   }
 }
+const AGE_REQ=[null,T=>T.res.stone>=60,T=>T.res.copper>=70,T=>T.res.iron>=80,T=>T.res.coal>=60&&T.res.iron>=180,T=>T.res.gold>=60&&T.res.silver>=60];
+const AGE_COL=[[170,130,80],[170,170,176],[214,128,64],[130,140,160],[190,200,220],[246,204,70]];
+function checkAge(T){
+  while(T.age<5&&AGE_REQ[T.age+1](T)){
+    T.age++;
+    log(`The ${T.title} entered the ${AGE_NAME[T.age]}. ${AGE_WHY[T.age]}`,AGE_COL[T.age]);
+    const at=T.hall>=0?T.hall:-1;if(at>=0){effects.push({type:'rite',x:at%W+.5,y:((at/W)|0)+.5,c:AGE_COL[T.age],t:0,dur:80,big:true});sfx('fanfare',at%W,(at/W)|0)}
+    T.fx=computeFx(T);
+  }
+}
 function lineOK(x0,y0,x1,y1,ok){
   const n=Math.ceil(Math.hypot(x1-x0,y1-y0));
   for(let k=0;k<=n;k++){const x=(x0+(x1-x0)*k/n)|0,y=(y0+(y1-y0)*k/n)|0;if(!inb(x,y)||!ok(y*W+x))return false}
@@ -326,7 +411,7 @@ function lineOK(x0,y0,x1,y1,ok){
 }
 const farFrom=(j,d)=>{const x=j%W,y=(j/W)|0;return tribes.every(o=>!o.alive||Math.hypot(o.cx-x,o.cy-y)>d)};
 function settle(T){
-  const i=sampleNear(T.cx,T.cy,45,j=>fertile(j)&&farFrom(j,22)&&lineOK(T.cx,T.cy,j%W,(j/W)|0,walk),200);
+  const i=sampleNear(T.cx,T.cy,45,j=>fertile(j)&&farFrom(j,22)&&own[j]<0&&lineOK(T.cx,T.cy,j%W,(j/W)|0,walk),200);
   if(i<0){seaSettle(T);return}
   const x=i%W,y=(i/W)|0,NT=newTribe(T.race,x,y,T);
   NT.food=Math.floor(T.food/3);T.food-=NT.food;
@@ -348,7 +433,7 @@ function seaRoute(start){
     const i=q[h++],x=i%W,y=(i/W)|0;
     for(const [dx,dy] of N4){
       const X=x+dx,Y=y+dy;if(!inb(X,Y))continue;const j=Y*W+X;
-      if(dist[i]>=14&&fertile(j)&&farFrom(j,26)){
+      if(dist[i]>=14&&fertile(j)&&own[j]<0&&farFrom(j,26)){
         const path=[];let c=i;while(c!==start){path.push(c);c=prev[c]}path.reverse();
         return {path,land:j};
       }
@@ -424,7 +509,7 @@ function destroyBld(i){
     if(btype[i]===1&&T.hall===i)T.hall=-1;
     if(btype[i]===2){T.temple=false;T.templeAt=-1}
   }
-  if(bld[i]!==-1)bDirty=true;
+  if(bld[i]!==-1){bDirty=true;ownDirty=true}
   bld[i]=-1;btype[i]=0;
 }
 function burn(i,dur){burnt[i]=step+dur;burnSet.add(i);markTile(i)}
@@ -456,14 +541,44 @@ function growth(){
     const i=(R()*N)|0;
     if(tree[i]&&R()<.03){
       const [dx,dy]=N8[(R()*8)|0],x=i%W+dx,y=((i/W)|0)+dy;
-      if(inb(x,y)){const j=y*W+x;if(fertile(j)&&!tree[j]&&bld[j]===-1&&!fire[j]&&burnt[j]<=step&&!nearBld(j)){tree[j]=1;markTile(j)}}
-    }else if(!tree[i]&&R()<.0006&&fertile(i)&&bld[i]===-1&&burnt[i]<=step&&!fire[i]&&!nearBld(i)){tree[i]=1;markTile(i)}
+      if(inb(x,y)){const j=y*W+x;if(fertile(j)&&!tree[j]&&bld[j]===-1&&!fire[j]&&burnt[j]<=step&&!nearBld(j)&&!(bm[j]===BM.ROCK&&R()<.85)){tree[j]=1;markTile(j)}}
+    }else if(!tree[i]&&R()<.0006*(bm[i]===BM.FOREST?6:bm[i]===BM.ROCK?.15:bm[i]?BIOMES[bm[i]].trees*1.5+.3:1)&&fertile(i)&&bld[i]===-1&&burnt[i]<=step&&!fire[i]&&!nearBld(i)){tree[i]=1;markTile(i)}
     if(bld[i]===-2&&R()<.01){bld[i]=-1;btype[i]=0;bDirty=true}
+    if(bm[i])biomeLife(i);
   }
   if(step%40===0)for(const i of burnSet){
     if(burnt[i]<=step){burnSet.delete(i);markTile(i)}
     else if(burnt[i]-step<640)markTile(i);
   }
+}
+
+/* biomes creep outward and some of them give birth to creatures */
+const AGGR_BM=new Set([BM.CORRUPT,BM.WASTE,BM.PARA]);
+const WILD_PICK=SPECIES_KEYS.filter(k=>!SPECIES[k].monster&&!SPECIES[k].dom&&k!=='eagle'&&k!=='wolf'&&k!=='bear');
+function spawnMon(sp,i){if(units.length<1500&&(cnt.sp[sp]||0)<SPECIES[sp].cap){addAnimal(sp,i%W,(i/W)|0);cnt.sp[sp]=(cnt.sp[sp]||0)+1}}
+function biomeLife(i){
+  const b=bm[i],B=BIOMES[b];
+  if(B.spread&&R()<B.spread){
+    const [dx,dy]=N8[(R()*8)|0],x=i%W+dx,y=((i/W)|0)+dy;
+    if(inb(x,y)){
+      const j=y*W+x,bj=bio(hgt[j]);
+      if((bj===3||bj===4)&&bm[j]!==b&&bld[j]===-1&&!nearBld(j)&&(bm[j]===0||bm[j]===BM.FOREST||(AGGR_BM.has(b)&&bm[j]!==BM.WASTE&&bm[j]!==BM.CORRUPT)||(b===BM.WASTE&&R()<.3))){
+        setBiome(j,b,B.trees*.4);
+      }
+    }
+  }
+  if(b===BM.CORRUPT){
+    if(R()<.006)spawnMon('skeleton',i);else if(R()<.0015)spawnMon('zombie',i);
+  }else if(b===BM.JUNGLE){if(R()<.002)spawnMon('spider',i)}
+  else if(b===BM.PARA){if(R()<.0015&&units.length<1500){const sp=pick(WILD_PICK);addAnimal(sp,i%W,(i/W)|0)}}
+}
+function setBiome(i,b,treeP){
+  bm[i]=b;
+  if(b===BM.WASTE||b===BM.CORRUPT){if(R()<.5)tree[i]=0}
+  if(treeP!=null&&!tree[i]&&bld[i]===-1&&R()<treeP&&bio(hgt[i])<=4&&!ore[i])tree[i]=1;
+  else if(treeP!=null&&tree[i]&&R()<.5&&BIOMES[b].trees<.1)tree[i]=0;
+  if(BIOMES[b].gems&&R()<BIOMES[b].gems&&!ore[i]&&bld[i]===-1){ore[i]=ORE.GEMS;oreAmt[i]=20+((R()*25)|0)}
+  markDirty(i);
 }
 
 /* ---------- time & weather ---------- */
@@ -477,7 +592,8 @@ function updateTimeWeather(){
   sunH=Math.sin((tod-.25)*Math.PI*2);
   light=smooth(-.28,.3,sunH);
   if(step>=WX.until){
-    let r=R(),t='clear';for(const k of WT_KEYS){r-=WTYPES[k].w;if(r<=0){t=k;break}}
+    const sw=SEASON_WX[season()];let tot=0;for(const k of WT_KEYS)tot+=WTYPES[k].w*(sw[k]??1);
+    let r=R()*tot,t='clear';for(const k of WT_KEYS){r-=WTYPES[k].w*(sw[k]??1);if(r<=0){t=k;break}}
     setWeather(t);
   }
   const tg=WTYPES[WX.type].t;
@@ -507,6 +623,15 @@ function yearly(){
     log(`The ${tribes[w.a].title} and the ${tribes[w.b].title} made peace.`,[120,190,120]);
   }
   diplomacyYear();
+  for(const T of tribes){
+    if(!T.alive||!T.temple||T.templeAt<0)continue;
+    const cx=T.templeAt%W,cy=(T.templeAt/W)|0;let n=0;
+    for(let dy=-8;dy<=8;dy++)for(let dx=-8;dx<=8;dx++){
+      const X=cx+dx,Y=cy+dy;if(!inb(X,Y)||dx*dx+dy*dy>64)continue;
+      const j=Y*W+X;if((bm[j]===BM.CORRUPT||(bm[j]===BM.WASTE&&T.age>=3))&&R()<.35){bm[j]=0;markDirty(j);n++}
+    }
+    if(n>3)log(`The temple of the ${T.title} cleansed the land of its blight.`,DOMAINS[T.rel.domain].c,true);
+  }
 }
 function log(m,c,local){
   const col=c||[150,140,170];
@@ -519,17 +644,50 @@ function simStep(){
   for(const b of boats){b.px=b.x;b.py=b.y}
   step++;
   updateTimeWeather();
-  updateUnits();updateTribes();updateBoats();updateFire();growth();
+  updateUnits();updateTribes();updateBoats();updateFire();growth();updateVolcanoes();
+  if(ownDirty||step%40===0)computeDomains();
   if(step%YEAR===0)yearly();
 }
 
 /* ---------- world generation ---------- */
+function genBiomes(){
+  const picks=[BM.SAV,BM.BIRCH,BM.JUNGLE,BM.FLOWER,BM.CLOVER,BM.FOREST,BM.ROCK,BM.LEMON,BM.SAV,BM.FOREST];
+  const cs=[];
+  for(let k=0;k<picks.length;k++){const c=randomLand(j=>fertile(j),400);if(c>=0)cs.push({x:c%W,y:(c/W)|0,r:9+R()*13,b:picks[k]})}
+  for(let i=0;i<N;i++){
+    const b0=bio(hgt[i]);if(b0!==3&&b0!==4)continue;
+    const x=i%W,y=(i/W)|0,nz=fbm(x/7+900,y/7+900,3);
+    let best=null,bs=1;
+    for(const c of cs){const d=Math.hypot(c.x-x,c.y-y)/(c.r*(.65+nz*.7));if(d<bs){bs=d;best=c}}
+    if(!best||(best.b===BM.ROCK&&b0!==4))continue;
+    bm[i]=best.b;const B=BIOMES[best.b];
+    tree[i]=R()<B.trees?1:(R()<.2?tree[i]:0);
+  }
+}
+function oreVeins(type,count,pred,rad,amt){
+  for(let k=0;k<count;k++){
+    const c=randomLand(pred,2500);if(c<0)continue;
+    const cx=c%W,cy=(c/W)|0,r=rad*(.7+R()*.6);
+    for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
+      const X=cx+dx,Y=cy+dy;if(!inb(X,Y)||Math.hypot(dx,dy)>r*(.55+R()*.5))continue;
+      const j=Y*W+X,b=bio(hgt[j]);
+      if(b>=3&&b<=5&&!ore[j]){ore[j]=type;oreAmt[j]=amt+((R()*22)|0);tree[j]=0}
+    }
+  }
+}
+function genOres(){
+  const hi=j=>bio(hgt[j])>=4&&bio(hgt[j])<=5,mt=j=>bio(hgt[j])===5,any=j=>bio(hgt[j])>=3&&bio(hgt[j])<=5;
+  oreVeins(ORE.STONE,16,hi,2.2,34);oreVeins(ORE.STONE,10,any,1.6,30);
+  oreVeins(ORE.COPPER,14,hi,2,30);oreVeins(ORE.IRON,12,hi,2,32);oreVeins(ORE.COAL,10,hi,2,30);
+  oreVeins(ORE.SILVER,7,mt,1.5,26);oreVeins(ORE.GOLD,6,mt,1.4,24);
+}
 function genWorld(){
   seedNoise();
   hgt=new Float32Array(N);tree=new Uint8Array(N);fire=new Uint8Array(N);lava=new Uint16Array(N);
   bld=new Int16Array(N).fill(-1);btype=new Uint8Array(N);burnt=new Uint32Array(N);
+  bm=new Uint8Array(N);ore=new Uint8Array(N);oreAmt=new Uint8Array(N);btier=new Uint8Array(N);own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;
   units=[];tribes=[];religions=[];boats=[];fires=new Set();lavas=new Set();burnSet=new Set();step=0;logs=[];wars=[];alliances=[];effects=[];
-  bList=[];bDirty=true;logDirty=true;
+  bList=[];bDirty=true;logDirty=true;volcanoes.length=0;dipPending=null;
   WX.type='clear';WX.until=900;WX.cloud=WX.rain=WX.snow=WX.fog=WX.storm=0;
   const ox=R()*100,oy=R()*100;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
@@ -541,6 +699,7 @@ function genWorld(){
     const x=i%W,y=(i/W)|0;
     if(fertile(i)&&((fbm(x/12+500,y/12+500,3)>.53&&R()<.7)||R()<.03))tree[i]=1;
   }
+  genBiomes();genOres();
   const spots=[];
   const placeRace=r=>{
     const ok=j=>{
@@ -563,6 +722,8 @@ function genWorld(){
   const herd=(sp,groups,size,pred)=>{for(let k=0;k<groups;k++){const i=randomLand(j=>(pred?pred(j):fertile(j))&&farFrom(j,sp==='wolf'||sp==='bear'?35:8));if(i>=0)for(let m=0;m<size;m++)addAnimal(sp,i%W,(i/W)|0)}};
   herd('sheep',8,3);herd('deer',7,3,j=>fertile(j)&&ringFind(j%W,(j/W)|0,3,k=>tree[k])>=0);herd('rabbit',10,3);
   herd('wolf',3,3);herd('bear',3,1,j=>bio(hgt[j])===4);herd('fox',4,1);herd('horse',3,3);
+  herd('buffalo',3,3,j=>bm[j]===BM.SAV||fertile(j));herd('crow',5,3,j=>!isWater(j));herd('eagle',2,1,j=>!isWater(j));herd('rat',3,2);
+  herd('crab',5,2,j=>bio(hgt[j])===2);herd('turtle',3,1,j=>bio(hgt[j])===2||bio(hgt[j])===1);
   updateUnits();
   initTerrain();
 }
@@ -570,12 +731,18 @@ function genWorld(){
 /* ---------- god powers ---------- */
 function spawnAt(p,kind){
   const x=p.x|0,y=p.y|0;if(!inb(x,y))return;
-  const i=ringFind(x,y,2,walk);
+  const S0=SPECIES[kind];
+  const i=S0&&S0.amph?ringFind(x,y,3,j=>bio(hgt[j])>=1&&bio(hgt[j])<=3):S0&&S0.fly?ringFind(x,y,2,j=>true):ringFind(x,y,2,walk);
   if(i<0){toast('They need dry land to stand on.');return}
   if(units.length>1600){toast('The world is crowded. Let nature thin things out first.');return}
   const tx=i%W,ty=(i/W)|0;
   if(RACES[kind]){
     let T=null,bd=18*18;
+    const ow=own[ty*W+tx];
+    if(ow>=0&&tribes[ow].alive){
+      if(tribes[ow].race!==kind){toast(`That land belongs to the ${tribes[ow].title}. Found your people elsewhere.`);return}
+      T=tribes[ow];bd=0;
+    }
     for(const t of tribes){if(!t.alive||t.race!==kind)continue;const d=(t.cx-tx)**2+(t.cy-ty)**2;if(d<bd){bd=d;T=t}}
     if(!T){T=newTribe(kind,tx,ty);log(`The ${T.title} appeared in the world.`,T.color)}
     for(let k=0;k<2;k++)addPerson(T,tx,ty);
@@ -583,7 +750,7 @@ function spawnAt(p,kind){
   }else{
     const S=SPECIES[kind];let owner=-1;
     if(S.dom){let bd=14*14;for(const t of tribes){if(!t.alive)continue;const d=(t.cx-tx)**2+(t.cy-ty)**2;if(d<bd){bd=d;owner=t.id}}}
-    const n=kind==='bear'?1:kind==='horse'||kind==='cow'||kind==='wolf'?2:3;
+    const n=kind==='bear'||kind==='dragon'||kind==='ogre'||kind==='eagle'?1:kind==='horse'||kind==='cow'||kind==='wolf'||kind==='buffalo'?2:3;
     for(let k=0;k<n;k++)addAnimal(kind,tx,ty,owner);
     sfx('cry',tx+.5,ty+.5,kind);
   }
@@ -630,6 +797,9 @@ function strike(p,natural){
 function afterH(i){
   hgt[i]=Math.max(0,Math.min(1,hgt[i]));
   const b=bio(hgt[i]);
+  if(b!==3&&b!==4&&bm[i])bm[i]=0;
+  if(bm[i]===BM.ROCK&&b!==4)bm[i]=0;
+  if(b<2||b===6)ore[i]=0;
   if(b<2||b>=5){
     tree[i]=0;
     if(b<2||b===6){if(bld[i]!==-1)destroyBld(i);if(fire[i]){fire[i]=0;fires.delete(i)}if(lava[i]&&b<2){lava[i]=0;lavas.delete(i)}}
@@ -644,23 +814,5 @@ function brushAt(cx,cy,r,fn){
   }
 }
 function applyBrush(p,dt){
-  const r=brushSize-1,k=dt/16.7;
-  switch(tool){
-    case'raise':brushAt(p.x,p.y,r,(i,f)=>{hgt[i]+=.012*k*(1-f*.6);afterH(i)});break;
-    case'lower':brushAt(p.x,p.y,r,(i,f)=>{hgt[i]-=.012*k*(1-f*.6);afterH(i)});break;
-    case'water':brushAt(p.x,p.y,r,i=>{hgt[i]+=(.27-hgt[i])*.2*k;afterH(i)});break;
-    case'land':brushAt(p.x,p.y,r,i=>{hgt[i]+=(.5-hgt[i])*.2*k;burnt[i]=0;if(lava[i]){lava[i]=0;lavas.delete(i)}afterH(i)});break;
-    case'mountain':brushAt(p.x,p.y,r,(i,f)=>{hgt[i]+=((f<.5?.9:.8)-hgt[i])*.12*k;afterH(i)});break;
-    case'trees':brushAt(p.x,p.y,r,i=>{if(fertile(i)&&bld[i]===-1&&!fire[i]&&!nearBld(i)&&R()<.08*k){tree[i]=1;burnt[i]=0;markTile(i)}});break;
-    case'fire':brushAt(p.x,p.y,r,i=>{if(R()<.25*k)ignite(i,true)});break;
-    case'rain':
-      brushAt(p.x,p.y,r,i=>{
-        if(fire[i]){fire[i]=0;fires.delete(i)}
-        if(lava[i])lava[i]=Math.max(1,lava[i]-15);
-        if(burnt[i]>step){burnt[i]=Math.max(step,burnt[i]-20);markTile(i)}
-        if(fertile(i)&&!tree[i]&&bld[i]===-1&&!nearBld(i)&&R()<.004){tree[i]=1;markTile(i)}
-      });
-      for(let n=0;n<8;n++)effects.push({type:'drop',x:p.x+(R()*2-1)*(r+.5),y:p.y+(R()*2-1)*(r+.5)-2,t:0,dur:9});
-      break;
-  }
+  const f=BRUSHFN[tool];if(f)f(p,brushSize-1,dt/16.7);
 }

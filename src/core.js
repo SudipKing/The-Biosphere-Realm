@@ -11,7 +11,8 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const lerp=(a,b,t)=>a+(b-a)*t;
 const smooth=(a,b,v)=>{const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t)};
 
-let hgt,tree,fire,lava,bld,btype,burnt;
+let hgt,tree,fire,lava,bld,btype,burnt,bm,ore,oreAmt,btier,own,ownScore;
+let ownDirty=true,ovDirty=true,showDomains=true,seasonLock=-1;
 let units,tribes,religions,boats,fires,lavas,burnSet,step,logs,wars,alliances,effects,bList,bDirty,uid=1;
 let cnt={people:0,race:{},sp:{}};
 let shake=0,logDirty=true,startFocus=[W/2,H/2];
@@ -38,7 +39,7 @@ function hash(x,y){let h=(Math.imul(x,374761393)+Math.imul(y,668265263)+seed)|0;
 const bio=h=>h<.30?0:h<.38?1:h<.42?2:h<.62?3:h<.74?4:h<.86?5:6;
 const inb=(x,y)=>x>=0&&y>=0&&x<W&&y<H;
 const walk=i=>{const b=bio(hgt[i]);return b>=2&&b<=5&&!lava[i]};
-const fertile=i=>{const b=bio(hgt[i]);return (b===3||b===4)&&!lava[i]};
+const fertile=i=>{const b=bio(hgt[i]);return (b===3||b===4)&&!lava[i]&&bm[i]!==BM.WASTE};
 const isWater=i=>bio(hgt[i])<=1;
 const year=()=>Math.floor(step/YEAR);
 const adult=u=>u.k===0?u.age>=ADULT:u.age>=YEAR*1.5;

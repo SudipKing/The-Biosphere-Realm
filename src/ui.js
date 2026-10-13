@@ -13,7 +13,7 @@ function pickAt(p){
   if(best)return best;
   const x=p.x|0,y=p.y|0;
   for(const [dx,dy] of [[0,0],[0,1],[-1,1],[1,1],[0,2],[-1,0],[1,0]]){const X=x+dx,Y=y+dy;if(inb(X,Y)&&bld[Y*W+X]!==-1)return{i:Y*W+X}}
-  return null;
+  return inb(x,y)?{t:y*W+x}:null;
 }
 function select(s){sel=s;follow=false;inspEl.hidden=!s;if(s)renderInspect()}
 function spriteCanvas(s){
@@ -37,7 +37,7 @@ function renderInspect(){
         <dt>Health</dt><dd>${Math.max(0,Math.round(u.hp))} of ${Math.round(u.maxhp)}</dd>
         <dt>Generation</dt><dd>${u.gen}${u.parents?`, child of ${u.parents}`:', founder'}</dd>
         <dt>Faith</dt><dd>${T.rel.name}, ${T.rel.patron.dom.toLowerCase()}</dd><dt>Culture</dt><dd>${T.values.map(v=>v.name).join(', ')}</dd><dt>Victories</dt><dd>${u.kills}</dd></dl>
-      ${u.traits.length?`<div class="chips">${u.traits.map(t=>`<span title="${TRAITS[t]}">${t}</span>`).join('')}</div>`:''}
+      ${u.traits.length?`<div class="chips">${u.traits.map(t=>`<span title="${TRAIT_INFO[t]}">${t}</span>`).join('')}</div>`:''}
       <dl><dt>Skin</dt><dd><span class="sw2" style="background:${css(L.skins[g.skin])}"></span>${L.skinNames[g.skin]}</dd>
         <dt>Hair</dt><dd><span class="sw2" style="background:${css(L.hairs[g.hair])}"></span>${L.hairNames[g.hair]}</dd>
         <dt>Strength</dt><dd>${pct(g.str)}</dd><dt>Vitality</dt><dd>${pct(g.vit)}</dd><dt>Agility</dt><dd>${pct(g.agi)}</dd></dl>
@@ -46,7 +46,7 @@ function renderInspect(){
       const S=SPECIES[u.sp],own=u.owner>=0?tribes[u.owner]:null;
       sprite=animalSpr(u,0);
       const doing=u.dead?'Gone':u.target?'Hunting':u.mode?'Fleeing':own?'Grazing in the pasture':'Roaming';
-      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${S.name}${u.sp==='deer'&&u.male?' (buck)':''}</h3><p>${own?`Livestock of the ${own.title}`:S.dom?'Feral, belongs to no one':'Wild animal'}</p></div></div>
+      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${S.name}${u.sp==='deer'&&u.male?' (buck)':''}</h3><p>${own?`Livestock of the ${own.title}`:S.monster?'A monster, hostile to all life':S.dom?'Feral, belongs to no one':'Wild animal'}</p></div></div>
       <p class="quote" style="font-style:normal">${S.desc}</p>
       <dl><dt>Age</dt><dd>${adult(u)?yrs(u):'Young'}</dd><dt>Doing</dt><dd>${doing}</dd>
       <dt>Health</dt><dd>${Math.max(0,Math.round(u.hp))} of ${u.maxhp}</dd>
@@ -58,6 +58,15 @@ function renderInspect(){
     sprite=boatSprite(b.kind,b.race,b.ci);
     html=`<div class="insp-head"><span id="ispr"></span><div><h3>${b.kind==='fish'?'Fishing boat':'Settler ship'}</h3><p>${b.dead?'Gone':kingLine(T)}</p></div></div>
     <dl>${b.kind==='fish'?`<dt>Work</dt><dd>Brings fish home to the village</dd>`:`<dt>Aboard</dt><dd>${b.pass.map(p=>p.name).join(', ')}</dd><dt>Voyage</dt><dd>${Math.round(b.pi/b.path.length*100)}% of the way to new land</dd>`}</dl>`;
+  }else if(sel.t!=null){
+    const i=sel.t,b=bio(hgt[i]),BN=['Deep ocean','Shallow sea','Sand','Grassland','Highland','Mountain','Snow peak'][b];
+    const B=bm[i]?BIOMES[bm[i]]:null,O=ore[i]?ORES[ore[i]]:null,ow=own[i]>=0?tribes[own[i]]:null;
+    const col=O?O.c:B&&B.c?B.c:[[28,70,130],[70,150,190],[226,210,152],[100,170,76],[96,132,70],[130,126,120],[236,240,248]][b];
+    const g=G(10,10);gr(g,0,0,10,10,col);if(tree[i])gr(g,3,2,4,5,[40,110,56]);sprite=bake(g);
+    html=`<div class="insp-head"><span id="ispr"></span><div><h3>${B&&B.name?B.name:BN}</h3><p>${BN}${tree[i]?', with trees':''}${lava[i]?', molten':''}</p></div></div>
+      ${B&&B.desc?`<p class="quote" style="font-style:normal">${B.desc}</p>`:''}
+      ${O?`<p class="quote" style="font-style:normal"><b>${O.name}</b> deposit, about ${oreAmt[i]} left. ${O.desc}</p>`:''}
+      <dl><dt>Domain</dt><dd>${ow?kingLine(ow)+` (${sharePct(ow)}% of the land)`:b>=2?'Unclaimed':'Open water'}</dd></dl>`;
   }else{
     const i=sel.i;
     if(bld[i]<0){html=`<div class="insp-head"><span id="ispr"></span><div><h3>Ruins</h3><p>All that remains of a fallen kingdom</p></div></div>`;sprite=spr('ruin',ruinSprite)}
@@ -65,7 +74,7 @@ function renderInspect(){
       const T=tribes[bld[i]],L=RACES[T.race],ty=btype[i];
       const names={human:['Cottage','Great hall','Chapel','Statue'],elf:['Tree home','Elder tree hall','Moon shrine','Spirit stone'],
         dwarf:['Stone house','Mountain hall','Forge temple','Rune-pillar'],orc:['Hide tent','War lodge','Totem shrine','Skull totem']}[T.race];
-      sprite=buildingSprite(T.race,ty,T.ci,T.rel.domain);
+      sprite=buildingSprite(T.race,ty,T.ci,T.rel.domain,btier[i]);
       const art=ty===4?T.arts.find(x=>x.i===i):null;
       const fol=units.filter(u=>u.k===0&&tribes[u.tribe].rel===T.rel).length;
       const sleepers=units.filter(u=>u.inside&&u.home===i).length;
@@ -75,6 +84,8 @@ function renderInspect(){
         <dt>Buildings</dt><dd>${T.houses}</dd><dt>Livestock</dt><dd>${T.stock}</dd>
         <dt>Stores</dt><dd>${T.food} food, ${T.mat} ${T.race==='dwarf'?'stone':'timber'}</dd>
         <dt>Faith</dt><dd>${T.rel.name} (${fol} followers)</dd>
+        <dt>Built of</dt><dd>${ty<3?TIER_MAT[btier[i]]:'stone'}</dd>
+        <dt>Age</dt><dd>${AGE_NAME[T.age]}</dd><dt>Domain</dt><dd>${sharePct(T)}% of the land</dd>
         <dt>Founded</dt><dd>Year ${T.founded}${T.parent>=0?` by settlers of the ${tribes[T.parent].title}`:''}</dd></dl>
       <p class="quote" style="font-style:normal">${L.lore}</p><button class="btn" id="codexBtn">Open realm codex</button>`;
     }
@@ -89,51 +100,156 @@ function renderInspect(){
 }
 $('inspClose').addEventListener('click',()=>select(null));
 
-/* tools */
-const TOOLS=[
-  {g:'Explore',items:[
-    ['inspect','🔍','Inspect','Tap anyone or anything to see who they are: genes, faith, family, and what they sound like.'],
-    ['move','✋','Move view','Drag to pan, or use WASD / arrow keys anywhere. Scroll or pinch to zoom.'],
-  ]},
-  {g:'Peoples',items:RACE_KEYS.map(r=>[r,RACES[r].icon,RACES[r].plural,{
-    human:'Tap land to found a human kingdom, or near one to add to it. Adaptable, quick to grow.',
-    elf:'Tap land to found an elven realm. Long-lived archers who plant forests.',
-    dwarf:'Tap land, ideally highlands near mountains, to found a dwarf hold. Tough miners.',
-    orc:'Tap land to found an orc horde. Fierce hunters, always spoiling for war.'}[r]])},
-  {g:'Animals',cls:'two',items:SPECIES_KEYS.map(s=>[s,SPECIES[s].icon,SPECIES[s].name,
-    `${SPECIES[s].desc} ${SPECIES[s].dom?'Release near a village and they become its livestock.':'Wild.'}`])},
-  {g:'Shape the land',items:[
-    ['trees','🌳','Forest','Plant forest on grass.'],
+/* ---------- tray: six tabs of powers, drawn in the style of a god-game toolbox ---------- */
+function iconCanvas(sp,size=48){
+  const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+  const raw=Math.min((size-6)/sp.w,(size-6)/sp.h),sc=raw>=2?Math.floor(raw):raw;
+  x.drawImage(sp.c,Math.round((size-sp.w*sc)/2),Math.round((size-sp.h*sc)/2),Math.round(sp.w*sc),Math.round(sp.h*sc));return c;
+}
+/* small hand-drawn pixel icons for the weapons */
+const WICON={
+  grenade:()=>{const g=G(12,13),o=[96,112,58],d=[62,78,40],l=[140,158,88];
+    gr(g,5,0,3,1,CL.steel);gp(g,8,1,CL.steelL);gr(g,4,1,1,2,CL.steelD);gr(g,5,2,3,1,CL.steelD);
+    gell(g,6,8,4.6,4.8,o);gr(g,3,7,6,1,d);gr(g,2,9,8,1,d);gr(g,4,5,4,1,d);gp(g,4,6,l);gp(g,5,5,l);gp(g,3,8,l);gr(g,5,3,3,1,CL.stoneD);return bake(g)},
+  molotov:()=>{const g=G(12,15);
+    gp(g,6,0,CL.fire1);gr(g,5,1,3,2,CL.fire2);gr(g,5,2,3,1,CL.fire3);gp(g,6,1,CL.fire1);
+    gr(g,5,3,3,1,[230,210,170]);gr(g,5,4,3,3,CL.glass);gr(g,3,7,7,6,[110,200,150]);gr(g,3,7,1,6,[160,230,190]);gr(g,3,12,7,1,[60,130,90]);
+    gr(g,4,8,5,3,[238,226,190]);gp(g,5,9,CL.red);gp(g,7,9,CL.red);return bake(g)},
+  antimatter:()=>{const g=G(14,14);gell(g,7,7,6.6,6.6,[170,90,240]);gell(g,7,7,5.4,5.4,[18,6,32]);gell(g,7,7,3.2,3.2,[2,0,8]);
+    gp(g,3,3,[240,200,255]);gp(g,10,4,[240,200,255]);gp(g,4,10,[200,140,255]);gp(g,10,10,[240,200,255]);gp(g,7,0,[255,255,255]);return bake(g)},
+  laser:()=>{const g=G(16,14);for(let k=0;k<14;k++){gr(g,k,13-k-1,3,2,[255,70,70]);gr(g,k,13-k,2,1,[255,255,255])}
+    gr(g,0,12,3,2,CL.steelD);gr(g,0,11,2,1,CL.steel);gp(g,13,0,[255,255,255]);gp(g,15,2,[255,200,200]);return bake(g)},
+  nuke:()=>{const g=G(14,14);
+    gmap(g,0,0,["...oooooo...","..oyyyyyyo..",".oyyOOOOyyo.",".oyOOOOOOyo.","..oyyOOyyo..","....oOOo....",".....OO.....",".....OO.....","....OOOO....","...OOOOOO...","..oooooooo.."],{o:[200,90,40],y:[255,224,110],O:[255,150,50]});
+    gr(g,3,12,6,1,[90,60,40]);return bake(g)},
+  tsar:()=>{const g=G(16,16);
+    gmap(g,0,0,["....oooooooo....","..ooyyyyyyyyoo..",".oyywwwwwwwwyyo.",".oywwwwwwwwwwyo.","oyywwwoOOowwwyyo",".oywwOOOOOOwwyo.","..oyywwOOwwyyo..","....oyywwyyo....","......oWWo......","......oWWo......",".....oWWWWo.....","....oWWWWWWo....","...oWWWWWWWWo...","..oooooooooooo.."],{o:[190,70,36],y:[255,214,96],w:[255,250,214],O:[255,120,40],W:[255,200,120]});
+    return bake(g)},
+};
+const TABS=[
+  {ic:'🏔️',name:'World shaping',items:[
     ['raise','⛰️','Raise land','Drag to lift the land. Keep going to build hills and peaks.'],
     ['lower','🕳️','Lower land','Drag to sink the land into lakes and seas.'],
-    ['water','🌊','Ocean','Paint ocean. Boats will sail it; anyone standing there drowns.'],
-    ['land','🌱','Grassland','Paint fresh grassland. Also heals burnt ground and cools lava.'],
     ['mountain','🏔️','Mountains','Raise a mountain range. Dwarves love them; snowy peaks block travel.'],
+    ['hills','🏞️','Hills','Paint rolling highland. Pines grow here and it is easy to build on.'],
+    ['snowpeak','🗻','Snow peaks','Paint frozen peaks. Nothing can walk or build on them.'],
+    ['land','🌱','Plain soil','Paint plain soil, the meadow where villages thrive. Also heals burnt ground, cools lava and clears biomes.'],
+    ['forestsoil','🌲','Forest soil','Paint dark forest soil. Trees grow thick and fast here.'],
+    ['trees','🌳','Plant trees','Plant trees on fertile ground, in whatever style the local biome grows.'],
+    ['sand','🏖️','Sand','Paint beach sand.'],
+    ['shallow','🏝️','Shallow sea','Paint shallow water. Crabs and turtles wade here; boats still sail it.'],
+    ['water','🌊','Sea','Paint ocean. Boats will sail it; anyone standing there drowns.'],
+    ['deep','🔵','Deep ocean','Paint the deep sea.'],
   ]},
-  {g:'Powers',items:[
+  {ic:'🐾',name:'Creatures',items:[
+    ...RACE_KEYS.map(r=>[r,{race:r},RACES[r].plural,{
+      human:'Tap land to found a human kingdom, or near one to add to it. Adaptable, quick to grow.',
+      elf:'Tap land to found an elven realm. Long-lived archers who plant forests.',
+      dwarf:'Tap land, ideally highlands near mountains, to found a dwarf hold. Tough miners.',
+      orc:'Tap land to found an orc horde. Fierce hunters, always spoiling for war.'}[r]+' Land already held by another people cannot be taken this way.']),
+    ...SPECIES_KEYS.map(s=>[s,{sp:s},SPECIES[s].name,
+      `${SPECIES[s].desc} ${SPECIES[s].monster?'Hostile to everything alive.':SPECIES[s].dom?'Release near a village and they become its livestock.':'Wild.'}`]),
+  ]},
+  {ic:'🕊️',name:'Diplomacy & Noosphere',items:[
+    ['peace','🕊️','Peace','Tap a kingdom to end every war it is fighting.'],
+    ['war','⚔️','Declare war','Tap the aggressor, then tap the kingdom it should attack.'],
+    ['alliance','🤝','Alliance','Tap one kingdom, then another, to bind them in an alliance. Ends any war between them.'],
+    ['breakpact','💔','Break pacts','Tap a kingdom to cancel all of its alliances.'],
+    ['inspire','🎨','Inspire','Tap a kingdom: artists create a work of art at once, and devotion and calm rise.'],
+    ['enlighten','💡','Enlighten','Tap a kingdom to hand it the knowledge of the next age: stone, bronze, iron, steel, gold.'],
+    ['dbless','🙏','Bless','Tap a kingdom: heals its people, lifts stability and devotion and feeds the hungry.'],
+    ['dcurse','😈','Curse','Tap a kingdom: stability and devotion plummet and stores are spoiled.'],
+    ['revolt','🔥','Spark revolt','Tap a restless kingdom and part of it breaks away to found a rival realm.'],
+    ['missionary','📿','Missionary','Tap a kingdom to convert it to the faith of the nearest temple of its people.'],
+    ['gift','🎁','Gift','Tap a kingdom to send it food and timber.'],
+    ['colonize','⛵','Send settlers','Tap a kingdom: settlers march or sail out to found a new colony.'],
+  ]},
+  {ic:'🌿',name:'Nature & Disasters',items:[
+    ...Array.from({length:BM.CORRUPT-BM.SAV+1},(_,k)=>BM.SAV+k).map(b=>['seed_'+BIOMES[b].k,BIOMES[b].icon,BIOMES[b].name+' seeds','Paint '+BIOMES[b].name.toLowerCase()+' on grass and hills, with its own trees and grass. '+BIOMES[b].desc]),
+    ...[ORE.STONE,ORE.COPPER,ORE.IRON,ORE.COAL,ORE.SILVER,ORE.GOLD,ORE.GEMS].map(o=>['ore_'+ORES[o].k,ORES[o].icon,ORES[o].name+' ore','Paint '+ORES[o].name.toLowerCase()+' deposits on land. '+ORES[o].desc+' Kingdoms mine them to advance their metallurgy.']),
     ['rain','🌧️','Rain','Drag to put out fires, cool lava and help forests grow back.'],
-    ['fire','🔥','Fire','Drag to start fires. Forests and houses burn fast.'],
     ['lightning','⚡','Lightning','Tap to strike. Kills whatever it hits and sets the ground alight.'],
+    ['fire','🔥','Fire','Drag to start fires. Forests and houses burn fast.'],
+    ['earthquake','🏚️','Earthquake','Tap to shake the ground: buildings collapse and the land buckles.'],
+    ['volcano','🌋','Volcano','Tap to raise a volcano that spews lava for years.'],
+    ['flood','💧','Flood','Tap to drown the land in a great flood.'],
+    ['plague','🦠','Plague','Tap near a kingdom: a plague sweeps it and some of the dead rise as zombies.'],
+  ]},
+  {ic:'💥',name:'Chaos',items:[
     ['meteor','☄️','Meteor','Tap to call down a meteor. It leaves a crater of lava.'],
+    ['grenade',WICON.grenade,'Grenade','Tap to throw a grenade: a small blast.'],
+    ['bomb','💣','Bomb','Tap to drop a bomb. A big crater and fires.'],
+    ['molotov',WICON.molotov,'Molotov','Tap to hurl a firebomb: no crater, but fire everywhere.'],
+    ['laser',WICON.laser,'Laser beam','Tap to fire an orbital laser. It slices a long line through everything.'],
+    ['nuke',WICON.nuke,'Nuke','Tap for a nuclear bomb: huge blast and a wasteland of fallout.'],
+    ['tsar',WICON.tsar,'Tsar bomb','Tap for the biggest bomb ever built. Expect a very different map.'],
+    ['antimatter',WICON.antimatter,'Antimatter','Tap to annihilate everything in a wide circle, leaving only a deep pit.'],
+  ]},
+  {ic:'✨',name:'Wonders & Oddities',items:[
+    ['w_wish','🌠','Wishing star','Tap for a surprise. Anything can happen: a dragon, a rain of gold, a meteor shower, the dead…'],
+    ['w_elixir','⚗️','Elixir of life','Splash people with an elixir: they never grow old and are fully healed.'],
+    ['w_giant','🧪','Giant potion','Splash people to make them towering giants with triple health.'],
+    ['w_tiny','🍄','Shrink mushroom','Splash people to shrink them: quick, but fragile.'],
+    ['w_bless','😇','Halo','Splash people with a halo: they heal steadily.'],
+    ['w_curse','☠️','Hex','Splash people with a hex: they slowly waste away.'],
+    ['w_mad','🤪','Madness','Splash people with madness: they attack anyone nearby.'],
+    ['w_hero','🎖️','Hero’s mantle','Splash people to make them mighty, brave heroes.'],
+    ['w_fountain','⛲','Fountain of youth','Heals everything nearby, turns back the years and lifts curses.'],
+    ['w_love','💞','Love potion','Tap near two adults and they will have children.'],
+    ['w_mutate','🧬','Mutation','Splash people to scramble their genes and give them a new trait.'],
+    ['w_portal','🌀','Portal','Splash people to teleport them to a random place.'],
+    ['w_midas','🪙','Midas touch','Turns the trees around the tap into gold ore.'],
+    ['w_lush','🌸','Garden blessing','Turns the land to a flower meadow and heals everything in it.'],
+    ['w_chest','🎁','Treasure chest','Leaves a deposit of gold, silver or gems at the tap.'],
+    ['w_feast','🎉','Feast','Tap a kingdom to hold a festival at once: devotion, blessings and rites.'],
+    ['w_time','⏳','Hourglass','Tap to let a whole year pass in a blink.'],
   ]},
 ];
-const HINT={};TOOLS.forEach(g=>g.items.forEach(t=>HINT[t[0]]=t[3]));
-const BRUSH=new Set(['raise','lower','water','land','mountain','trees','fire','rain']);
+const PINNED=[
+  ['inspect','🔍','Inspect','Tap anyone or anything to see who they are: genes, faith, family, what the ground holds, and who owns it.'],
+  ['move','✋','Move view','Drag to pan, or use WASD / arrow keys anywhere. Scroll or pinch to zoom.'],
+];
+const HINT={},NAMES={};
+[...TABS.flatMap(t=>t.items),...PINNED].forEach(t=>{HINT[t[0]]=t[3];NAMES[t[0]]=t[2]});
+const BRUSH=new Set(Object.keys(BRUSHFN));
 const SPAWNABLE=new Set([...RACE_KEYS,...SPECIES_KEYS]);
-let tool='inspect',brushSize=3;
-const toolsEl=$('tools');
-toolsEl.innerHTML=TOOLS.map(g=>`<div class="group"><h2>${g.g}</h2><div class="grid ${g.cls||''}">${
-  g.items.map(t=>`<button class="tool" data-tool="${t[0]}" aria-pressed="${t[0]===tool}" title="${t[3]}"><span class="ic" aria-hidden="true">${t[1]}</span><span>${t[2]}</span></button>`).join('')
-}</div></div>`).join('');
-toolsEl.addEventListener('click',e=>{const b=e.target.closest('.tool');if(b)setTool(b.dataset.tool)});
+const REPEAT=new Set([...SPAWNABLE,'lightning']);
+let tool='inspect',brushSize=3,tab=0;
+const trayTabs=$('trayTabs'),trayGrid=$('trayGrid'),trayPin=$('trayPin'),trayName=$('trayName');
+function mkTile(t){
+  const b=document.createElement('button');b.className='tile';b.dataset.tool=t[0];b.setAttribute('aria-pressed',t[0]===tool);b.setAttribute('aria-label',t[2]);b.title=t[2];
+  const ic=t[1];
+  if(typeof ic==='function')b.appendChild(iconCanvas(ic()));
+  else if(ic&&ic.sp)b.appendChild(iconCanvas(animalSprite(ic.sp,0,0,true,null)));
+  else if(ic&&ic.race)b.appendChild(iconCanvas(personSprite(ic.race,0,0,KCOL[0],0)));
+  else{const s=document.createElement('span');s.className='emo';s.textContent=ic;b.appendChild(s)}
+  return b;
+}
+trayTabs.insertAdjacentHTML('afterbegin',TABS.map((t,k)=>`<button class="tab" role="tab" data-tab="${k}" aria-selected="${k===tab}" title="${t.name} (${k+1})"><span aria-hidden="true">${t.ic}</span><span class="sr">${t.name}</span></button>`).join(''));
+const panes=TABS.map((t,k)=>{
+  const d=document.createElement('div');d.className='pane';d.hidden=k!==tab;d.setAttribute('role','tabpanel');
+  t.items.forEach(it=>d.appendChild(mkTile(it)));trayGrid.appendChild(d);return d;
+});
+PINNED.forEach(it=>trayPin.appendChild(mkTile(it)));
+function showTab(k){
+  tab=k;
+  trayTabs.querySelectorAll('.tab').forEach((b,i)=>b.setAttribute('aria-selected',i===k));
+  panes.forEach((p,i)=>p.hidden=i!==k);trayGrid.scrollLeft=0;trayName.textContent=TABS[k].name;
+}
+showTab(tab);
+trayTabs.addEventListener('click',e=>{const b=e.target.closest('.tab');if(b)showTab(+b.dataset.tab)});
+const trayEl=$('tray');
+trayEl.addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)setTool(b.dataset.tool)});
+trayEl.addEventListener('mouseover',e=>{const b=e.target.closest('.tile');if(b&&performance.now()>toastUntil){hintEl.textContent=`${NAMES[b.dataset.tool]}: ${HINT[b.dataset.tool]}`;hintEl.classList.remove('toast')}});
+trayEl.addEventListener('mouseout',e=>{if(e.target.closest('.tile'))showHint()});
 function setTool(t){
-  tool=t;
-  toolsEl.querySelectorAll('.tool').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tool===t));
+  tool=t;dipPending=null;
+  trayEl.querySelectorAll('.tile').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tool===t));
   stage.classList.toggle('pan',t==='move');stage.classList.toggle('look',t==='inspect');showHint();
 }
 const hintEl=$('hint');let toastUntil=0;
-function showHint(){if(performance.now()>toastUntil){hintEl.textContent=HINT[tool];hintEl.classList.remove('toast')}}
-function toast(m){hintEl.textContent=m;hintEl.classList.add('toast');toastUntil=performance.now()+2500;setTimeout(showHint,2600)}
+function showHint(){if(performance.now()>toastUntil){hintEl.textContent=`${NAMES[tool]}: ${HINT[tool]}`;hintEl.classList.remove('toast')}}
+function toast(m){hintEl.textContent=m;hintEl.classList.add('toast');toastUntil=performance.now()+2800;setTimeout(showHint,2900)}
 $('brush').addEventListener('input',e=>brushSize=+e.target.value);
 
 /* speed, time, weather, sound */
@@ -143,6 +259,12 @@ function setSpeed(s){speed=s;segBtns.forEach(b=>b.setAttribute('aria-pressed',+b
 segBtns.forEach(b=>b.addEventListener('click',()=>setSpeed(+b.dataset.speed)));
 $('clockBtn').addEventListener('click',()=>{const target=Math.ceil((tod*4+.01))/4;let add=Math.round(((target-tod+1)%1)*DAY);step+=add;updateTimeWeather();toast(`Skipped ahead to ${phaseName().toLowerCase()}.`)});
 $('weatherBtn').addEventListener('click',()=>{const i=(WT_KEYS.indexOf(WX.type)+1)%WT_KEYS.length;setWeather(WT_KEYS[i]);toast(`The weather turns: ${WTYPES[WT_KEYS[i]].name.toLowerCase()}.`)});
+$('seasonBtn').addEventListener('click',()=>{
+  seasonLock=seasonLock>=3?-1:seasonLock+1;
+  toast(seasonLock<0?'The seasons turn with the years again.':`The world is held in ${SEASONS[seasonLock].toLowerCase()}. ${SEASON_TEXT[seasonLock]}`);
+  for(const T of tribes)if(T.alive)T.fx=computeFx(T);renderHeader();
+});
+$('domainBtn').addEventListener('click',()=>{showDomains=!showDomains;if(showDomains)ovDirty=true;renderHeader();toast(showDomains?'Showing each kingdom\u2019s domain.':'Domains hidden.')});
 function soundBtns(){
   $('musicBtn').setAttribute('aria-pressed',AU.music);$('sfxBtn').setAttribute('aria-pressed',AU.sfx);
   $('musicBtn').title=AU.music?'Music on':'Music off';$('sfxBtn').title=AU.sfx?'Sound effects on':'Sound effects off';
@@ -160,7 +282,8 @@ document.addEventListener('keydown',e=>{
   else if(k==='+'||k==='=')stepZoom(cw/2,ch/2,1);
   else if(k==='-')stepZoom(cw/2,ch/2,-1);
   else if(k==='0')fitView();
-  else if(k==='escape'){select(null);closeCodex()}
+  else if(k==='escape'){select(null);closeCodex();dipPending=null}
+  else if(k>='1'&&k<='6')showTab(+k-1);
 });
 document.addEventListener('pointerdown',()=>audioInit(),{capture:true});
 document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
@@ -189,8 +312,7 @@ function press(p){
   lastPress=performance.now();
   if(tool==='inspect'){const s=pickAt(p);select(s);if(s&&s.u&&AU.ready){if(s.u.k===0)playAt('speak',.7,0,{race:s.u.race,child:!adult(s.u)});else playAt('call',.7,0,s.u.sp)}}
   else if(SPAWNABLE.has(tool))spawnAt(p,tool);
-  else if(tool==='lightning')strike(p);
-  else if(tool==='meteor'){if(inb(p.x|0,p.y|0)){effects.push({type:'meteor',x:p.x|0,y:p.y|0,t:0,dur:52});SFXQ.push({t:'boom',x:null,y:null})}}
+  else if(TAPS[tool])TAPS[tool](p);
 }
 cv.addEventListener('pointerdown',e=>{
   audioInit();
@@ -215,7 +337,7 @@ cv.addEventListener('pointermove',e=>{
     drag.vx=drag.vx*.6+(dx/dtm)*.4;drag.vy=drag.vy*.6+(dy/dtm)*.4;
     drag.x=e.clientX;drag.y=e.clientY;drag.t=now;return;
   }
-  if(painting&&tool!=='meteor'&&tool!=='inspect'&&!BRUSH.has(tool)&&performance.now()-lastPress>180)press(hover);
+  if(painting&&REPEAT.has(tool)&&performance.now()-lastPress>180)press(hover);
 });
 function endPointer(e){
   pointers.delete(e.pointerId);
@@ -243,8 +365,12 @@ $('kings').addEventListener('click',e=>{
   openCodex(T);
   side.classList.remove('open');
 });
+const SEASON_IC=['🌱','☀️','🍂','❄️'];
 function renderHeader(){
-  $('year').textContent=`Year ${year()} · ${SEASONS[season()]}`;
+  $('year').textContent=`Year ${year()} · ${SEASON_IC[season()]} ${SEASONS[season()]}${seasonLock>=0?' 🔒':''}`;
+  $('seasonBtn').textContent=seasonLock<0?'🔄 Seasons turn':`🔒 Always ${SEASONS[seasonLock].toLowerCase()}`;
+  $('seasonBtn').setAttribute('aria-pressed',seasonLock>=0);
+  $('domainBtn').setAttribute('aria-pressed',showDomains);
   $('clockBtn').textContent=`${phaseIcon()} ${phaseName()}`;
   $('weatherBtn').textContent=`${WTYPES[WX.type].ic} ${WTYPES[WX.type].name}`;
 }
@@ -254,6 +380,8 @@ function renderPanel(force){
   let animals=0;for(const k in cnt.sp)animals+=cnt.sp[k];
   $('cPeople').textContent=cnt.people;$('cKings').textContent=alive.length;
   $('cBoats').textContent=boats.length;$('cAnimals').textContent=animals;
+  let claimed=0;for(const T of alive)claimed+=T.area;
+  $('claimed').textContent=`${Math.round(claimed/landTiles*100)}% of the land is claimed by a kingdom.`;
   $('races').innerHTML=RACE_KEYS.map(r=>`<span title="${RACES[r].plural}">${RACES[r].icon} <b>${cnt.race[r]||0}</b></span>`).join('');
   if(!force&&window.innerWidth<=860&&!side.classList.contains('open'))return;
   $('fauna').innerHTML=SPECIES_KEYS.filter(s=>cnt.sp[s]).map(s=>`<span title="${SPECIES[s].name}">${SPECIES[s].icon} ${cnt.sp[s]}</span>`).join('')||'<span>No animals</span>';
@@ -262,6 +390,8 @@ function renderPanel(force){
     const foes=wars.filter(w=>w.a===T.id||w.b===T.id).map(w=>tribes[w.a===T.id?w.b:w.a].name);
     return `<li><button class="king" data-id="${T.id}"><span class="sw" style="background:${css(T.color)}"></span><span class="nm">${RACES[T.race].icon} ${T.title}</span>
       <span class="meta">${T.pop} ${RACES[T.race].plural.toLowerCase()}, ${T.houses} ${T.houses===1?'building':'buildings'}, ${T.stock} livestock${T.fish?`, ${T.fish} boats`:''}</span>
+      <span class="meta">${AGE_NAME[T.age]} · holds ${sharePct(T)}% of the land</span>
+      <span class="dom"><i style="width:${Math.min(100,Math.max(2,sharePct(T)*3))}%;background:${css(T.color)}"></i></span>
       <span class="faith">${T.rel.name} · ${T.rel.patron.dom}</span>
       ${foes.length?`<span class="war">At war with ${foes.join(' and ')}</span>`:''}${alliesOf(T).length?`<span class="ally">Allied with ${alliesOf(T).map(a=>a.name).join(' and ')}</span>`:''}</button></li>`;
   }).join(''):`<li><p class="empty">No one lives here yet. Pick a people and tap on green land to begin.</p></li>`;

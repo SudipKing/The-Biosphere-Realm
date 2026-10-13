@@ -57,8 +57,26 @@ new ResizeObserver(()=>{if(hgt)resize()}).observe(stage);
 const ipos=u=>[u.px+(u.x-u.px)*alpha,u.py+(u.y-u.py)*alpha];
 function rebuildBList(){
   bList=[];
-  for(let i=0;i<N;i++)if(bld[i]!==-1)bList.push({i,x:i%W,y:(i/W)|0,t:bld[i],ty:bld[i]===-2?3:btype[i]});
+  for(let i=0;i<N;i++)if(bld[i]!==-1)bList.push({i,x:i%W,y:(i/W)|0,t:bld[i],ty:bld[i]===-2?3:btype[i],tier:btier[i]});
   bDirty=false;
+}
+
+/* domains: a colour layer per kingdom, one owner per tile, with a crisp border where two meet */
+const OVS=4;let ovC=null,ovX=null;
+const packRGBA=(r,g,b,a)=>((a<<24)|(b<<16)|(g<<8)|r)>>>0;
+function buildOverlay(){
+  if(!ovC){ovC=document.createElement('canvas');ovC.width=W*OVS;ovC.height=H*OVS;ovX=ovC.getContext('2d')}
+  const img=ovX.createImageData(W*OVS,H*OVS),buf=new Uint32Array(img.data.buffer),ow=W*OVS;
+  for(let ty=0;ty<H;ty++)for(let tx=0;tx<W;tx++){
+    const i=ty*W+tx,o=own[i];if(o<0)continue;
+    const c=tribes[o].color,fill=packRGBA(c[0],c[1],c[2],72),edge=packRGBA(c[0]*.8|0,c[1]*.8|0,c[2]*.8|0,225);
+    const L=tx>0&&own[i-1]!==o,Rr=tx<W-1&&own[i+1]!==o,U=ty>0&&own[i-W]!==o,D=ty<H-1&&own[i+W]!==o;
+    for(let sy=0;sy<OVS;sy++)for(let sx=0;sx<OVS;sx++){
+      const e=(L&&sx===0)||(Rr&&sx===OVS-1)||(U&&sy===0)||(D&&sy===OVS-1);
+      buf[(ty*OVS+sy)*ow+tx*OVS+sx]=e?edge:fill;
+    }
+  }
+  ovX.putImageData(img,0,0);ovDirty=false;
 }
 
 /* ambient life that isn't simulated: birds, fish, fireflies */
@@ -90,33 +108,42 @@ function draw(dt){
     if(X1<0||Y1<0||X0>cw||Y0>ch)continue;
     ctx.drawImage(c.c,X0,Y0,X1-X0,Y1-Y0);
   }
+  if(showDomains){
+    if(ovDirty||!ovC)buildOverlay();
+    const vx0=clamp(Math.floor(-ox/tz)-1,0,W),vx1=clamp(Math.ceil((cw-ox)/tz)+1,0,W),vy0=clamp(Math.floor(-oy/tz)-1,0,H),vy1=clamp(Math.ceil((ch-oy)/tz)+1,0,H);
+    if(vx1>vx0&&vy1>vy0){ctx.imageSmoothingEnabled=true;
+      ctx.drawImage(ovC,vx0*OVS,vy0*OVS,(vx1-vx0)*OVS,(vy1-vy0)*OVS,SX(vx0*TS),SY(vy0*TS),Math.round((vx1-vx0)*tz),Math.round((vy1-vy0)*tz));ctx.imageSmoothingEnabled=false}
+  }
   const x0=Math.floor(-ox/tz)-3,x1=Math.ceil((cw-ox)/tz)+3,y0=Math.floor(-oy/tz)-2,y1=Math.ceil((ch-oy)/tz)+4;
   const inView=(x,y)=>x>=x0&&x<x1&&y>=y0&&y<y1;
   const blit=(img,w,h,X,Y,sc)=>{const a=SX(X),b=SY(Y);ctx.drawImage(img,a,b,Math.round(w*pz*sc),Math.round(h*pz*sc))};
 
   const items=[],vis=[],visB=[];
   for(const b of bList)if(inView(b.x,b.y)){items.push({y:b.y+.95,b});visB.push(b)}
-  for(const u of units){if(u.inside)continue;const [x,y]=ipos(u);if(inView(x,y)){items.push({y,u,x});vis.push(u)}}
+  for(const u of units){if(u.inside)continue;const [x,y]=ipos(u);if(inView(x,y)){items.push({y:u.fly?y+SPECIES[u.sp].alt*.1:y,u,x,ry:y});vis.push(u)}}
   for(const b of boats){const [x,y]=ipos(b);if(inView(x,y))items.push({y:y+.3,boat:b,x})}
   items.sort((a,b)=>a.y-b.y);
   const close=pz>=1.5;
   for(const it of items){
     if(it.b){
       const b=it.b,T=b.t>=0?tribes[b.t]:null;
-      const s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain):buildingSprite('',3,0,'');
+      const s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier):buildingSprite('',3,0,'');
       blit(s.c,s.w,s.h,(b.x+.5)*TS-s.w/2,(b.y+1)*TS-s.h+1,1);
       if(T&&close&&b.ty<2&&(T.race==='human'||T.race==='dwarf')&&R()<.006*(dt/16.7)&&effects.length<300)
         effects.push({type:'smoke',x:b.x+(T.race==='human'?.85:.95)-(b.ty===1?.4:0),y:b.y-1.2,t:0,dur:80});
     }else if(it.u){
-      const u=it.u,y=it.y,moving=u.moving&&speed>0,fr=moving?(((frameN>>3)+u.id)&1):0;
+      const u=it.u,y=it.ry!=null?it.ry:it.y,moving=u.moving&&speed>0,fr=moving||u.fly&&speed>0?(((frameN>>(u.fly?2:3))+u.id)&1):0,alt=u.fly?SPECIES[u.sp].alt+Math.sin(frameN/14+u.id)*1.2:0;
       let s,sc=1;
       if(u.k===0){const T=tribes[u.tribe];s=spr(`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}`,()=>personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr));if(!adult(u))sc=.7}
       else{s=animalSpr(u,fr);if(!adult(u))sc=.65}
+      if(u.scale)sc*=u.scale;
       const fx=it.x*TS,fy=(y+.35)*TS;
-      if(close){ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(SX(fx-s.w*sc*.35),SY(fy-1),Math.round(s.w*sc*.7*pz),Math.round(pz*1.5))}
-      blit(u.dir<0?flipped(s):s.c,s.w,s.h,fx-s.w*sc/2,fy-s.h*sc,sc);
+      if(close){ctx.fillStyle=u.fly?'rgba(0,0,0,.12)':'rgba(0,0,0,.18)';ctx.fillRect(SX(fx-s.w*sc*.35),SY(fy-1),Math.round(s.w*sc*.7*pz),Math.round(pz*1.5))}
+      if(u.sp==='wraith')ctx.globalAlpha=.78;
+      blit(u.dir<0?flipped(s):s.c,s.w,s.h,fx-s.w*sc/2,fy-s.h*sc-alt,sc);
+      ctx.globalAlpha=1;
       if(close&&u.hp<u.maxhp&&(u.k===0||SPECIES[u.sp].pred)){
-        const bw=8*pz,bx=SX(fx-4),by=SY(fy-s.h*sc-2);
+        const bw=8*pz,bx=SX(fx-4),by=SY(fy-s.h*sc-2-alt);
         ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(bx,by,bw,pz);
         ctx.fillStyle=u.hp/u.maxhp>.5?'#6fd36a':'#e5533d';ctx.fillRect(bx,by,bw*Math.max(0,u.hp/u.maxhp),pz);
       }
@@ -202,6 +229,7 @@ function draw(dt){
     if(sel.u){ok=!sel.u.dead&&!sel.u.inside;[px,py]=ipos(sel.u);py+=.35}
     else if(sel.boat){ok=!sel.boat.dead;[px,py]=ipos(sel.boat);py+=.5}
     else if(sel.i!=null){ok=bld[sel.i]!==-1;px=sel.i%W+.5;py=((sel.i/W)|0)+1}
+    else if(sel.t!=null){px=sel.t%W+.5;py=((sel.t/W)|0)+.8}
     if(ok){
       const X=ox+px*tz,Y=oy+py*tz,rr=Math.max(6*dpr,tz*(sel.i!=null?1.1:.55));
       ctx.strokeStyle=`rgba(255,236,150,${.6+.4*Math.sin(frameN/8)})`;ctx.lineWidth=Math.max(2,dpr*2);
@@ -281,6 +309,40 @@ function drawEffects(ox,oy,pz){
         ctx.strokeStyle=`rgba(255,230,180,${1-t})`;ctx.lineWidth=Math.max(2,tz*.6);
         ctx.beginPath();ctx.arc(X,Y,tz*(2+t*12),0,7);ctx.stroke();
       }
+    }else if(e.type==='blast'){
+      const p=clamp(e.t/e.dur,0,1),[X,Y]=T2S(e.x,e.y),c=e.c,rad=tz*e.r;
+      if(e.dark){
+        ctx.fillStyle=`rgba(10,0,20,${(1-p)*.6})`;ctx.beginPath();ctx.arc(X,Y,rad*(.25+p*.75),0,7);ctx.fill();
+        ctx.strokeStyle=`rgba(${c[0]},${c[1]},${c[2]},${1-p})`;ctx.lineWidth=Math.max(2,tz*.6);ctx.beginPath();ctx.arc(X,Y,rad*(.15+p*1.1),0,7);ctx.stroke();
+      }else{
+        if(e.big&&p<.2){ctx.fillStyle=`rgba(255,248,224,${(1-p/.2)*.85})`;ctx.fillRect(0,0,cw,ch)}
+        ctx.globalCompositeOperation='lighter';
+        const rr=Math.max(4,rad*(.2+Math.sqrt(p)*.85)),g=ctx.createRadialGradient(X,Y,0,X,Y,rr);
+        g.addColorStop(0,`rgba(255,255,230,${(1-p)*.9})`);g.addColorStop(.45,`rgba(${c[0]},${c[1]},${c[2]},${(1-p)*.7})`);g.addColorStop(1,`rgba(${c[0]},${c[1]*.5|0},${c[2]*.3|0},0)`);
+        ctx.fillStyle=g;ctx.beginPath();ctx.arc(X,Y,rr,0,7);ctx.fill();
+        ctx.strokeStyle=`rgba(255,240,200,${(1-p)*.8})`;ctx.lineWidth=Math.max(2,tz*.4);ctx.beginPath();ctx.arc(X,Y,rad*(.3+p*1.1),0,7);ctx.stroke();
+        if(e.big){
+          const cy=Y-rad*(.3+p*1.6),cr=rad*(.28+p*.4);
+          ctx.fillStyle=`rgba(${c[0]},${c[1]*.8|0},${c[2]*.5|0},${(1-p)*.6})`;
+          ctx.fillRect(X-cr*.28,cy,cr*.56,Y-cy);
+          ctx.beginPath();ctx.ellipse(X,cy,cr,cr*.62,0,0,7);ctx.fill();
+        }
+        ctx.globalCompositeOperation='source-over';
+      }
+    }else if(e.type==='laser'){
+      const p=clamp(e.t/e.dur,0,1),[X0,Y0]=T2S(e.x0,e.y0),[X1,Y1]=T2S(e.x1,e.y1),a=p<.15?p/.15:1-(p-.15)/.85;
+      ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+      ctx.strokeStyle=`rgba(255,80,60,${a*.5})`;ctx.lineWidth=Math.max(6,tz*2.6);ctx.beginPath();ctx.moveTo(X0,Y0);ctx.lineTo(X1,Y1);ctx.stroke();
+      ctx.strokeStyle=`rgba(255,255,255,${a})`;ctx.lineWidth=Math.max(2,tz*.8);ctx.beginPath();ctx.moveTo(X0,Y0);ctx.lineTo(X1,Y1);ctx.stroke();
+      ctx.globalCompositeOperation='source-over';
+    }else if(e.type==='flame'){
+      const p=clamp(e.t/e.dur,0,1);ctx.globalCompositeOperation='lighter';
+      for(let k=0;k<7;k++){
+        const q=clamp(p*1.3-k*.06,0,1);if(q<=0||q>=1)continue;
+        const [X,Y]=T2S(e.x0+(e.x1-e.x0)*q,e.y0+(e.y1-e.y0)*q+Math.sin(k*2+e.t)*.12),r=tz*(.35+q*.9);
+        ctx.fillStyle=`rgba(255,${150+k*12},40,${(1-q)*.75})`;ctx.beginPath();ctx.arc(X,Y,r,0,7);ctx.fill();
+      }
+      ctx.globalCompositeOperation='source-over';
     }else if(e.type==='drop'){
       const [X,Y]=T2S(e.x,e.y+e.t*.35);
       ctx.strokeStyle='rgba(190,220,255,.8)';ctx.lineWidth=Math.max(1,dpr);

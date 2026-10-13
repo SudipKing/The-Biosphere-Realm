@@ -65,6 +65,20 @@ const CALLS={
   wolf:(o,t)=>{vox(o,t,{type:'sine',f0:360,mid:640,f1:470,d:1.8,a:.35,vib:5,vd:.015,ft:'lowpass',ff:1800,p:.32});vox(o,t+.02,{type:'triangle',f0:720,mid:1280,f1:940,d:1.7,a:.4,ft:'lowpass',ff:2200,p:.06})},
   bear:(o,t)=>{vox(o,t,{f0:78,f1:58,d:.9,a:.08,vib:28,vd:.15,ft:'lowpass',ff:420,q:2,p:.6});noiseHit(o,'lowpass',380,200,1,t,.05,.8,.25)},
   fox:(o,t)=>{for(const k of [0,.13])vox(o,t+k,{type:'square',f0:980,f1:1450,d:.07,ff:1800,q:2.5,p:.2})},
+  buffalo:(o,t)=>vox(o,t,{f0:96,f1:66,d:.8,a:.1,vib:6,vd:.04,ft:'lowpass',ff:380,q:1.5,p:.5}),
+  dog:(o,t)=>{for(const k of [0,.2])vox(o,t+k,{type:'sawtooth',f0:430,f1:250,d:.13,ff:950,q:2.5,p:.35})},
+  cat:(o,t)=>vox(o,t,{type:'triangle',f0:620,mid:1050,f1:560,d:.55,a:.08,vib:9,vd:.04,ff:1500,q:2,p:.25}),
+  rat:(o,t)=>{for(const k of [0,.08])vox(o,t+k,{type:'sine',f0:3200,f1:2700,d:.05,ft:'lowpass',ff:5000,p:.12})},
+  crab:(o,t)=>{for(const k of [0,.07,.15])noiseHit(o,'highpass',3500,5000,2,t+k,.001,.03,.2)},
+  turtle:(o,t)=>noiseHit(o,'lowpass',900,300,1,t,.05,.45,.15),
+  crow:(o,t)=>{for(const k of [0,.26])vox(o,t+k,{type:'square',f0:520,f1:340,d:.2,ff:1250,q:3,p:.3})},
+  eagle:(o,t)=>vox(o,t,{type:'sawtooth',f0:2300,mid:2900,f1:1500,d:.6,a:.04,vib:26,vd:.05,ft:'bandpass',ff:2600,q:2,p:.22}),
+  skeleton:(o,t)=>{for(let k=0;k<6;k++)noiseHit(o,'bandpass',2600+R()*1600,2000,4,t+k*.045,.001,.03,.3);osc(o,'triangle',200,150,t,.002,.2,.1)},
+  zombie:(o,t)=>{vox(o,t,{type:'sawtooth',f0:118,f1:62,d:1.3,a:.2,vib:5,vd:.06,ft:'lowpass',ff:360,q:2,p:.5});noiseHit(o,'lowpass',500,200,1,t+.1,.2,.9,.12)},
+  dragon:(o,t)=>{vox(o,t,{type:'sawtooth',f0:86,mid:150,f1:55,d:2,a:.12,vib:11,vd:.08,ft:'lowpass',ff:520,q:1.5,p:.7});noiseHit(o,'bandpass',900,300,1,t+.05,.15,1.7,.4);osc(o,'sine',48,34,t,.05,1.6,.5)},
+  wraith:(o,t)=>vox(o,t,{type:'sine',f0:560,mid:920,f1:480,d:1.6,a:.3,vib:6,vd:.09,ft:'bandpass',ff:1300,q:3,p:.3}),
+  spider:(o,t)=>noiseHit(o,'highpass',4200,6500,1.5,t,.01,.4,.22),
+  ogre:(o,t)=>{vox(o,t,{type:'sawtooth',f0:74,f1:48,d:1,a:.06,vib:20,vd:.12,ft:'lowpass',ff:320,q:2,p:.7});noiseHit(o,'lowpass',400,160,1,t,.04,.8,.3)},
 };
 const VOWELS=[[300,2300],[400,2000],[600,1200],[700,1100],[350,800],[500,1500]];
 function speak(o,t,race,child){

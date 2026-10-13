@@ -48,6 +48,47 @@ Every people has its own pantheon, and each kingdom follows its own sect of it. 
 - **Art.** Kingdoms create works of art inspired by their gods, wars, heroes and homeland. Physical works (statues, living sculptures, rune-pillars, skull totems) stand on the map.
 - **History.** Each kingdom has an origin legend and a chronicle of its own events.
 
+## The power tray
+
+The bottom tray has six tabs (keys `1` to `6`). **Inspect** and **Move** stay pinned on the right.
+
+| Tab | What is in it |
+| --- | --- |
+| 🏔️ **World shaping** | Raise and lower land, mountains, hills, snow peaks, plain soil, forest soil, trees, sand, shallow sea, sea and deep ocean |
+| 🐾 **Creatures** | The four peoples, farm and wild animals, crabs and turtles, crows and eagles, and monsters: skeletons, zombies, dragons, wraiths, giant spiders and ogres |
+| 🕊️ **Diplomacy & Noosphere** | Declare war, make peace, forge or break alliances, inspire art, enlighten a kingdom to the next age, bless, curse, spark a revolt, send missionaries, gift supplies, send settlers |
+| 🌿 **Nature & Disasters** | Biome seeds, ore deposits, rain, lightning, fire, earthquake, volcano, flood, plague |
+| 💥 **Chaos** | Meteor, grenade, bomb, molotov, orbital laser, nuke, Tsar Bomba, antimatter |
+| ✨ **Wonders & Oddities** | Wishing star (a surprise), elixir of life, giant potion, shrink mushroom, halo, hex, madness, hero's mantle, fountain of youth, love potion, mutation, portal, Midas touch, garden blessing, treasure chest, feast, hourglass |
+
+### Biomes
+
+Eleven seedable biomes plus forest soil. Each has its own grass and trees, and several have a buff or a curse.
+
+| Biome | Effect |
+| --- | --- |
+| Savanna | Acacias, golden grass, better foraging, grazers thrive |
+| Birch grove | Extra timber, slow healing |
+| Rocklands | Rich ore veins and faster mining, little grows |
+| Jungle | Lots of food, spreads quickly, spawns giant spiders |
+| Crystal fields | Gems in the ground, fast healing |
+| Candy land | Huge food yield, sugar-rushed speed |
+| Wasteland | Nothing farms, anyone standing there withers (also left by nukes) |
+| Lemon grove | Food and gentle healing |
+| Flower meadow | Animals and people breed more |
+| Clover fields | Lucky: fighters hit 20% harder |
+| Paradox | Colours shift, creatures are teleported, healed or wounded at random |
+| Corruption | Spawns skeletons and zombies, drains the living, creeps outward. Temples purify it |
+
+### Ores and metallurgy
+
+Kingdoms dig stone, copper, iron, coal, silver, gold and gems. The metal they mine moves them through the ages: **Wooden, Stone, Bronze, Iron, Steel, Golden**. Each age upgrades their homes (stone walls, bronze banners, iron frames, steel plating, gilded crowns), and brings stronger weapons, tougher armor and faster mining.
+
+### Seasons and domains
+
+- The **Seasons** button in the header holds the world in one season, or lets them turn. Each season recolors the land, trees and sea, and changes the weather (snow in winter, storms in summer).
+- The **Domains** button shows a colour layer for each kingdom with crisp borders. Every tile has exactly one owner, a kingdom cannot found itself or build on another kingdom's land (unless the two are at war), and the side panel shows each kingdom's share of the world.
+
 ## Controls
 
 | Action | Input |
@@ -56,6 +97,7 @@ Every people has its own pantheon, and each kingdom follows its own sect of it. 
 | Zoom | Scroll wheel, pinch, or `+` / `-` (`0` shows the whole world) |
 | Pause | Space |
 | Inspect | Tap any person, animal, boat or building |
+| Tray tabs | `1` to `6` |
 | Close panels | Escape |
 
 ## Project layout
@@ -66,6 +108,7 @@ Every people has its own pantheon, and each kingdom follows its own sect of it. 
 | `src/core.js` | Constants, noise, terrain helpers, spatial grid |
 | `src/sim.js` | The simulation: people, genetics, animals, kingdoms, boats, fire, weather, day and night |
 | `src/culture.js` | Pantheons, doctrines, rites, values, art, legends, diplomacy and unrest |
+| `src/world.js` | Brushes, biome seeds, ores, bombs and disasters, wonders, diplomacy powers, kingdom domains |
 | `src/terrain.js` | Terrain renderer, drawn into chunks so edits stay cheap |
 | `src/sprites.js` | Procedural pixel-art sprites for every creature, building, monument and boat |
 | `src/audio.js` | Synthesized music, creature voices, race languages, rites and ambience (Web Audio) |

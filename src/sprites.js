@@ -138,6 +138,70 @@ function animalSprite(sp,fr,v,male,saddle){
       if(fr===0){gp(g,3,5,CL.dark);gp(g,7,5,CL.dark)}else{gp(g,4,5,CL.dark);gp(g,6,5,CL.dark)}
       gr(g,2,2,6,3,o);gr(g,2,4,6,1,od);gr(g,0,1,3,2,o);gp(g,0,1,w);gp(g,0,2,w);
       gr(g,8,1,2,2,o);gp(g,10,2,o);gp(g,10,3,w);gp(g,8,0,CL.dark);gp(g,9,0,od);gp(g,9,1,CL.eye);gp(g,8,3,w);break}
+    case'buffalo':{g=G(16,11);const b=[88,58,40],bd=[56,38,28],bl=[128,92,62];
+      if(fr===0){gr(g,3,8,2,3,bd);gr(g,6,8,2,3,bd);gr(g,10,8,1,3,bd)}else{gr(g,4,8,2,3,bd);gr(g,7,8,2,3,bd);gr(g,11,8,1,3,bd)}
+      gr(g,2,3,10,5,b);gr(g,3,1,6,2,bd);gr(g,4,0,3,1,bd);gr(g,2,7,10,1,bd);gr(g,5,3,3,1,bl);
+      gr(g,11,3,4,5,bd);gr(g,12,2,3,1,b);gp(g,11,2,CL.tusk);gp(g,14,2,CL.tusk);gp(g,10,1,CL.tusk);gp(g,13,4,CL.eye);gr(g,14,6,2,2,[60,44,40]);gp(g,0,4,bd);gp(g,1,3,bd);gp(g,1,4,bd);break}
+    case'dog':{g=G(11,8);const b=v%2?[200,152,92]:[126,88,54],bd=sh(b,.7);
+      if(fr===0){gr(g,2,6,1,2,bd);gr(g,7,6,1,2,bd)}else{gr(g,3,6,1,2,bd);gr(g,6,6,1,2,bd)}
+      gr(g,1,3,7,3,b);gr(g,1,5,7,1,bd);gp(g,0,2,b);gp(g,0,1,b);gp(g,8,5,CL.white);
+      gr(g,7,1,3,3,b);gp(g,10,3,CL.dark);gp(g,9,2,CL.eye);gp(g,7,2,bd);gp(g,7,3,bd);gp(g,8,1,bd);break}
+    case'cat':{g=G(10,8);const b=v%2?[228,142,62]:[72,68,80],bd=sh(b,.68);
+      if(fr===0){gr(g,2,6,1,2,bd);gr(g,6,6,1,2,bd)}else{gr(g,3,6,1,2,bd);gr(g,5,6,1,2,bd)}
+      gr(g,2,4,5,2,b);gr(g,2,5,5,1,bd);gp(g,1,4,b);gp(g,0,3,b);gp(g,0,2,b);gp(g,0,1,bd);
+      gr(g,7,2,3,3,b);gp(g,7,1,b);gp(g,9,1,b);gp(g,9,3,[120,220,100]);gp(g,10-1,4,CL.pinkD);break}
+    case'rat':{g=G(8,4);const b=[120,114,120],bd=[84,80,88];
+      if(fr===0){gp(g,2,3,bd);gp(g,5,3,bd)}else{gp(g,3,3,bd);gp(g,4,3,bd)}
+      gr(g,2,1,4,2,b);gr(g,5,0,2,2,b);gp(g,7,1,CL.pinkD);gp(g,6,0,CL.eye);gp(g,5,0,bd);gr(g,0,2,2,1,CL.pinkD);gp(g,0,1,CL.pinkD);break}
+    case'crab':{g=G(9,6);const c=[220,70,52],cd=[156,44,38];
+      if(fr===0){gp(g,1,4,cd);gp(g,3,5,cd);gp(g,5,5,cd);gp(g,7,4,cd)}else{gp(g,1,5,cd);gp(g,3,4,cd);gp(g,5,4,cd);gp(g,7,5,cd)}
+      gr(g,2,3,5,2,c);gr(g,3,2,3,1,c);gp(g,0,1,c);gp(g,0,2,c);gp(g,1,2,c);gp(g,8,1,c);gp(g,8,2,c);gp(g,7,2,c);gp(g,0,0,cd);gp(g,8,0,cd);gp(g,3,1,CL.eye);gp(g,5,1,CL.eye);break}
+    case'turtle':{g=G(11,7);const sg=[64,128,70],sd=[38,88,52],sk=[150,176,100];
+      if(fr===0){gr(g,2,5,2,2,sk);gr(g,7,5,2,2,sk)}else{gr(g,3,5,2,2,sk);gr(g,6,5,2,2,sk)}
+      gell(g,5,3.5,4.2,2.6,sg);gr(g,2,5,7,1,sd);gp(g,4,2,sd);gp(g,6,2,sd);gp(g,5,3,sd);gp(g,3,3,sd);gp(g,7,3,sd);
+      gr(g,8,2,3,3,sk);gp(g,10,3,CL.eye);gp(g,0,4,sk);break}
+    case'crow':{g=G(9,6);const b=[34,32,42],bl=[84,82,104];
+      if(fr===0){gp(g,2,0,b);gp(g,3,1,b);gp(g,4,1,b);gp(g,5,0,b)}else{gp(g,2,4,b);gp(g,3,4,b);gp(g,4,4,b);gp(g,5,4,b)}
+      gr(g,1,2,5,2,b);gr(g,2,2,3,1,bl);gr(g,0,2,2,1,b);gr(g,6,1,2,2,b);gp(g,8,2,[220,180,60]);gp(g,7,1,CL.white);break}
+    case'eagle':{g=G(14,10);const b=[116,78,44],bd=[78,52,32],w=CL.white,bk=[244,200,56];
+      if(fr===0){gr(g,3,0,7,2,bd);gr(g,2,2,2,1,bd);gr(g,9,2,2,1,bd);gp(g,1,1,bd);gp(g,11,1,bd)}else{gr(g,3,6,7,2,bd);gr(g,2,5,2,1,bd);gr(g,9,5,2,1,bd);gp(g,1,6,bd);gp(g,11,6,bd)}
+      gr(g,3,3,7,3,b);gr(g,4,3,5,1,bd);gr(g,0,4,3,2,b);gp(g,0,5,bd);
+      gr(g,10,2,3,3,w);gp(g,13,3,bk);gp(g,12,3,bk);gp(g,11,3,CL.eye);gp(g,10,6,bk);gp(g,8,6,bk);break}
+    case'skeleton':{g=G(11,12);const bn=[234,230,212],bd=[170,166,150];
+      if(fr===0){gr(g,3,9,1,3,bn);gr(g,5,9,1,3,bn);gr(g,2,11,2,1,bd);gr(g,5,11,2,1,bd)}else{gr(g,3,9,2,3,bn);gr(g,3,11,3,1,bd)}
+      gr(g,3,8,3,1,bd);gr(g,4,5,1,3,bn);gr(g,3,5,3,1,bn);gr(g,3,7,3,1,bn);gp(g,3,6,bd);gp(g,5,6,bd);
+      gp(g,2,5,bn);gp(g,2,6,bn);gp(g,6,5,bn);gp(g,6,6,bn);gp(g,7,7,bn);
+      gr(g,3,1,4,3,bn);gr(g,3,0,3,1,bn);gp(g,4,2,CL.dark);gp(g,6,2,CL.dark);gr(g,4,4,2,1,bd);gp(g,5,3,bd);
+      gr(g,8,2,1,6,CL.steel);gp(g,8,1,CL.steelL);gr(g,7,8,3,1,CL.woodD);gp(g,8,9,CL.woodD);break}
+    case'zombie':{g=G(11,12);const sk=[118,156,98],sd=[84,118,72],sh1=[88,92,132],pn=[70,60,50];
+      if(fr===0){gr(g,3,9,1,3,pn);gr(g,5,9,1,3,pn);gr(g,2,11,2,1,CL.boot);gr(g,5,11,2,1,CL.boot)}else{gr(g,3,9,2,3,pn);gr(g,3,11,3,1,CL.boot)}
+      gr(g,3,5,4,4,sh1);gp(g,3,8,pn);gp(g,5,7,sk);gp(g,4,8,sk);
+      gr(g,7,5,3,1,sk);gr(g,9,5,1,1,sd);gr(g,7,6,2,1,sd);gp(g,2,6,sk);
+      gr(g,3,1,4,4,sk);gp(g,3,4,sd);gp(g,6,4,sd);gp(g,4,2,CL.red);gp(g,6,2,[240,240,200]);gr(g,4,0,2,1,[60,70,50]);gp(g,5,4,CL.dark);break}
+    case'dragon':{g=G(26,19);const b=[170,40,38],bd=[116,26,30],bl=[236,178,92],wg=[130,30,60],wl=[196,66,86];
+      if(fr===0){for(let k=0;k<11;k++){const top=Math.max(0,5-((k*.55)|0));gr(g,5+k,top,1,8-top,k%3===0?wl:wg)}}
+      else{for(let k=0;k<11;k++){gr(g,5+k,9,1,2+((k*.6)|0),k%3===0?wl:wg)}}
+      gell(g,12,11,7.5,3.8,b);gell(g,12,12.4,6.5,1.9,bl);
+      gr(g,17,7,3,5,b);gr(g,19,5,5,3,b);gr(g,23,6,3,2,b);gp(g,25,7,bd);gp(g,24,8,CL.white);
+      gp(g,20,3,bl);gp(g,21,4,bl);gp(g,22,4,bl);gp(g,21,5,[255,222,60]);gp(g,24,6,[40,20,20]);
+      gr(g,2,12,6,2,b);gr(g,0,13,3,1,bd);gp(g,0,12,bl);gp(g,1,11,bl);
+      gr(g,10,14,2,3,bd);gr(g,14,14,2,3,bd);gp(g,10,17,bl);gp(g,14,17,bl);
+      for(const x of [8,10,12,14])gp(g,x,7+(x%3===0?0:1),bd);break}
+    case'wraith':{g=G(10,14);const c=[160,200,230,200],cd=[110,150,196,200],cl=[220,240,255,210];
+      gr(g,2,0,5,2,cd);gr(g,1,2,7,3,c);gr(g,0,5,9,4,c);gr(g,1,9,7,2,cd);
+      const w=fr?[0,2,4,6,8]:[1,3,5,7];for(const x of w)gr(g,x,11,1,2+(x%2),cd);
+      gr(g,3,2,3,2,[20,20,40,230]);gp(g,3,3,[255,70,70]);gp(g,5,3,[255,70,70]);gp(g,1,5,cl);gp(g,7,6,cl);gr(g,8,6,2,1,cl);gr(g,0,6,2,1,cl);break}
+    case'spider':{g=G(13,8);const b=[40,34,48],bl=[96,60,120],red=[240,40,50];
+      const L=(x,y,d)=>{gp(g,x,y,b);gp(g,x+d,y-1,b);gp(g,x+2*d,y,b);gp(g,x+2*d,y+1,b)};
+      if(fr===0){L(4,3,-1);L(4,4,-1);L(7,3,1);L(7,4,1);gp(g,5,6,b);gp(g,7,6,b);gp(g,3,6,b);gp(g,9,6,b)}
+      else{L(4,2,-1);L(4,5,-1);L(7,2,1);L(7,5,1);gp(g,4,7,b);gp(g,8,7,b);gp(g,2,5,b);gp(g,10,5,b)}
+      gell(g,6.5,4,3,2.2,b);gp(g,6,3,bl);gp(g,7,3,bl);gr(g,8,3,2,2,b);gp(g,9,3,red);gp(g,9,4,red);gp(g,3,4,red);break}
+    case'ogre':{g=G(16,17);const sk=[122,134,78],sd=[88,98,56],ls=[110,76,50];
+      if(fr===0){gr(g,4,12,3,5,sd);gr(g,8,12,3,5,sd);gr(g,3,16,4,1,CL.boot);gr(g,8,16,4,1,CL.boot)}else{gr(g,5,12,5,5,sd);gr(g,4,16,7,1,CL.boot)}
+      gr(g,3,5,9,7,sk);gr(g,3,5,2,7,sd);gr(g,3,11,9,2,ls);gp(g,7,11,CL.gold);gr(g,4,4,7,2,sk);
+      gr(g,1,6,2,5,sk);gr(g,12,6,2,4,sk);gr(g,1,10,2,2,sd);
+      gr(g,5,0,6,5,sk);gr(g,5,0,6,1,sd);gp(g,6,2,CL.red);gp(g,9,2,CL.red);gr(g,6,4,4,1,CL.tusk);gp(g,6,3,CL.tusk);gp(g,9,3,CL.tusk);gp(g,4,1,sd);gp(g,11,1,sd);
+      gr(g,13,1,2,10,ls);gr(g,12,0,4,3,CL.woodD);gp(g,12,1,CL.stoneD);gp(g,15,2,CL.stoneD);break}
   }
   return bake(g);
 }
@@ -299,9 +363,33 @@ function bDwarf(type,k,dom){
   }
   return g;
 }
-function buildingSprite(race,type,ci,dom){
+/* metallurgy: the same house, rebuilt in better materials as a kingdom climbs the ages */
+const BRONZE=[198,130,68],BRONZE_D=[148,92,46],GILD=[240,198,72],GILD_D=[190,146,44];
+function tierMap(t){
+  const m=new Map(),set=(a,b)=>m.set(a,b);
+  if(t>=1){set(CL.plaster,CL.stoneL);set(CL.woodD,CL.stoneD);set(CL.hide,CL.stone);set(CL.hideD,CL.stoneD)}
+  if(t>=2){set(CL.wood,BRONZE);set(CL.woodD,BRONZE_D);set(CL.glass,[170,226,240])}
+  if(t>=3){set(CL.wood,CL.steelD);set(CL.woodD,[70,76,90]);set(CL.plaster,CL.stone);set(CL.hide,CL.stoneD)}
+  if(t>=4){set(CL.plaster,[208,214,226]);set(CL.hide,CL.steel);set(CL.wood,CL.steel);set(CL.woodD,CL.steelD);set(CL.stone,[132,136,148])}
+  if(t>=5){set(CL.wood,GILD);set(CL.woodD,GILD_D);set(CL.plaster,[246,238,210]);set(CL.hide,[226,196,120]);set(CL.glass,CL.glow);set(CL.stone,[214,206,184]);set(CL.stoneL,[250,244,222])}
+  return m;
+}
+const TIER_TRIM=[null,[200,196,186],BRONZE,[104,112,130],[214,222,236],GILD];
+function tierGrid(g,t){
+  if(!t)return g;const m=tierMap(t);
+  for(let i=0;i<g.d.length;i++){const c=g.d[i];if(c&&m.has(c))g.d[i]=m.get(c)}
+  /* a plinth of the age's metal, a banner from bronze on, and a golden crown in the Golden Age */
+  const c=TIER_TRIM[t],cd=sh(c,.68),w=g.w,h=g.h;
+  gr(g,0,h-1,w,1,cd);gr(g,1,h-2,w-2,1,c);
+  if(t>=2){const x=w-4;gr(g,x,0,1,5,CL.woodD);gr(g,x+1,0,3,2,c);gp(g,x+3,1,cd);gp(g,x+1,2,cd)}
+  if(t>=3)for(let x=2;x<w-2;x+=3)gp(g,x,h-3,cd);
+  if(t>=5){const cx=w>>1;gp(g,cx,0,GILD);gp(g,cx-1,1,GILD);gp(g,cx+1,1,GILD);gp(g,cx,1,CL.glow)}
+  return g;
+}
+function buildingSprite(race,type,ci,dom,tier){
   if(type===3)return spr('ruin',ruinSprite);
-  return spr(`b|${race}|${type}|${ci}|${dom}`,()=>bake(type===4?monumentGrid(race,KCOL[ci],dom):{human:bHuman,elf:bElf,orc:bOrc,dwarf:bDwarf}[race](type,KCOL[ci],dom)));
+  tier=type===4?0:(tier||0);
+  return spr(`b|${race}|${type}|${ci}|${dom}|${tier}`,()=>bake(type===4?monumentGrid(race,KCOL[ci],dom):tierGrid({human:bHuman,elf:bElf,orc:bOrc,dwarf:bDwarf}[race](type,KCOL[ci],dom),tier)));
 }
 const GLOWS=new Map();
 function glowCol(c){const k=c.join();let g=GLOWS.get(k);if(!g){g=glowSprite(c[0],c[1],c[2]);GLOWS.set(k,g)}return g}
