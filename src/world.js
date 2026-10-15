@@ -371,8 +371,8 @@ const DIP={
   },
   colonize:p=>{
     const T=tribeNear(p);if(!T){toast('Tap a kingdom or its land.');return}
-    const n=tribes.length;settle(T);
-    if(tribes.length===n&&!boats.some(b=>!b.dead&&b.kind==='settler'&&b.tribe===T.id))toast(`The ${T.title} has too few people or nowhere to settle.`);
+    const n=T.towns.length;settle(T);
+    if(T.towns.length===n&&!boats.some(b=>!b.dead&&b.kind==='settler'&&b.tribe===T.id))toast(`The ${T.title} has too few people or nowhere to settle.`);
   },
 };
 Object.assign(TAPS,{
@@ -386,12 +386,13 @@ const domainRadius=T=>3.2+Math.sqrt(T.houses)*1.9+(T.hall>=0?2.5:0)+(T.temple?1.
 function computeDomains(){
   own.fill(-1);ownScore.fill(9);
   const rads=tribes.map(T=>T.alive?domainRadius(T):0);
-  for(const T of tribes)T.area=0;
+  for(const T of tribes){T.area=0;for(const t of T.towns)t.houses=0}
   let land=0;
   for(let i=0;i<N;i++){
     if(bio(hgt[i])>=2)land++;
     const o=bld[i];if(o<0)continue;
     const T=tribes[o];if(!T||!T.alive)continue;
+    if(btype[i]<3)T.towns[nearestTown(T,i%W,(i/W)|0)].houses++;
     const bx=i%W,by=(i/W)|0,m=btype[i]===1?1.25:btype[i]===4?.55:1,rad=rads[o]*m,rr=Math.ceil(rad);
     for(let dy=-rr;dy<=rr;dy++){
       const Y=by+dy;if(Y<0||Y>=H)continue;

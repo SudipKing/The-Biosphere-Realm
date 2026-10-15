@@ -88,12 +88,18 @@ Kingdoms dig stone, copper, iron, coal, silver, gold and gems. The metal they mi
 
 - **Job classes.** Every adult takes the work their kingdom needs: **farmers** (+50% food), **miners** (+40% ore, tougher), **woodcutters**, **builders**, **hunters**, **soldiers** (+20% damage, +15% health, they patrol, train and fight, and there are far more of them in wartime), **teachers** (better crafting, art and mining for the whole kingdom) and **priests** (raise devotion and calm). Each job has its own hat and tool on the sprite, and the inspector and codex show who does what.
 - **Immigrants.** Tap inside another people's kingdom with a people tool to send settlers to live among them (an elf in an orc horde). They keep their race, work in the kingdom and can have mixed children.
-- **Expansion.** Growing kingdoms send settlers overland or by ship to found colonies. A colony starts with a third of its parent's food and timber, a share of its ore and its age, and allied with its parent.
+- **Villages.** Growing kingdoms send settlers overland or by ship to found new villages. A village is its own settlement with its own name, homes and people, but it stays part of the kingdom: same colour, same stores, same domain. Only the capital has the great hall and temple. Empty villages are abandoned, and the capital sends families to villages that are struggling.
 
 ### Seasons and domains
 
 - The **Seasons** button in the header holds the world in one season, or lets them turn. A change of season dissolves across the whole map at once (no sweep), recoloring land, trees and sea, and shifting the weather.
 - The **Domains** button shows a colour layer for each kingdom with crisp borders. Every tile has exactly one owner, a kingdom cannot found itself or build on another kingdom's land (unless the two are at war), and the side panel shows each kingdom's share of the world.
+
+## Panels
+
+- **Chronicle.** The book button next to Inspect and Move (or the `C` key) opens the Chronicle of the whole world.
+- **Registry.** The first four tiles of the Diplomacy & Noosphere tab open lists of all kingdoms (with their villages), religions (with their patron gods), cultures and languages. Every name is a text box: type a new one and press Enter.
+- **Kingdom info.** Zoomed all the way out, tap a kingdom with Inspect to open its codex.
 
 ## Controls
 
@@ -104,6 +110,7 @@ Kingdoms dig stone, copper, iron, coal, silver, gold and gems. The metal they mi
 | Pause | Space |
 | Inspect | Tap any person, animal, boat or building |
 | Tray tabs | `1` to `6` |
+| Chronicle | `C` |
 | Close panels | Escape |
 
 ## Project layout

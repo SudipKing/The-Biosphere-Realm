@@ -16,6 +16,12 @@ function pickAt(p){
   for(const [dx,dy] of [[0,0],[0,1],[-1,1],[1,1],[0,2],[-1,0],[1,0]]){const X=x+dx,Y=y+dy;if(inb(X,Y)&&bld[Y*W+X]!==-1)return{i:Y*W+X}}
   return inb(x,y)?{t:y*W+x}:null;
 }
+function tribeUnder(p){
+  const x=p.x|0,y=p.y|0;if(!inb(x,y))return null;
+  const o=own[y*W+x];if(o>=0&&tribes[o]&&tribes[o].alive)return tribes[o];
+  let T=null,bd=36;for(const t of tribes)if(t.alive)for(const H of t.towns){const d=(H.x-x)**2+(H.y-y)**2;if(d<bd){bd=d;T=t}}
+  return T;
+}
 function select(s){sel=s;follow=false;inspEl.hidden=!s;if(s)renderInspect()}
 function spriteCanvas(s){
   const c=document.createElement('canvas');c.width=64;c.height=64;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
@@ -37,7 +43,7 @@ function renderInspect(){
       <dl><dt>Age</dt><dd>${yrs(u)}</dd><dt>Job</dt><dd>${u.job&&adult(u)?`<span title="${JOBS[u.job].d}">${JOBS[u.job].ic} ${JOBS[u.job].n}</span>`:adult(u)?'Looking for work':'Child'}</dd><dt>Doing</dt><dd>${doing}</dd>
         <dt>Health</dt><dd>${Math.max(0,Math.round(u.hp))} of ${Math.round(u.maxhp)}</dd>
         <dt>Generation</dt><dd>${u.gen}${u.parents?`, child of ${u.parents}`:', founder'}</dd>
-        <dt>Faith</dt><dd>${T.rel.name}, ${T.rel.patron.dom.toLowerCase()}</dd><dt>Culture</dt><dd>${T.values.map(v=>v.name).join(', ')}</dd><dt>Victories</dt><dd>${u.kills}</dd></dl>
+        <dt>Faith</dt><dd>${T.rel.name}, ${T.rel.patron.dom.toLowerCase()}</dd><dt>Home</dt><dd>${esc(townOf(u,T).name)}</dd><dt>Culture</dt><dd>${esc(cultureName(T))}</dd><dt>Speaks</dt><dd>${esc(LANG[u.race])}</dd><dt>Victories</dt><dd>${u.kills}</dd></dl>
       ${u.traits.length?`<div class="chips">${u.traits.map(t=>`<span title="${TRAIT_INFO[t]}">${t}</span>`).join('')}</div>`:''}
       <dl><dt>Skin</dt><dd><span class="sw2" style="background:${css(L.skins[g.skin])}"></span>${L.skinNames[g.skin]}</dd>
         <dt>Hair</dt><dd><span class="sw2" style="background:${css(L.hairs[g.hair])}"></span>${L.hairNames[g.hair]}</dd>
@@ -67,7 +73,7 @@ function renderInspect(){
     html=`<div class="insp-head"><span id="ispr"></span><div><h3>${B&&B.name?B.name:BN}</h3><p>${BN}${tree[i]?', with trees':''}${lava[i]?', molten':''}</p></div></div>
       ${B&&B.desc?`<p class="quote" style="font-style:normal">${B.desc}</p>`:''}
       ${O?`<p class="quote" style="font-style:normal"><b>${O.name}</b> deposit, about ${oreAmt[i]} left. ${O.desc}</p>`:''}
-      <dl><dt>Domain</dt><dd>${ow?kingLine(ow)+` (${sharePct(ow)}% of the land)`:b>=2?'Unclaimed':'Open water'}</dd></dl>`;
+      <dl><dt>Domain</dt><dd>${ow?kingLine(ow)+` (${sharePct(ow)}% of the land)`:b>=2?'Unclaimed':'Open water'}</dd></dl>${ow?'<button class="btn" id="codexBtn">Open realm codex</button>':''}`;
   }else{
     const i=sel.i;
     if(bld[i]<0){html=`<div class="insp-head"><span id="ispr"></span><div><h3>Ruins</h3><p>All that remains of a fallen kingdom</p></div></div>`;sprite=spr('ruin',ruinSprite)}
@@ -93,7 +99,7 @@ function renderInspect(){
   }
   inspBody.innerHTML=html;
   const slot=$('ispr');if(slot&&sprite)slot.replaceWith(spriteCanvas(sprite));
-  const cxb=$('codexBtn');if(cxb)cxb.addEventListener('click',()=>{const t=sel&&sel.i!=null&&bld[sel.i]>=0?tribes[bld[sel.i]]:null;if(t)openCodex(t)});
+  const cxb=$('codexBtn');if(cxb)cxb.addEventListener('click',()=>{const t=sel&&sel.i!=null&&bld[sel.i]>=0?tribes[bld[sel.i]]:sel&&sel.t!=null&&own[sel.t]>=0?tribes[own[sel.t]]:null;if(t)openCodex(t)});
   const fb=$('followBtn');
   if(fb)fb.addEventListener('click',()=>{follow=!follow;if(follow&&cam.tpz<2*dpr)zoomTo(cw/2,ch/2,3*dpr);renderInspect()});
   const hb=$('hearBtn');
@@ -109,6 +115,9 @@ function iconCanvas(sp,size=48){
 }
 /* small hand-drawn pixel icons for the weapons */
 const WICON={
+  book:()=>{const g=G(16,12),cv=[150,52,44],cl=[178,66,54],pg=[244,236,216],pl=[252,248,232],ln=[160,148,126];
+    gr(g,0,1,8,11,cv);gr(g,8,1,8,11,cl);gr(g,1,1,6,9,pg);gr(g,9,1,6,9,pl);for(let y=3;y<9;y+=2){gr(g,2,y,4,1,ln);gr(g,10,y,4,1,ln)}
+    gr(g,7,0,2,12,[108,34,30]);gp(g,3,10,CL.gold);gp(g,12,10,CL.gold);gr(g,12,0,1,4,CL.red);return bake(g)},
   grenade:()=>{const g=G(12,13),o=[96,112,58],d=[62,78,40],l=[140,158,88];
     gr(g,5,0,3,1,CL.steel);gp(g,8,1,CL.steelL);gr(g,4,1,1,2,CL.steelD);gr(g,5,2,3,1,CL.steelD);
     gell(g,6,8,4.6,4.8,o);gr(g,3,7,6,1,d);gr(g,2,9,8,1,d);gr(g,4,5,4,1,d);gp(g,4,6,l);gp(g,5,5,l);gp(g,3,8,l);gr(g,5,3,3,1,CL.stoneD);return bake(g)},
@@ -152,6 +161,10 @@ const TABS=[
       `${SPECIES[s].desc} ${SPECIES[s].monster?'Hostile to everything alive.':SPECIES[s].dom?'Release near a village and they become its livestock.':'Wild.'}`]),
   ]},
   {ic:'🕊️',name:'Diplomacy & Noosphere',items:[
+    ['reg_kingdoms','🏰','All kingdoms','See every kingdom and its villages, and rename them.'],
+    ['reg_faiths','🛐','All religions','See every faith and its patron god, and rename them.'],
+    ['reg_cultures','🎭','All cultures','See every culture and its values, and rename them.'],
+    ['reg_langs','🗣️','All languages','Hear every language and rename it.'],
     ['peace','🕊️','Peace','Tap a kingdom to end every war it is fighting.'],
     ['war','⚔️','Declare war','Tap the aggressor, then tap the kingdom it should attack.'],
     ['alliance','🤝','Alliance','Tap one kingdom, then another, to bind them in an alliance. Ends any war between them.'],
@@ -163,7 +176,7 @@ const TABS=[
     ['revolt','🔥','Spark revolt','Tap a restless kingdom and part of it breaks away to found a rival realm.'],
     ['missionary','📿','Missionary','Tap a kingdom to convert it to the faith of the nearest temple of its people.'],
     ['gift','🎁','Gift','Tap a kingdom to send it food and timber.'],
-    ['colonize','⛵','Send settlers','Tap a kingdom: settlers march or sail out to found a new colony.'],
+    ['colonize','⛵','Send settlers','Tap a kingdom: settlers march or sail out to found a new village of the same kingdom.'],
   ]},
   {ic:'🌿',name:'Nature & Disasters',items:[
     ...Array.from({length:BM.CORRUPT-BM.SAV+1},(_,k)=>BM.SAV+k).map(b=>['seed_'+BIOMES[b].k,BIOMES[b].icon,BIOMES[b].name+' seeds','Paint '+BIOMES[b].name.toLowerCase()+' on grass and hills, with its own trees and grass. '+BIOMES[b].desc]),
@@ -209,6 +222,7 @@ const TABS=[
 const PINNED=[
   ['inspect','🔍','Inspect','Tap anyone or anything to see who they are: genes, faith, family, what the ground holds, and who owns it.'],
   ['move','✋','Move view','Drag to pan, or use WASD / arrow keys anywhere. Scroll or pinch to zoom.'],
+  ['chronicle',WICON.book,'Chronicle','Open the Chronicle: every great event of the world, year by year.'],
 ];
 const HINT={},NAMES={};
 [...TABS.flatMap(t=>t.items),...PINNED].forEach(t=>{HINT[t[0]]=t[3];NAMES[t[0]]=t[2]});
@@ -240,7 +254,12 @@ function showTab(k){
 showTab(tab);
 trayTabs.addEventListener('click',e=>{const b=e.target.closest('.tab');if(b)showTab(+b.dataset.tab)});
 const trayEl=$('tray');
-trayEl.addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)setTool(b.dataset.tool)});
+trayEl.addEventListener('click',e=>{
+  const b=e.target.closest('.tile');if(!b)return;const id=b.dataset.tool;
+  if(id==='chronicle'){chronOpen?closeChron():openChron();return}
+  if(id.startsWith('reg_')){openRegistry(id.slice(4));return}
+  setTool(id);
+});
 trayEl.addEventListener('mouseover',e=>{const b=e.target.closest('.tile');if(b&&performance.now()>toastUntil){hintEl.textContent=`${NAMES[b.dataset.tool]}: ${HINT[b.dataset.tool]}`;hintEl.classList.remove('toast')}});
 trayEl.addEventListener('mouseout',e=>{if(e.target.closest('.tile'))showHint()});
 function setTool(t){
@@ -283,7 +302,8 @@ document.addEventListener('keydown',e=>{
   else if(k==='+'||k==='=')stepZoom(cw/2,ch/2,1);
   else if(k==='-')stepZoom(cw/2,ch/2,-1);
   else if(k==='0')fitView();
-  else if(k==='escape'){select(null);closeCodex();dipPending=null}
+  else if(k==='escape'){select(null);closeCodex();closeRegistry();closeChron();dipPending=null}
+  else if(k==='c')chronOpen?closeChron():openChron();
   else if(k>='1'&&k<='6')showTab(+k-1);
 });
 document.addEventListener('pointerdown',()=>audioInit(),{capture:true});
@@ -311,6 +331,7 @@ function pinchInfo(){
 }
 function press(p){
   lastPress=performance.now();
+  if(tool==='inspect'&&cam.pz<1.25*dpr){const T=tribeUnder(p);if(T){select(null);openCodex(T,'overview');return}}
   if(tool==='inspect'){const s=pickAt(p);select(s);if(s&&s.u&&AU.ready){if(s.u.k===0)playAt('speak',.7,0,{race:s.u.race,child:!adult(s.u)});else playAt('call',.7,0,s.u.sp)}}
   else if(SPAWNABLE.has(tool))spawnAt(p,tool);
   else if(TAPS[tool])TAPS[tool](p);
@@ -425,6 +446,8 @@ function frame(t){
   if(panelT>700){panelT=0;renderPanel(false)}
   if(inspT>450){inspT=0;if(sel&&!inspEl.hidden)renderInspect()}
   if(codexOpen()&&frameN%70===0)renderCodex();
+  if(chronOpen&&frameN%40===0)renderChron();
+  if(regOpen&&frameN%60===0)renderRegistry();
   requestAnimationFrame(frame);
 }
 genWorld();initFlocks();resize();setTool('inspect');renderPanel(true);

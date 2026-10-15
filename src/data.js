@@ -211,3 +211,5 @@ const JOBS={
   priest:{n:'Priest',ic:'🙏',d:'Prays at the temple, raising devotion and calm.'},
 };
 const JOB_KEYS=Object.keys(JOBS);
+/* each people speaks its own tongue; the names can be changed in the registry */
+const LANG={human:'Common Tongue',elf:'Elvish',dwarf:'Dwarvish',orc:'Orcish'};

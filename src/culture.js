@@ -314,7 +314,7 @@ function rebellion(T){
   const x=i%W,y=(i/W)|0,NT=newTribe(T.race,x,y,T,{rebel:true});
   const movers=adults.sort(()=>R()-.5).slice(0,Math.max(4,(adults.length*.4)|0));
   NT.food=Math.floor(T.food*.3);T.food-=NT.food;
-  for(const m of movers){m.tribe=NT.id;m.target=null;m.task=null;setT(m,i);m.cd=40}
+  for(const m of movers){m.tribe=NT.id;m.town=0;m.target=null;m.task=null;setT(m,i);m.cd=40}
   NT.pop=movers.length;NT.members=movers;T.pop-=movers.length;T.members=T.members.filter(m=>m.tribe===T.id);
   T.stab=Math.min(100,T.stab+25);NT.stab=45;
   wars.push({a:T.id,b:NT.id,until:year()+3+((R()*3)|0)});T.foes.push(NT.name);NT.foes.push(T.name);
@@ -372,3 +372,4 @@ function diplomacyYear(){
     if(R()<p)declareWar(a,b);
   }
 }
+const cultureName=T=>T.cultureName||`${T.values.map(v=>v.name).join(' & ')} culture`;

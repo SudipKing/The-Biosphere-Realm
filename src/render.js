@@ -290,6 +290,21 @@ function drawLabels(ox,oy,pz,inView){
     ctx.beginPath();if(ctx.roundRect)ctx.roundRect(X-w/2,Y-fsz*.7,w,fsz*1.4,fsz*.4);else ctx.rect(X-w/2,Y-fsz*.7,w,fsz*1.4);ctx.fill();
     ctx.fillStyle='#fff';ctx.fillText(label,X,Y+1);
   }
+  /* villages of a kingdom carry its colour, with a smaller banner */
+  if(pz<.9*dpr)return;
+  const f2=Math.round(fsz*.82);ctx.font=`600 ${f2}px "Pixelify Sans", "Courier New", monospace`;
+  for(const T of tribes){
+    if(!T.alive)continue;
+    for(let k=1;k<T.towns.length;k++){
+      const H=T.towns[k];if(!H.houses&&!H.pop)continue;if(!inView(H.x,H.y))continue;
+      const X=ox+(H.x+.5)*tz,Y=oy+(H.y-1.6)*tz-f2;
+      const label=`${H.name} ${H.pop}`,w=ctx.measureText(label).width+f2*1.6;
+      ctx.fillStyle=`rgba(${T.color[0]*.45|0},${T.color[1]*.45|0},${T.color[2]*.45|0},.8)`;
+      ctx.beginPath();if(ctx.roundRect)ctx.roundRect(X-w/2,Y-f2*.7,w,f2*1.4,f2*.4);else ctx.rect(X-w/2,Y-f2*.7,w,f2*1.4);ctx.fill();
+      ctx.fillStyle=css(T.color);ctx.fillRect(X-w/2+f2*.35,Y-f2*.35,f2*.6,f2*.7);
+      ctx.fillStyle='#fff';ctx.fillText(label,X+f2*.3,Y+1);
+    }
+  }
 }
 function drawEffects(ox,oy,pz){
   const tz=pz*TS,T2S=(x,y)=>[ox+x*tz,oy+y*tz];

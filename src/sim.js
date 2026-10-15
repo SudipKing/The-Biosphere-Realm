@@ -19,7 +19,7 @@ function newTribe(race,x,y,parent,opts){
     houses:0,hall:-1,temple:false,templeAt:-1,pop:0,members:[],alive:true,rel,motto:phrase(race),founded:year(),
     parent:parent?parent.id:-1,fish:0,stock:0,rebel,
     devo:50+((R()*20)|0),stab:55,values:rollValues(race),arts:[],renown:0,hist:[],foes:[],heroes:[],monuments:0,
-    nextFest:year()+3,bless:0,frenzy:0,legendIdx:(R()*2)|0,fx:zeroFx(),age:0,res:{stone:0,copper:0,iron:0,coal:0,silver:0,gold:0,gems:0},area:0,jobs:{},know:0,colonies:0};
+    nextFest:year()+3,bless:0,frenzy:0,legendIdx:(R()*2)|0,fx:zeroFx(),age:0,res:{stone:0,copper:0,iron:0,coal:0,silver:0,gold:0,gems:0},area:0,jobs:{},know:0,colonies:0,towns:[{x,y,name,founded:year(),houses:0,pop:0}]};
   tribes.push(T);
   T.fx=computeFx(T);
   if(schism)log(`A schism split the ${parent.title}: the ${T.title} turned to the ${rel.name}, in the name of ${rel.patron.name}.`,DOMAINS[rel.domain].c);
@@ -52,7 +52,7 @@ function addPerson(T,x,y,pa,pb,race){
   pb=pb||pa;
   const r=race||(pa?(pb.race!==pa.race?pick([pa.race,pb.race]):pa.race):T.race),L=RACES[r];
   const u=mkUnit(0,x,y);
-  u.race=r;u.tribe=T.id;u.job=null;u.xp=0;u.jhp=1;u.jdmg=1;
+  u.race=r;u.tribe=T.id;u.town=pa?(pa.town|0):0;u.job=null;u.xp=0;u.jhp=1;u.jdmg=1;
   u.genes=pa&&pa.race===r&&pb.race===r?childGenes(pa.genes,pb.genes,r):randGenes(r);
   u.traits=pa?childTraits(pa.traits,pb.traits):(R()<.5?[pick(TRAIT_KEYS)]:[]);
   u.name=personName(r);u.gen=pa?Math.max(pa.gen,pb.gen)+1:1;
@@ -153,17 +153,17 @@ function updPerson(u){
   if(moveToward(u,sp)&&u.task)doTask(u,T);
 }
 function decide(u,T){
-  const kid=!adult(u);
+  const kid=!adult(u),H=townOf(u,T),hx=H.x,hy=H.y;
   if(!kid){const e=enemyNear(u,u.traits.includes('Brave')?9:6);if(e){u.target=e;u.task='fight';return}}
-  if(isNight()&&R()<.85&&T.houses>0){
-    const h=sampleNear(T.cx,T.cy,Math.min(18,4+Math.sqrt(T.houses)*2.2),i=>bld[i]===T.id&&btype[i]<2,40);
+  if(isNight()&&R()<.85&&H.houses>0){
+    const h=sampleNear(hx,hy,Math.min(18,4+Math.sqrt(H.houses)*2.2),i=>bld[i]===T.id&&btype[i]<2,40);
     if(h>=0){setT(u,h);u.task='sleep';return}
   }
   const forage=()=>{
-    const t=sampleNear(T.cx,T.cy,u.job==='farmer'?13:10,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&!fire[i]&&(own[i]<0||own[i]===T.id),30);
+    const t=sampleNear(hx,hy,u.job==='farmer'?13:10,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&!fire[i]&&(own[i]<0||own[i]===T.id),30);
     if(t>=0){setT(u,t);u.task='forage';return true}return false;
   };
-  if(kid){if(R()<.4&&forage())return;u.task=null;wander(u,T.cx,T.cy,5);return}
+  if(kid){if(R()<.4&&forage())return;u.task=null;wander(u,hx,hy,5);return}
   const getFood=()=>{
     if(T.stock>T.houses&&R()<.35){
       const a=nearest(u,16,v=>v.k===1&&v.owner===T.id&&!SPECIES[v.sp].nosl&&adult(v));
@@ -182,12 +182,14 @@ function decide(u,T){
   if(r<.4&&getOre(u,T))return;
   if(r<.75&&T.mat<16&&getMat(u,T))return;
   if(u.race==='elf'&&R()<.15){
-    const t=sampleNear(T.cx,T.cy,13,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&burnt[i]<=step&&!nearBld(i),20);
+    const t=sampleNear(hx,hy,13,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&burnt[i]<=step&&!nearBld(i),20);
     if(t>=0){setT(u,t);u.task='plant';return}
   }
   if(T.food<T.pop*5+10&&getFood())return;
-  u.task=null;wander(u,T.cx,T.cy,7);
+  u.task=null;wander(u,hx,hy,7);
 }
+const townOf=(u,T)=>T.towns[u.town|0]||T.towns[0];
+function nearestTown(T,x,y){let b=0,bd=1e9;T.towns.forEach((t,k)=>{const d=(t.x-x)**2+(t.y-y)**2;if(d<bd){bd=d;b=k}});return b}
 function nearBld(i){const x=i%W,y=(i/W)|0;for(const [dx,dy] of N8){const X=x+dx,Y=y+dy;if(inb(X,Y)&&bld[Y*W+X]!==-1)return true}return false}
 function getMat(u,T,mineFirst,woodFirst){
   const mine=()=>{const t=ringFind(u.x,u.y,16,i=>bio(hgt[i])===5);if(t>=0){setT(u,t);u.task='mine';return true}return false};
@@ -231,7 +233,7 @@ function patrol(u,T){
       const j=sampleNear(T.cx+(O.cx-T.cx)/d*k,T.cy+(O.cy-T.cy)/d*k,5,walk,12);if(j>=0){setT(u,j);u.task='guard';return true}}
   }
   if(T.hall>=0&&R()<.35){const j=sampleNear(T.hall%W,(T.hall/W)|0,4,walk,12);if(j>=0){setT(u,j);u.task='train';return true}}
-  const j=sampleNear(T.cx,T.cy,Math.min(14,6+Math.sqrt(T.houses)*2),walk,12);
+  const H=townOf(u,T),j=sampleNear(H.x,H.y,Math.min(14,6+Math.sqrt(H.houses+1)*2),walk,12);
   if(j>=0){setT(u,j);u.task='guard';return true}
   return false;
 }
@@ -277,13 +279,14 @@ function getOre(u,T){
 }
 function bCost(T,type){const b=type===1?Math.max(4,RACES[T.race].cost):type===2?10:RACES[T.race].cost;return Math.max(2,Math.ceil(b*(1-clamp(T.fx.craft,0,.6))))}
 function tryBuild(u,T){
+  const H=townOf(u,T),cap=H===T.towns[0];
   let type=0;
-  if(T.hall<0)type=1;
-  else if(T.houses>=6&&!T.temple)type=2;
-  else if(T.houses>=Math.ceil(T.pop/3)+1)return false;
+  if(cap&&T.hall<0)type=1;
+  else if(cap&&T.houses>=6&&!T.temple)type=2;
+  else if(H.houses>=Math.ceil(H.pop/3)+1)return false;
   if(T.mat<bCost(T,type))return false;
-  const rad=type===1?4:Math.min(18,4+Math.sqrt(T.houses)*2.2);
-  const t=sampleNear(T.cx,T.cy,rad,i=>canBuild(i,T.race,T.id),60);
+  const rad=type===1?4:Math.min(18,4+Math.sqrt(H.houses)*2.2);
+  const t=sampleNear(H.x,H.y,rad,i=>canBuild(i,T.race,T.id),60);
   if(t<0)return false;
   setT(u,t);u.task='build';u.btype=type;return true;
 }
@@ -322,7 +325,7 @@ function doTask(u,T){
       if(T.mat<cost||!canBuild(i,T.race,T.id))break;
       if(type===1&&T.hall>=0)break;
       if(type===2&&T.temple)break;
-      bld[i]=T.id;btype[i]=type;btier[i]=T.age;T.houses++;T.mat-=cost;bDirty=true;ownDirty=true;markDirty(i);sfx('build',u.x,u.y);
+      bld[i]=T.id;btype[i]=type;btier[i]=T.age;T.houses++;townOf(u,T).houses++;T.mat-=cost;bDirty=true;ownDirty=true;markDirty(i);sfx('build',u.x,u.y);
       if(type===1){T.hall=i;if(!T.hadHall){T.hadHall=true;log(`The ${T.title} raised a great hall.`,T.color);sfx('fanfare',u.x,u.y)}}
       if(type===2){T.temple=true;T.templeAt=i;log(`The ${T.title} consecrated a temple to ${T.rel.patron.name}, ${T.rel.patron.title}.`,DOMAINS[T.rel.domain].c);sfx('bell',u.x,u.y);effects.push({type:'rite',x:i%W+.5,y:((i/W)|0)+.5,c:DOMAINS[T.rel.domain].c,t:0,dur:60})}
       break;
@@ -361,7 +364,7 @@ function updAnimal(u){
     }else{
       const thr=nearest(u,5,v=>(v.k===1&&SPECIES[v.sp].pred&&SPECIES[v.sp].prey.includes(u.sp))||(S.wild&&v.k===0&&adult(v)&&R()<.4));
       if(thr){u.tx=u.x+(u.x-thr.x)*2.5;u.ty=u.y+(u.y-thr.y)*2.5;u.mode=1;u.cd=12}
-      else if(u.owner>=0){const T=tribes[u.owner];const r=Math.min(16,8+Math.sqrt(T.houses)*1.5);if(Math.hypot(u.x-T.cx,u.y-T.cy)>r)wander(u,T.cx,T.cy,r*.7);else wander(u,u.x,u.y,4)}
+      else if(u.owner>=0){const T=tribes[u.owner],H=T.towns[u.town|0]||T.towns[0];const r=Math.min(16,8+Math.sqrt(H.houses+1)*1.5);if(Math.hypot(u.x-H.x,u.y-H.y)>r)wander(u,H.x,H.y,r*.7);else wander(u,u.x,u.y,4)}
       else wander(u,u.x,u.y,6);
     }
   }
@@ -409,10 +412,10 @@ function updateUnits(){
     if(u.dead)dead=true;
   }
   if(dead)units=units.filter(u=>!u.dead);
-  for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;T.jobs={}}
+  for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;T.jobs={};for(const t of T.towns)t.pop=0}
   const rc={human:0,elf:0,dwarf:0,orc:0},sp={};
   for(const u of units){
-    if(u.k===0){const T=tribes[u.tribe];T.pop++;T.members.push(u);rc[u.race]++;if(u.job)T.jobs[u.job]=(T.jobs[u.job]||0)+1}
+    if(u.k===0){const T=tribes[u.tribe];T.pop++;T.members.push(u);(T.towns[u.town|0]||T.towns[0]).pop++;rc[u.race]++;if(u.job)T.jobs[u.job]=(T.jobs[u.job]||0)+1}
     else{sp[u.sp]=(sp[u.sp]||0)+1;if(u.owner>=0)tribes[u.owner].stock++}
   }
   cnt.race=rc;cnt.sp=sp;cnt.people=rc.human+rc.elf+rc.dwarf+rc.orc;
@@ -438,28 +441,30 @@ function updateTribes(){
     if((step+T.id)%20===0){checkAge(T);T.fx=computeFx(T)}
     if((step+T.id*13)%(YEAR>>1)===0)rebalanceJobs(T);
     if(T.age>0&&T.mat>=3&&R()<.012){
-      const b=sampleNear(T.cx,T.cy,Math.min(20,5+Math.sqrt(T.houses)*2.4),i=>bld[i]===T.id&&btype[i]<3&&btier[i]<T.age,30);
+      const H=pick(T.towns),b=sampleNear(H.x,H.y,Math.min(20,5+Math.sqrt(H.houses+1)*2.4),i=>bld[i]===T.id&&btype[i]<3&&btier[i]<T.age,30);
       if(b>=0){btier[b]++;T.mat-=2;bDirty=true;sfx('build',b%W+.5,((b/W)|0)+.5)}
     }
     if(T.stab>70&&R()<.002*T.houses)T.food++;
     if(T.fx.grow>0&&R()<.025*T.fx.grow){const g=sampleNear(T.cx,T.cy,14,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&burnt[i]<=step&&!fire[i]&&!nearBld(i),10);if(g>=0){tree[g]=1;markTile(g)}}
     culturalTick(T);
     if(T.food>=8&&T.pop<Math.min(70,T.houses*3+2)&&cnt.people<800&&T.members.length&&!isNight()){
-      const m=pick(T.members);
-      if(adult(m)&&!m.inside&&R()<.014*RACES[T.race].fert*(1+T.fx.fert)*(m.traits.includes('Fertile')?1.6:1)*(bm[tileOf(m)]===BM.FLOWER?1.5:1)){
-        let mate=pick(T.members);if(!adult(mate))mate=m;
+      const m=T.towns.length>1&&R()<.5?pickSmallTown(T):pick(T.members);
+      if(m&&adult(m)&&!m.inside&&R()<.014*RACES[T.race].fert*(1+T.fx.fert)*(m.traits.includes('Fertile')?1.6:1)*(bm[tileOf(m)]===BM.FLOWER?1.5:1)){
+        let mate=m;for(let k=0;k<8;k++){const c=pick(T.members);if(adult(c)&&c!==m&&(c.town|0)===(m.town|0)){mate=c;break}}
         addPerson(T,m.x|0,m.y|0,m,mate);T.food-=8;
       }
     }
     if(T.houses>=3&&T.stock<Math.min(24,T.houses*1.2)&&R()<.004){
-      const i=sampleNear(T.cx,T.cy,10,j=>walk(j)&&bld[j]===-1,20);
-      if(i>=0)addAnimal(pick(RACES[T.race].stock),i%W,(i/W)|0,T.id,true);
+      const ti=(R()*T.towns.length)|0,H=T.towns[ti];
+      if(H.houses>0){const i=sampleNear(H.x,H.y,10,j=>walk(j)&&bld[j]===-1,20);
+      if(i>=0){const a=addAnimal(pick(RACES[T.race].stock),i%W,(i/W)|0,T.id,true);a.town=ti}}
     }
     if(T.houses>=3&&T.fish<Math.min(3,1+((T.houses/6)|0))&&T.mat>=8&&R()<.004){
-      const dock=findDock(T);
+      const dock=findDock(T,pick(T.towns));
       if(dock>=0){makeBoat('fish',T,dock);T.mat-=8;sfx('splash',dock%W,(dock/W)|0)}
     }
-    if(T.pop>=14&&T.houses>=5&&T.food>=T.pop+6&&R()<.0014*(1+T.fx.expand)*(T.pop>=26?2:1))settle(T);
+    if(step%YEAR===T.id%YEAR)tendTowns(T);
+    if(T.pop>=14&&T.houses>=5&&T.food>=T.pop+6&&T.towns.length<8&&R()<.0016*(1+T.fx.expand)*(T.pop>=26?2:1))settle(T);
   }
 }
 function rebalanceJobs(T){
@@ -488,26 +493,50 @@ function lineOK(x0,y0,x1,y1,ok){
   for(let k=0;k<=n;k++){const x=(x0+(x1-x0)*k/n)|0,y=(y0+(y1-y0)*k/n)|0;if(!inb(x,y)||!ok(y*W+x))return false}
   return true;
 }
-const farFrom=(j,d)=>{const x=j%W,y=(j/W)|0;return tribes.every(o=>!o.alive||Math.hypot(o.cx-x,o.cy-y)>d)};
+const farFromOthers=(j,d,T)=>{const x=j%W,y=(j/W)|0;return tribes.every(o=>o===T||!o.alive||o.towns.every(t=>Math.hypot(t.x-x,t.y-y)>d))};
+const farFrom=(j,d)=>farFromOthers(j,d,null);
+/* expansion: settlers found a new village that stays part of the same kingdom, under the same banner */
+function addTown(T,x,y){
+  const H={x,y,name:placeName(T.race),founded:year(),houses:0,pop:0};
+  T.towns.push(H);T.colonies=T.towns.length-1;ownDirty=true;return H;
+}
 function settle(T){
-  const i=sampleNear(T.cx,T.cy,45,j=>fertile(j)&&farFrom(j,22)&&own[j]<0&&lineOK(T.cx,T.cy,j%W,(j/W)|0,walk),200);
-  if(i<0){seaSettle(T);return}
-  const x=i%W,y=(i/W)|0,NT=newTribe(T.race,x,y,T);inheritColony(NT,T);
-  NT.food=Math.floor(T.food/3);T.food-=NT.food;NT.mat=Math.floor(T.mat/3);T.mat-=NT.mat;
-  const adults=T.members.filter(m=>adult(m)&&!m.inside);
-  const movers=adults.sort(()=>R()-.5).slice(0,Math.max(5,Math.min(9,(adults.length*.35)|0)));
-  for(const m of movers){m.tribe=NT.id;m.target=null;m.task=null;setT(m,i);m.cd=60}
-  NT.pop=movers.length;NT.members=movers;T.pop-=movers.length;T.members=T.members.filter(m=>m.tribe===T.id);
-  log(`Settlers left the ${T.title} and founded the ${NT.title}.`,NT.color);
+  if(T.towns.length>=8)return;
+  let si=0;T.towns.forEach((t,k)=>{if(t.pop>T.towns[si].pop)si=k});
+  const src=T.towns[si];if(src.pop<10)return;
+  const far=j=>T.towns.every(t=>Math.hypot(t.x-j%W,t.y-((j/W)|0))>15);
+  const i=sampleNear(src.x,src.y,40,j=>fertile(j)&&(own[j]<0||own[j]===T.id)&&far(j)&&farFromOthers(j,22,T)&&lineOK(src.x,src.y,j%W,(j/W)|0,walk),200);
+  if(i<0){seaSettle(T,si);return}
+  const x=i%W,y=(i/W)|0,H=addTown(T,x,y),ti=T.towns.length-1;
+  const adults=T.members.filter(m=>adult(m)&&!m.inside&&(m.town|0)===si);
+  const movers=adults.sort(()=>R()-.5).slice(0,Math.max(5,Math.min(9,(adults.length*.4)|0)));
+  for(const m of movers){m.town=ti;m.target=null;m.task=null;setT(m,i);m.cd=60}
+  log(`Settlers of the ${T.title} founded the village of ${H.name}.`,T.color);sfx('fanfare',x,y);
 }
-/* a colony keeps its parent's learning, and the two start out as allies */
-function inheritColony(NT,T){
-  NT.age=T.age;for(const k in T.res)NT.res[k]=Math.floor(T.res[k]*.3);
-  T.colonies=(T.colonies||0)+1;
-  alliances.push({a:T.id,b:NT.id,until:year()+14});
-  NT.fx=computeFx(NT);
+/* a member of one of the smaller villages, so births are spread across the kingdom */
+function pickSmallTown(T){
+  const small=T.towns.findIndex((t,k)=>k>0&&t.pop>0&&t.pop<12&&R()<.6);if(small<0)return pick(T.members);
+  for(let k=0;k<10;k++){const c=pick(T.members);if((c.town|0)===small)return c}
+  return pick(T.members);
 }
-function findDock(T){return ringFind(T.cx,T.cy,12,i=>bio(hgt[i])===1)}
+/* yearly: villages that emptied out are abandoned, and the capital sends a family to any village close to dying */
+function tendTowns(T){
+  for(let k=T.towns.length-1;k>=1;k--){
+    const H=T.towns[k];
+    if(H.pop===0&&H.houses===0&&year()-H.founded>=2){
+      T.towns.splice(k,1);
+      for(const u of units)if(u.k===0?u.tribe===T.id:u.owner===T.id){if((u.town|0)===k)u.town=0;else if((u.town|0)>k)u.town--}
+      log(`The village of ${H.name} of the ${T.title} was abandoned.`,T.color,true);
+    }
+  }
+  T.colonies=T.towns.length-1;
+  let big=0;T.towns.forEach((t,k)=>{if(t.pop>T.towns[big].pop)big=k});
+  T.towns.forEach((H,k)=>{
+    if(k===big||H.pop>=4||T.towns[big].pop<10)return;
+    let n=0;for(const m of T.members)if(n<2&&(m.town|0)===big&&adult(m)&&!m.inside&&R()<.3){m.town=k;m.task=null;m.target=null;setT(m,H.y*W+H.x);m.cd=40;n++}
+  });
+}
+function findDock(T,H){H=H||T.towns[0];return ringFind(H.x,H.y,12,i=>bio(hgt[i])===1)}
 function makeBoat(kind,T,dock){
   const x=dock%W+.5,y=((dock/W)|0)+.5;
   const b={id:uid++,kind,tribe:T.id,race:T.race,ci:T.ci,x,y,px:x,py:y,tx:x,ty:y,hx:x,hy:y,dir:1,t:0,dead:false,path:null,pi:0,pass:[],land:-1};
@@ -529,10 +558,10 @@ function seaRoute(start){
   }
   return null;
 }
-function seaSettle(T){
+function seaSettle(T,si){
   if(boats.some(b=>!b.dead&&b.kind==='settler'&&b.tribe===T.id))return;
-  const dock=findDock(T);if(dock<0)return;
-  const adults=T.members.filter(m=>adult(m)&&!m.inside);if(adults.length<10)return;
+  si=si|0;const dock=findDock(T,T.towns[si]);if(dock<0)return;
+  const adults=T.members.filter(m=>adult(m)&&!m.inside&&(m.town|0)===si);if(adults.length<8)return;
   const route=seaRoute(dock);if(!route)return;
   const movers=adults.sort(()=>R()-.5).slice(0,5),ms=new Set(movers);
   units=units.filter(u=>!ms.has(u));
@@ -573,10 +602,10 @@ function updateBoats(){
 }
 function landSettlers(b){
   const T=tribes[b.tribe],x=b.land%W,y=(b.land/W)|0;
-  const NT=newTribe(b.race,x,y,T);inheritColony(NT,T);NT.food=14;NT.mat=8;
-  for(const m of b.pass){m.tribe=NT.id;m.x=m.px=x+.3+R()*.4;m.y=m.py=y+.3+R()*.4;m.tx=m.x;m.ty=m.y;m.cd=0;units.push(m)}
-  NT.pop=b.pass.length;NT.members=b.pass.slice();
-  log(`Settlers from the ${T.title} landed on new shores and founded the ${NT.title}.`,NT.color);
+  if(!T.alive){b.dead=true;return}
+  const H=addTown(T,x,y),ti=T.towns.length-1;
+  for(const m of b.pass){m.town=ti;m.x=m.px=x+.3+R()*.4;m.y=m.py=y+.3+R()*.4;m.tx=m.x;m.ty=m.y;m.cd=0;units.push(m)}
+  log(`Settlers from the ${T.title} landed on new shores and founded the village of ${H.name}.`,T.color);
   sfx('fanfare',x,y);
   b.dead=true;
 }
@@ -722,7 +751,7 @@ function yearly(){
 }
 function log(m,c,local){
   const col=c||[150,140,170];
-  if(!local){logs.unshift({y:year(),m,c:col});if(logs.length>80)logs.pop();logDirty=true}
+  if(!local){logs.unshift({y:year(),m,c:col});if(logs.length>240)logs.pop();logDirty=true}
   for(const T of tribes)if(T.hist&&m.includes(T.title)){T.hist.unshift({y:year(),m,c:col});if(T.hist.length>70)T.hist.pop()}
 }
 
@@ -829,7 +858,7 @@ function spawnAt(p,kind){
     if(ow>=0&&tribes[ow].alive){
       T=tribes[ow];bd=0;
       if(T.race!==kind){
-        for(let k=0;k<2;k++)addPerson(T,tx,ty,null,null,kind);
+        {const ti=nearestTown(T,tx,ty);for(let k=0;k<2;k++)addPerson(T,tx,ty,null,null,kind).town=ti}
         T.pop+=2;sfx('spawn',tx,ty);
         toast(`Two ${RACES[kind].plural.toLowerCase()} settled among the ${T.title}.`);
         log(`${RACES[kind].plural} arrived to live among the ${T.title}.`,T.color,true);
@@ -838,7 +867,7 @@ function spawnAt(p,kind){
     }
     for(const t of tribes){if(!t.alive||t.race!==kind)continue;const d=(t.cx-tx)**2+(t.cy-ty)**2;if(d<bd){bd=d;T=t}}
     if(!T){T=newTribe(kind,tx,ty);log(`The ${T.title} appeared in the world.`,T.color)}
-    for(let k=0;k<2;k++)addPerson(T,tx,ty);
+    {const ti=nearestTown(T,tx,ty);for(let k=0;k<2;k++)addPerson(T,tx,ty).town=ti}
     T.pop+=2;sfx('spawn',tx,ty);
   }else{
     const S=SPECIES[kind];let owner=-1;
