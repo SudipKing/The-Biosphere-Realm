@@ -57,7 +57,7 @@ new ResizeObserver(()=>{if(hgt)resize()}).observe(stage);
 const ipos=u=>[u.px+(u.x-u.px)*alpha,u.py+(u.y-u.py)*alpha];
 function rebuildBList(){
   bList=[];
-  for(let i=0;i<N;i++)if(bld[i]!==-1)bList.push({i,x:i%W,y:(i/W)|0,t:bld[i],ty:bld[i]===-2?3:btype[i],tier:btier[i]});
+  for(let i=0;i<N;i++)if(bld[i]!==-1)bList.push({i,x:i%W,y:(i/W)|0,t:bld[i],ty:bld[i]===-2?3:btype[i],tier:btier[i],v:(hash(i%W,(i/W|0)+77)*4)|0});
   bDirty=false;
 }
 
@@ -103,11 +103,13 @@ function draw(dt){
   const pz=cam.pz,ox=cam.ox+sx,oy=cam.oy+sy,tz=pz*TS;
   const SX=v=>Math.round(ox+v*pz),SY=v=>Math.round(oy+v*pz);
 
+  ctx.imageSmoothingEnabled=Math.abs(pz-Math.round(pz))>.02;
   for(const c of chunks){
     const X0=SX(c.x0*TS),X1=SX((c.x0+c.tw)*TS),Y0=SY(c.y0*TS),Y1=SY((c.y0+c.th)*TS);
     if(X1<0||Y1<0||X0>cw||Y0>ch)continue;
     ctx.drawImage(c.c,X0,Y0,X1-X0,Y1-Y0);
   }
+  ctx.imageSmoothingEnabled=false;
   if(showDomains){
     if(ovDirty||!ovC)buildOverlay();
     const vx0=clamp(Math.floor(-ox/tz)-1,0,W),vx1=clamp(Math.ceil((cw-ox)/tz)+1,0,W),vy0=clamp(Math.floor(-oy/tz)-1,0,H),vy1=clamp(Math.ceil((ch-oy)/tz)+1,0,H);
@@ -116,6 +118,17 @@ function draw(dt){
   }
   const x0=Math.floor(-ox/tz)-3,x1=Math.ceil((cw-ox)/tz)+3,y0=Math.floor(-oy/tz)-2,y1=Math.ceil((ch-oy)/tz)+4;
   const inView=(x,y)=>x>=x0&&x<x1&&y>=y0&&y<y1;
+  /* sunlight glinting on open water */
+  if(pz>=1.2&&light>.25){
+    const per=70;ctx.fillStyle='#ffffff';
+    for(let k=0;k<60;k++){
+      const ph=(frameN+k*17)%per,ep=((frameN+k*17)/per)|0,fx=x0+hash(k,ep)*(x1-x0-4)+2,fy=y0+hash(k+99,ep)*(y1-y0-4)+2;
+      if(!inb(fx|0,fy|0)||bio(hgt[(fy|0)*W+(fx|0)])>1)continue;
+      const a=Math.sin(ph/per*Math.PI)*.55*light;ctx.globalAlpha=a;
+      ctx.fillRect(SX(fx*TS),SY(fy*TS),Math.max(1,Math.round(pz*2)),Math.max(1,Math.round(pz)));
+    }
+    ctx.globalAlpha=1;
+  }
   const blit=(img,w,h,X,Y,sc)=>{const a=SX(X),b=SY(Y);ctx.drawImage(img,a,b,Math.round(w*pz*sc),Math.round(h*pz*sc))};
 
   const items=[],vis=[],visB=[];
@@ -127,20 +140,20 @@ function draw(dt){
   for(const it of items){
     if(it.b){
       const b=it.b,T=b.t>=0?tribes[b.t]:null;
-      const s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier):buildingSprite('',3,0,'');
+      const s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier,b.v):buildingSprite('',3,0,'');
       blit(s.c,s.w,s.h,(b.x+.5)*TS-s.w/2,(b.y+1)*TS-s.h+1,1);
       if(T&&close&&b.ty<2&&(T.race==='human'||T.race==='dwarf')&&R()<.006*(dt/16.7)&&effects.length<300)
         effects.push({type:'smoke',x:b.x+(T.race==='human'?.85:.95)-(b.ty===1?.4:0),y:b.y-1.2,t:0,dur:80});
     }else if(it.u){
       const u=it.u,y=it.ry!=null?it.ry:it.y,moving=u.moving&&speed>0,fr=moving||u.fly&&speed>0?(((frameN>>(u.fly?2:3))+u.id)&1):0,alt=u.fly?SPECIES[u.sp].alt+Math.sin(frameN/14+u.id)*1.2:0;
       let s,sc=1;
-      if(u.k===0){const T=tribes[u.tribe];s=spr(`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}`,()=>personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr));if(!adult(u))sc=.7}
+      if(u.k===0){const T=tribes[u.tribe];s=spr(`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}|${adult(u)?u.job||'':''}`,()=>personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr,adult(u)?u.job:null));if(!adult(u))sc=.7}
       else{s=animalSpr(u,fr);if(!adult(u))sc=.65}
       if(u.scale)sc*=u.scale;
       const fx=it.x*TS,fy=(y+.35)*TS;
       if(close){ctx.fillStyle=u.fly?'rgba(0,0,0,.12)':'rgba(0,0,0,.18)';ctx.fillRect(SX(fx-s.w*sc*.35),SY(fy-1),Math.round(s.w*sc*.7*pz),Math.round(pz*1.5))}
       if(u.sp==='wraith')ctx.globalAlpha=.78;
-      blit(u.dir<0?flipped(s):s.c,s.w,s.h,fx-s.w*sc/2,fy-s.h*sc-alt,sc);
+      blit(u.dir<0?flipped(s):s.c,s.w,s.h,fx-s.w*sc/2,fy-s.h*sc-alt-(moving&&fr&&!u.fly?.7:0),sc);
       ctx.globalAlpha=1;
       if(close&&u.hp<u.maxhp&&(u.k===0||SPECIES[u.sp].pred)){
         const bw=8*pz,bx=SX(fx-4),by=SY(fy-s.h*sc-2-alt);

@@ -46,8 +46,13 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 - **Adding a species.** Add it to `SPECIES` (`data.js`) and a `case` in `animalSprite` (`sprites.js`), plus a call in `CALLS` (`audio.js`). Flags: `fly` (ignores terrain, drawn at `alt`), `amph` (walks shore and shallows), `monster` (hunts everything that is not a monster), `minor` (a predator that is not a threat to people), `nosl` (never butchered).
 - **Adding a biome.** Add a `BM` key and a `BIOMES` entry in `data.js`, a tree in `TREES` and `BM_TREE` (`terrain.js`). Biome effects: `food` (forage multiplier), `spd`, `hp` (health lost per step, negative heals), `spread`. Special spawn rules live in `biomeLife` (`sim.js`).
 - **Metallurgy.** `T.res` counts ore mined, `T.age` (0 to 5) rises through `AGE_REQ`/`checkAge` (`sim.js`) and feeds `computeFx` and `T.btier` for building sprites (`tierGrid` in `sprites.js`). `wantOre` picks which deposit a kingdom digs next.
-- **Seasons.** `season()` honours `seasonLock` (-1 turns with the years). `terrain.js` repaints every tile when the season changes, `SEASON_WX` skews the weather.
+- **Seasons.** `season()` honours `seasonLock` (-1 turns with the years). `terrain.js` repaints every tile as a random dissolve (`perm`, `tq`) when the season changes, `SEASON_WX` skews the weather.
 - **Domains.** `computeDomains` (every 40 steps or when `ownDirty`) gives each tile to the building with the best normalised distance, so there is never an overlap. `canBuild(i, race, tid)` refuses foreign land unless at war. `render.js` caches the colour layer as a 4px-per-tile canvas (`buildOverlay`).
+- **Jobs.** `u.job` (a key of `JOBS`, `data.js`) is assigned by `pickJob`/`setJob` when an adult has none; `jobWork` in `decide` gives job-specific tasks (`patrol` for soldiers). `T.jobs` is a census rebuilt every step, `rebalanceJobs` retires over-staffed jobs, and `computeFx` turns teachers and priests into kingdom buffs. Sprites take the job (`jobTool`, `jobHat`), and the sprite cache key includes it.
+- **Immigrants.** `addPerson(T,x,y,pa,pb,race)` can put any race into any tribe; `u.race` is the person, `T.race` is the kingdom. Mixed parents give a child of either race.
+- **Expansion.** `settle`/`seaSettle` found colonies (`inheritColony` copies age, ore and an alliance).
+- **Village detail.** Tiles near buildings get a dirt yard (`dirt` in `pcol`), so call `markDirty(i)` when a building appears or goes. `decorTile` scatters tufts, bushes and boulders, and `withProp` gives each house a crate, hay bale or flower bed.
+- **Layout.** The dashboard (`.tray`) is the left grid column on desktop and the bottom row on phones.
 - The dev preview needs the page to be visible: `requestAnimationFrame` pauses in a background pane, so in headless checks call `draw(16)` in a loop.
 
 ## Balance knobs

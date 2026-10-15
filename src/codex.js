@@ -33,6 +33,9 @@ function cxOverview(T,L){
     <dt>Ore mined</dt><dd>${Object.keys(T.res).filter(k=>T.res[k]>0).map(k=>`${ORES[ORE[k.toUpperCase()]].icon} ${T.res[k]}`).join(' &nbsp; ')||'none yet'}</dd>
     <dt>Founded</dt><dd>Year ${T.founded}${T.parent>=0?`, by ${T.rebel?'rebels of':'settlers of'} the ${tribes[T.parent].title}`:''}</dd></dl>
   ${T.age<5?`<p class="mnote">Next: the ${AGE_NAME[T.age+1]} — ${[0,'needs stone','needs copper','needs iron','needs coal and iron','needs gold and silver'][T.age+1]}. Dig deposits to climb the ages and upgrade every home.</p>`:'<p class="mnote">The pinnacle of metallurgy: golden halls and steady hands.</p>'}
+  <h4>Workforce</h4>
+  <div class="chips2">${JOB_KEYS.filter(j=>T.jobs&&T.jobs[j]).map(j=>`<span class="bchip" title="${JOBS[j].d}">${JOBS[j].ic} ${JOBS[j].n} ${T.jobs[j]}</span>`).join('')||'<span class="empty">No one has a trade yet.</span>'}</div>
+  ${T.colonies?`<p class="mnote">${T.colonies} ${T.colonies===1?'colony':'colonies'} founded.</p>`:''}
   <h4>Active blessings</h4>
   <div class="chips2">${keys.length?keys.map(k=>`<span class="bchip" title="From faith, culture and season">${fmtBuff(k,fx[k])}</span>`).join(''):'<span class="empty">None yet.</span>'}</div>
   ${T.race==='elf'?`<p class="mnote">${SEASONS[season()]}: ${SEASON_TEXT[season()]}</p>`:''}

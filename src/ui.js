@@ -4,7 +4,8 @@ let sel=null,follow=false;
 const $=id=>document.getElementById(id);
 const inspEl=$('inspect'),inspBody=$('inspBody');
 const TASKS={forage:'Gathering food',chop:'Cutting wood',gather:'Collecting fallen branches',mine:'Mining stone',plant:'Planting trees',
-  build:'Building',hunt:'Hunting',butcher:'Slaughtering livestock',fight:'Fighting',sleep:'Heading home to sleep'};
+  build:'Building',hunt:'Hunting',butcher:'Slaughtering livestock',fight:'Fighting',sleep:'Heading home to sleep',
+  train:'Training with weapons',teach:'Teaching the young',pray:'Praying at the temple',guard:'On guard duty'};
 
 function pickAt(p){
   let best=null,bd=.9;
@@ -30,10 +31,10 @@ function renderInspect(){
     const u=sel.u;
     if(u.k===0){
       const T=tribes[u.tribe],L=RACES[u.race],g=u.genes,pct=v=>Math.round(v*100)+'%';
-      sprite=spr(`p|${u.race}|${g.skin}|${g.hair}|${T.ci}|0`,()=>personSprite(u.race,g.skin,g.hair,T.color,0));
+      sprite=spr(`p|${u.race}|${g.skin}|${g.hair}|${T.ci}|0|${adult(u)?u.job||'':''}`,()=>personSprite(u.race,g.skin,g.hair,T.color,0,adult(u)?u.job:null));
       const doing=u.dead?'Resting in peace':u.inside?'Asleep at home':!adult(u)?'Playing':u.target?(u.target.k===1?(u.task==='butcher'?TASKS.butcher:'Hunting'):'Fighting'):(TASKS[u.task]||'Wandering');
       html=`<div class="insp-head"><span id="ispr"></span><div><h3>${u.name}</h3><p>${u.dead?'Has died, ':''}${adult(u)?L.name:L.name+' child'} of the ${T.title}</p></div></div>
-      <dl><dt>Age</dt><dd>${yrs(u)}</dd><dt>Doing</dt><dd>${doing}</dd>
+      <dl><dt>Age</dt><dd>${yrs(u)}</dd><dt>Job</dt><dd>${u.job&&adult(u)?`<span title="${JOBS[u.job].d}">${JOBS[u.job].ic} ${JOBS[u.job].n}</span>`:adult(u)?'Looking for work':'Child'}</dd><dt>Doing</dt><dd>${doing}</dd>
         <dt>Health</dt><dd>${Math.max(0,Math.round(u.hp))} of ${Math.round(u.maxhp)}</dd>
         <dt>Generation</dt><dd>${u.gen}${u.parents?`, child of ${u.parents}`:', founder'}</dd>
         <dt>Faith</dt><dd>${T.rel.name}, ${T.rel.patron.dom.toLowerCase()}</dd><dt>Culture</dt><dd>${T.values.map(v=>v.name).join(', ')}</dd><dt>Victories</dt><dd>${u.kills}</dd></dl>
@@ -146,7 +147,7 @@ const TABS=[
       human:'Tap land to found a human kingdom, or near one to add to it. Adaptable, quick to grow.',
       elf:'Tap land to found an elven realm. Long-lived archers who plant forests.',
       dwarf:'Tap land, ideally highlands near mountains, to found a dwarf hold. Tough miners.',
-      orc:'Tap land to found an orc horde. Fierce hunters, always spoiling for war.'}[r]+' Land already held by another people cannot be taken this way.']),
+      orc:'Tap land to found an orc horde. Fierce hunters, always spoiling for war.'}[r]+' Tap inside another people’s kingdom to send settlers to live among them.']),
     ...SPECIES_KEYS.map(s=>[s,{sp:s},SPECIES[s].name,
       `${SPECIES[s].desc} ${SPECIES[s].monster?'Hostile to everything alive.':SPECIES[s].dom?'Release near a village and they become its livestock.':'Wild.'}`]),
   ]},
@@ -352,8 +353,9 @@ cv.addEventListener('pointercancel',endPointer);
 cv.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')hover=null});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('wheel',e=>{
-  e.preventDefault();wheelAcc+=e.deltaY;
-  if(Math.abs(wheelAcc)>=40){const p=toTile(e);stepZoom(p.sx,p.sy,wheelAcc<0?1:-1);wheelAcc=0}
+  e.preventDefault();
+  const p=toTile(e),d=e.deltaMode===1?e.deltaY*30:e.deltaY;
+  zoomTo(p.sx,p.sy,cam.tpz*Math.exp(-clamp(d,-240,240)*.0018));
 },{passive:false});
 
 /* side panel */

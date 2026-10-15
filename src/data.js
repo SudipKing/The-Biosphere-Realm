@@ -198,3 +198,16 @@ const SEASON_WX=[
   {rain:1.4,fog:1.7,cloudy:1.3,snow:.15},
   {snow:5,clear:.8,rain:.15,storm:.25,fog:1.2},
 ];
+
+/* job classes: adults take the work their kingdom needs */
+const JOBS={
+  farmer:{n:'Farmer',ic:'🌾',d:'Works the fields: +50% food from foraging.'},
+  miner:{n:'Miner',ic:'⛏️',d:'Digs ore and stone: +40% yield, a little tougher.'},
+  woodcutter:{n:'Woodcutter',ic:'🪓',d:'Fells trees for timber.'},
+  builder:{n:'Builder',ic:'🔨',d:'Raises homes and halls.'},
+  hunter:{n:'Hunter',ic:'🏹',d:'Brings in meat from the wild.'},
+  soldier:{n:'Soldier',ic:'⚔️',d:'Patrols, trains and fights: +20% damage, +15% health. Many more in wartime.'},
+  teacher:{n:'Teacher',ic:'📖',d:'Teaches at the hall: better crafting, art and mining for the whole kingdom.'},
+  priest:{n:'Priest',ic:'🙏',d:'Prays at the temple, raising devotion and calm.'},
+};
+const JOB_KEYS=Object.keys(JOBS);

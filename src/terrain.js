@@ -9,7 +9,11 @@ for(let cy=0;cy<CCH;cy++)for(let cx=0;cx<CCW;cx++){
   chunks.push({c,x,img,buf:new Uint32Array(img.data.buffer),x0:cx*CHT,y0:cy*CHT,tw,th,pw:tw*TS,dirty:false});
 }
 const tileFlag=new Uint8Array(N);let tileQ=[];
-let pnoise=null,frameN=0,curSea=1,seaDone=-1;
+let pnoise=null,frameN=0,curSea=1;
+/* seasons repaint as a random dissolve (not a sweep), so a change of season creeps across the whole map at once */
+const tq=new Uint8Array(N),perm=new Uint32Array(N);let permPtr=0;
+for(let i=0;i<N;i++)perm[i]=i;
+for(let i=N-1;i>0;i--){const j=(Math.random()*(i+1))|0,t=perm[i];perm[i]=perm[j];perm[j]=t}
 const cl=v=>v<0?0:v>255?255:v|0;
 const P=(r,g,b)=>(0xff000000|(cl(b)<<16)|(cl(g)<<8)|cl(r))>>>0;
 function markTile(i){if(!tileFlag[i]){tileFlag[i]=1;tileQ.push(i)}}
@@ -22,10 +26,10 @@ function hAt(fx,fy){
   return (a+(b-a)*tx)*(1-ty)+(c+(d-c)*tx)*ty;
 }
 /* seasons: r,g,b multipliers for land, and how much snow lies on it */
-const SEA_MUL=[[1.0,1.07,.96],[1.07,1.04,.85],[1.3,.88,.55],[.92,.97,1.02]];
-const SEA_SNOW=[0,0,0,.6];
+const SEA_MUL=[[1.0,1.06,.97],[1.04,1.03,.9],[1.16,.93,.7],[.93,.98,1.02]];
+const SEA_SNOW=[0,0,0,.55];
 const paraCol=(ph)=>[128+120*Math.sin(ph),128+120*Math.sin(ph+2.1),128+120*Math.sin(ph+4.2)];
-function pcol(h,dh,n,n2,lv,bt,lvn,bmi,tx,ty){
+function pcol(h,dh,n,n2,lv,bt,lvn,bmi,tx,ty,dirt){
   if(lv)return lvn<.25?P(76,32,24):lvn<.72?P(232,92,26):P(255,172,54);
   let r,g,b;
   if(h<.30){const t=Math.max(0,h)/.30;r=18+t*16;g=48+t*40;b=104+t*48;if(n2<.018){r+=22;g+=28;b+=28}return P(r,g,b)}
@@ -53,6 +57,7 @@ function pcol(h,dh,n,n2,lv,bt,lvn,bmi,tx,ty){
     }
     const m=SEA_MUL[curSea];r*=m[0];g*=m[1];b*=m[2];
     const sn=SEA_SNOW[curSea];if(sn){const a=sn*(.55+n2*.5>1?1:.55+n2*.5);r+=(238-r)*a;g+=(244-g)*a;b+=(252-b)*a}
+    if(dirt){const a=Math.min(.8,dirt*(.4+n*.45));r+=(150-r)*a;g+=(116-g)*a;b+=(78-b)*a}
   }
   const s=dh*14+1,sc=s<.72?.72:s>1.3?1.3:s;
   r*=sc;g*=sc;b*=sc;
@@ -126,19 +131,54 @@ function drawOre(buf,pw,lx,ly,o,tx,ty){
     if(o===ORE.GEMS||o===ORE.SILVER||o===ORE.GOLD)buf[(ly+py-1)*pw+lx+px+1]=H;
   }
 }
+/* small details scattered over open ground: grass tufts, bushes, boulders, shells */
+function decorTile(buf,pw,lx,ly,tx,ty,bmi,b0){
+  if(b0===2){
+    if(hash(tx*5+1,ty*9+2)<.09){const px=1+((hash(tx,ty+4)*6)|0),py=1+((hash(tx+4,ty)*6)|0);buf[(ly+py)*pw+lx+px]=hash(tx,ty)<.5?P(252,244,236):P(238,178,176)}
+    return;
+  }
+  const B=bmi?BIOMES[bmi]:null;let base=B&&B.c?B.c:(b0===4?[84,128,60]:[96,160,66]);
+  if(bmi===BM.PARA)return;
+  const m=SEA_MUL[curSea];base=[base[0]*m[0],base[1]*m[1],base[2]*m[2]];
+  const snow=curSea===3;
+  if(snow)base=[196,208,222];
+  const dark=P(base[0]*.62,base[1]*.7,base[2]*.62),light=P(base[0]*1.18+8,base[1]*1.2+8,base[2]*1.1+8),mid=P(base[0]*.82,base[1]*.88,base[2]*.78);
+  const n=snow?0:1+((hash(tx*3,ty*7)*3)|0);
+  for(let k=0;k<n;k++){
+    const px=1+((hash(tx+k*31,ty)*6)|0),py=2+((hash(tx,ty+k*17)*5)|0);
+    buf[(ly+py)*pw+lx+px]=dark;buf[(ly+py-1)*pw+lx+px-1]=light;buf[(ly+py-1)*pw+lx+px+1]=light;
+  }
+  const h=hash(tx*13+5,ty*11+9);
+  if(h<.04&&bmi!==BM.WASTE&&bmi!==BM.ROCK){
+    const px=1+((hash(tx+7,ty)*3)|0),py=2+((hash(tx,ty+7)*3)|0),lo=P(base[0]*.5,base[1]*.58,base[2]*.5);
+    for(let x=1;x<3;x++)buf[(ly+py)*pw+lx+px+x]=light;
+    for(let x=0;x<4;x++){buf[(ly+py+1)*pw+lx+px+x]=mid;buf[(ly+py+2)*pw+lx+px+x]=x===0||x===3?lo:dark}
+    buf[(ly+py+1)*pw+lx+px+1]=light;
+    if(!snow&&!bmi&&hash(tx,ty+3)<.3)buf[(ly+py+1)*pw+lx+px+3]=P(220,60,60);
+  }else if(h>.975&&(b0===4||bmi===BM.ROCK||bmi===BM.WASTE)){
+    const px=1+((hash(tx+2,ty)*4)|0),py=3+((hash(tx,ty+2)*3)|0);
+    for(let x=0;x<3;x++){buf[(ly+py)*pw+lx+px+x]=P(138,134,130);buf[(ly+py+1)*pw+lx+px+x]=P(92,88,86)}
+    buf[(ly+py)*pw+lx+px]=P(184,180,172);
+  }
+}
 function renderTile(i){
   const tx=i%W,ty=(i/W)|0,ch=chunks[((ty/CHT)|0)*CCW+((tx/CHT)|0)],buf=ch.buf,pw=ch.pw;
   const lx=(tx-ch.x0)*TS,ly=(ty-ch.y0)*TS;
   const lv=lava[i]>0,bt=burnt[i]>step?Math.min(1,(burnt[i]-step)/600)*.8:0,lt=frameN>>3,bmi=bm[i];
+  let dirt=0;
+  if(bld[i]!==-1)dirt=1;
+  else for(let k=0;k<8;k++){const X=tx+N8[k][0],Y=ty+N8[k][1];if(X>=0&&Y>=0&&X<W&&Y<H&&bld[Y*W+X]!==-1){dirt=.55;break}}
   for(let sy=0;sy<TS;sy++){
     const py=ty*TS+sy,fy=ty+(sy+.5)/TS-.5,row=py*OW;
     let o=(ly+sy)*pw+lx;
     for(let sx=0;sx<TS;sx++,o++){
       const px=tx*TS+sx,fx=tx+(sx+.5)/TS-.5,n=pnoise[row+px]/255,n2=pnoise[(row+px+524287)%pnoise.length]/255;
       const hb=hAt(fx,fy);
-      buf[o]=pcol(hb+(n-.5)*.01,hb-hAt(fx-.35,fy-.35),n,n2,lv,bt,lv?hash(px>>1,(py>>1)+lt):0,bmi,tx,ty);
+      buf[o]=pcol(hb+(n-.5)*.01,hb-hAt(fx-.35,fy-.35),n,n2,lv,bt,lv?hash(px>>1,(py>>1)+lt):0,bmi,tx,ty,dirt);
     }
   }
+  tq[i]=curSea;
+  if(!lv&&!tree[i]&&!ore[i]&&bld[i]===-1&&!bt){const b0=bio(hgt[i]);if(b0>=2&&b0<=4)decorTile(buf,pw,lx,ly,tx,ty,bmi,b0)}
   if(ore[i]&&!lv)drawOre(buf,pw,lx,ly,ore[i],tx,ty);
   if(tree[i]&&!lv){
     const kind=treeKind(i),T=TREES[kind],rows=T.rows,v=.86+hash(tx,ty+999)*.26,pal=treePal(kind,v,tx,ty,bmi);
@@ -150,7 +190,7 @@ function initTerrain(){
   pnoise=new Uint8Array(OW*OH);
   for(let i=0;i<pnoise.length;i++){const x=i%OW,y=(i/OW)|0;pnoise[i]=(hash(x,y)*255)|0}
   tileFlag.fill(0);tileQ=[];
-  curSea=seaDone=season();
+  curSea=season();
   for(let i=0;i<N;i++)renderTile(i);
   for(const ch of chunks){ch.x.putImageData(ch.img,0,0);ch.dirty=false}
 }
@@ -158,8 +198,12 @@ function updateTerrain(){
   if(frameN%6===0)for(const i of lavas)markTile(i);
   /* paradox ground and trees shimmer through every colour */
   if(frameN%9===0)for(let i=0;i<N;i++)if(bm[i]===BM.PARA)markTile(i);
-  const s=season();
-  if(s!==seaDone&&!tileQ.length){seaDone=s;curSea=s;for(let i=0;i<N;i++)markTile(i)}
+  curSea=season();
+  let scan=0,fresh=0;
+  while(scan<3000&&fresh<420){
+    const i=perm[permPtr];permPtr=permPtr+1===N?0:permPtr+1;scan++;
+    if(tq[i]!==curSea&&!tileFlag[i]){renderTile(i);fresh++}
+  }
   let n=0;const budget=1100;
   while(tileQ.length&&n<budget){
     const i=tileQ.pop();tileFlag[i]=0;renderTile(i);n++;

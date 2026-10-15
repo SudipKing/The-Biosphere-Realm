@@ -41,7 +41,7 @@ const SPR=new Map();
 function spr(key,make){let s=SPR.get(key);if(!s){s=make();SPR.set(key,s)}return s}
 
 /* ---------- people ---------- */
-function personSprite(race,si,hi,col,fr){
+function personSprite(race,si,hi,col,fr,job){
   const L=RACES[race],s=L.skins[si],sd=sh(s,.8),h=L.hairs[hi],hd=sh(h,.72),k=col,kd=sh(col,.68),kl=sh(col,1.2),p=L.pants,g=G(11,12);
   const legs=()=>{if(fr===0){gr(g,3,9,1,2,p);gr(g,5,9,1,2,p);gr(g,2,11,2,1,CL.boot);gr(g,5,11,2,1,CL.boot)}else{gr(g,3,9,2,2,p);gr(g,3,11,3,1,CL.boot)}};
   if(race==='human'){
@@ -52,7 +52,6 @@ function personSprite(race,si,hi,col,fr){
     gr(g,3,0,3,1,h);gr(g,3,1,4,1,h);gr(g,3,2,1,2,hd);
     gp(g,5,2,CL.eye);
     gp(g,6,5,k);gp(g,6,6,k);gp(g,7,7,s);
-    gr(g,8,1,1,5,CL.steel);gp(g,8,0,CL.steelL);gr(g,7,6,3,1,CL.gold);gp(g,8,7,CL.woodD);
   }else if(race==='elf'){
     legs();
     gr(g,3,5,1,5,kd);gr(g,4,5,2,4,k);gp(g,5,5,kl);gr(g,4,8,2,1,CL.gold);
@@ -61,7 +60,6 @@ function personSprite(race,si,hi,col,fr){
     gp(g,2,2,s);gp(g,1,1,s);
     gp(g,5,2,[40,120,86]);
     gp(g,6,5,kl);gp(g,7,4,s);
-    gp(g,8,0,CL.wood);gp(g,9,1,CL.wood);gr(g,9,2,1,4,CL.wood);gp(g,9,6,CL.wood);gp(g,8,7,CL.wood);gr(g,8,1,1,6,[226,222,210]);
   }else if(race==='orc'){
     if(fr===0){gr(g,2,9,2,2,p);gr(g,5,9,2,2,p);gr(g,1,11,3,1,CL.boot);gr(g,5,11,3,1,CL.boot)}else{gr(g,3,9,3,2,p);gr(g,2,11,5,1,CL.boot)}
     gr(g,2,5,5,3,s);gr(g,2,5,1,3,sd);
@@ -73,7 +71,6 @@ function personSprite(race,si,hi,col,fr){
     gp(g,3,0,h);gp(g,4,0,h);gp(g,3,1,h);
     gp(g,6,2,CL.red);gp(g,7,3,CL.tusk);
     gr(g,7,5,1,2,s);gp(g,7,7,s);
-    gr(g,8,2,1,8,CL.wood);gr(g,9,1,1,4,CL.steel);gp(g,10,2,CL.steelL);gp(g,10,3,CL.steelL);
   }else{
     if(fr===0){gp(g,3,10,p);gp(g,5,10,p);gr(g,2,11,2,1,CL.boot);gr(g,5,11,2,1,CL.boot)}else{gr(g,3,10,3,1,p);gr(g,3,11,3,1,CL.boot)}
     gr(g,2,6,5,4,k);gr(g,2,6,1,4,kd);gr(g,2,9,5,1,CL.belt);gp(g,4,9,CL.gold);
@@ -84,10 +81,42 @@ function personSprite(race,si,hi,col,fr){
     gp(g,5,3,CL.eye);
     gr(g,4,4,3,1,h);gr(g,3,5,4,3,h);gr(g,4,8,2,1,hd);gp(g,3,6,hd);
     gp(g,7,7,k);gp(g,7,8,s);
-    gr(g,8,4,1,6,CL.wood);gr(g,7,2,3,2,CL.steel);gp(g,9,2,CL.steelL);
   }
+  if(job){jobHat(g,race,job);jobTool(g,race,job)}
   return bake(g);
 }
+/* what each job class carries and wears */
+function jobTool(g,race,job){
+  const W=CL.wood,WD=CL.woodD;
+  switch(job){
+    case'soldier':
+      if(race==='human'){gr(g,8,1,1,5,CL.steel);gp(g,8,0,CL.steelL);gr(g,7,6,3,1,CL.gold);gp(g,8,7,WD);gr(g,2,6,1,3,[150,60,50]);gp(g,2,5,CL.steelL)}
+      else if(race==='elf'){gp(g,8,0,W);gp(g,9,1,W);gr(g,9,2,1,4,W);gp(g,9,6,W);gp(g,8,7,W);gr(g,8,1,1,6,[226,222,210])}
+      else if(race==='orc'){gr(g,8,2,1,8,W);gr(g,9,1,1,4,CL.steel);gp(g,10,2,CL.steelL);gp(g,10,3,CL.steelL)}
+      else{gr(g,8,4,1,6,W);gr(g,7,2,3,2,CL.steel);gp(g,9,2,CL.steelL)}break;
+    case'hunter':gp(g,8,0,W);gp(g,9,1,W);gr(g,9,2,1,4,W);gp(g,9,6,W);gp(g,8,7,W);gr(g,8,1,1,6,[226,222,210]);gr(g,1,6,2,3,[110,76,50]);break;
+    case'farmer':gr(g,8,3,1,7,W);gp(g,7,2,CL.steel);gp(g,8,2,CL.steel);gp(g,9,2,CL.steel);gp(g,7,3,CL.steel);gp(g,9,3,CL.steel);break;
+    case'miner':gr(g,8,3,1,7,W);gr(g,6,2,5,1,CL.steel);gp(g,6,3,CL.steel);gp(g,10,3,CL.steel);gp(g,10,2,CL.steelL);gr(g,1,8,2,2,[60,56,64]);break;
+    case'woodcutter':gr(g,8,3,1,7,W);gr(g,9,2,2,3,CL.steel);gp(g,10,3,CL.steelL);gp(g,9,2,CL.steelL);break;
+    case'builder':gr(g,8,4,1,6,W);gr(g,7,2,3,2,CL.stoneD);gp(g,7,2,CL.stoneL);gr(g,1,8,2,1,CL.wood);break;
+    case'teacher':gr(g,7,5,3,3,[188,70,62]);gr(g,7,5,3,1,CL.white);gp(g,8,6,CL.gold);gr(g,8,0,1,0,W);break;
+    case'priest':gr(g,8,0,1,10,WD);gp(g,8,0,[130,224,236]);gp(g,7,1,CL.gold);gp(g,9,1,CL.gold);gp(g,8,1,CL.gold);break;
+  }
+}
+function jobHat(g,race,job){
+  const hat={farmer:[232,200,100],miner:[222,172,44],soldier:CL.steel,builder:[238,140,44],priest:[240,236,226],woodcutter:[196,58,48],hunter:[66,118,70]}[job];
+  if(!hat)return;
+  const x0=race==='orc'?3:3,top=race==='dwarf'?0:0;
+  if(job==='soldier'&&race==='dwarf')return;
+  gr(g,x0,top,4,1,hat);
+  if(job==='farmer'){gp(g,x0-1,top+1,hat);gp(g,x0+4,top+1,hat);gp(g,x0-1,top,sh(hat,.85))}
+  if(job==='miner')gp(g,x0+1,top,[255,246,170]);
+  if(job==='soldier'){gp(g,x0,top+1,CL.steelD);gp(g,x0+3,top+1,CL.steelD);gp(g,x0+1,top,CL.steelL)}
+  if(job==='builder'){gp(g,x0-1,top+1,sh(hat,.8));gp(g,x0+4,top+1,sh(hat,.8))}
+  if(job==='priest'){gp(g,x0,top+1,hat);gp(g,x0+3,top+1,hat)}
+  if(job==='woodcutter')gr(g,x0,top+1,4,1,sh(hat,.8));
+}
+
 
 /* ---------- animals ---------- */
 function legs2(g,fr,xs,y,h,c){xs.forEach((x,k)=>{const off=fr&&(k%2)?1:0;gr(g,x+(fr?(k%2?1:-0):0),y,1,h,c)})}
@@ -386,10 +415,28 @@ function tierGrid(g,t){
   if(t>=5){const cx=w>>1;gp(g,cx,0,GILD);gp(g,cx-1,1,GILD);gp(g,cx+1,1,GILD);gp(g,cx,1,CL.glow)}
   return g;
 }
-function buildingSprite(race,type,ci,dom,tier){
+/* every house gets a little something beside it, so a village never looks stamped out */
+function withProp(g,v,race){
+  if(!v)return g;
+  const left=v===2,pw=6,n=G(g.w+pw,g.h),ox=left?pw:0,px=left?0:g.w;
+  for(let y=0;y<g.h;y++)for(let x=0;x<g.w;x++){const c=g.d[y*g.w+x];if(c)n.d[y*n.w+x+ox]=c}
+  const b=g.h;
+  if(v===1){ /* crate and barrel */
+    gr(n,px+1,b-4,3,3,[146,104,62]);gr(n,px+1,b-4,3,1,[186,140,86]);gp(n,px+2,b-3,CL.woodD);
+    gr(n,px+4,b-3,2,3,[118,80,50]);gp(n,px+4,b-2,CL.steelD);gp(n,px+5,b-2,CL.steelD);gr(n,px+4,b-3,2,1,[160,112,70]);
+  }else if(v===2){ /* hay bale or cart of ore */
+    if(race==='dwarf'||race==='orc'){gr(n,px,b-3,5,2,CL.stoneD);gr(n,px+1,b-4,3,1,CL.stone);gp(n,px+1,b-1,CL.dark);gp(n,px+3,b-1,CL.dark);gp(n,px+2,b-4,[246,200,56]);gp(n,px+3,b-5,[246,200,56])}
+    else{gr(n,px,b-4,5,3,[232,200,92]);gr(n,px,b-4,5,1,[250,226,130]);gp(n,px+1,b-3,[186,146,52]);gp(n,px+3,b-2,[186,146,52]);gr(n,px,b-1,5,1,[160,120,44])}
+  }else{ /* flower bed behind a little fence */
+    gr(n,px+1,b-2,5,1,[96,150,60]);for(const x of [1,3,5])gp(n,px+x,b-3,[236,96,150]);gp(n,px+2,b-3,[250,226,90]);gp(n,px+4,b-3,[250,250,246]);
+    for(const x of [0,3,6])gr(n,px+x,b-3,1,3,CL.wood);gr(n,px,b-1,7,1,CL.woodD);
+  }
+  return n;
+}
+function buildingSprite(race,type,ci,dom,tier,v){
   if(type===3)return spr('ruin',ruinSprite);
-  tier=type===4?0:(tier||0);
-  return spr(`b|${race}|${type}|${ci}|${dom}|${tier}`,()=>bake(type===4?monumentGrid(race,KCOL[ci],dom):tierGrid({human:bHuman,elf:bElf,orc:bOrc,dwarf:bDwarf}[race](type,KCOL[ci],dom),tier)));
+  tier=type===4?0:(tier||0);v=type===0?(v||0):0;
+  return spr(`b|${race}|${type}|${ci}|${dom}|${tier}|${v}`,()=>bake(type===4?monumentGrid(race,KCOL[ci],dom):withProp(tierGrid({human:bHuman,elf:bElf,orc:bOrc,dwarf:bDwarf}[race](type,KCOL[ci],dom),tier),v,race)));
 }
 const GLOWS=new Map();
 function glowCol(c){const k=c.join();let g=GLOWS.get(k);if(!g){g=glowSprite(c[0],c[1],c[2]);GLOWS.set(k,g)}return g}

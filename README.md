@@ -50,7 +50,7 @@ Every people has its own pantheon, and each kingdom follows its own sect of it. 
 
 ## The power tray
 
-The bottom tray has six tabs (keys `1` to `6`). **Inspect** and **Move** stay pinned on the right.
+The dashboard on the left has six tabs (keys `1` to `6`). **Inspect** and **Move** stay pinned at the top. On a phone it moves to the bottom.
 
 | Tab | What is in it |
 | --- | --- |
@@ -84,9 +84,15 @@ Eleven seedable biomes plus forest soil. Each has its own grass and trees, and s
 
 Kingdoms dig stone, copper, iron, coal, silver, gold and gems. The metal they mine moves them through the ages: **Wooden, Stone, Bronze, Iron, Steel, Golden**. Each age upgrades their homes (stone walls, bronze banners, iron frames, steel plating, gilded crowns), and brings stronger weapons, tougher armor and faster mining.
 
+### People and jobs
+
+- **Job classes.** Every adult takes the work their kingdom needs: **farmers** (+50% food), **miners** (+40% ore, tougher), **woodcutters**, **builders**, **hunters**, **soldiers** (+20% damage, +15% health, they patrol, train and fight, and there are far more of them in wartime), **teachers** (better crafting, art and mining for the whole kingdom) and **priests** (raise devotion and calm). Each job has its own hat and tool on the sprite, and the inspector and codex show who does what.
+- **Immigrants.** Tap inside another people's kingdom with a people tool to send settlers to live among them (an elf in an orc horde). They keep their race, work in the kingdom and can have mixed children.
+- **Expansion.** Growing kingdoms send settlers overland or by ship to found colonies. A colony starts with a third of its parent's food and timber, a share of its ore and its age, and allied with its parent.
+
 ### Seasons and domains
 
-- The **Seasons** button in the header holds the world in one season, or lets them turn. Each season recolors the land, trees and sea, and changes the weather (snow in winter, storms in summer).
+- The **Seasons** button in the header holds the world in one season, or lets them turn. A change of season dissolves across the whole map at once (no sweep), recoloring land, trees and sea, and shifting the weather.
 - The **Domains** button shows a colour layer for each kingdom with crisp borders. Every tile has exactly one owner, a kingdom cannot found itself or build on another kingdom's land (unless the two are at war), and the side panel shows each kingdom's share of the world.
 
 ## Controls

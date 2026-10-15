@@ -205,6 +205,8 @@ function computeFx(T){
   for(const v of T.values)addFx(fx,v.buff,1);
   const ag=T.age||0;fx.def+=.03*ag;fx.mine+=.06*ag;fx.craft+=.03*ag;if(ag>=5){fx.stab+=.08;fx.dipl+=.1}
   if(T.res&&T.res.gems>=10)fx.ranged+=.1;
+  const jb=T.jobs||{},edu=clamp((jb.teacher||0)/Math.max(6,T.pop)*3,0,.3);
+  fx.craft+=edu*.5;fx.art+=edu;fx.mine+=edu*.5;fx.stab+=edu*.2+clamp((jb.priest||0)/Math.max(8,T.pop)*.6,0,.1);
   fx.art+=doc.art||0;fx.stab+=doc.stab/100;
   fx.dipl+=Math.min(.15,T.renown*.006);
   const CAP={lifesteal:.5,ranged:.6,mine:.7,stab:.6,dipl:.6};
@@ -257,7 +259,7 @@ function makeArt(T){
   const t=artTitle(T,f),maker=T.members.length?pick(T.members):null;
   const q=clamp(1+((R()*3)|0)+(T.values.some(v=>v.buff.art>=.3)?1:0)+(R()<.1?1:0),1,5);
   const art={name:t.name,form:f.n,theme:t.theme,desc:t.desc,creator:maker?maker.name:'an unknown artisan',year:year(),q,i:spot>=0?spot:null};
-  if(spot>=0){bld[spot]=T.id;btype[spot]=4;T.monuments++;bDirty=true}
+  if(spot>=0){bld[spot]=T.id;btype[spot]=4;T.monuments++;bDirty=true;ownDirty=true;markDirty(spot)}
   T.arts.unshift(art);T.renown+=q;T.devo=Math.min(100,T.devo+q*(t.theme==='deity'?1.5:.7));
   const at=spot>=0?spot:(T.hall>=0?T.hall:-1);
   log(`The ${T.title} unveiled the ${f.n.toLowerCase()} \u201c${art.name}\u201d.`,[240,208,110],!(q>=4||spot>=0));
