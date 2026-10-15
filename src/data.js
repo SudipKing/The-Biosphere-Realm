@@ -45,8 +45,91 @@ const RACES={
     ph:["gra","ug","kha","zo","ruk","mu","dak","th","gor","nak","ub","za"],
     faiths:['War','Flame','War','Ancestors'],
     lore:'Fierce hunters and raiders. Short lives, big families, pig pens, and always ready for war.'},
+  /* newer peoples borrow the faith, culture and building style of a 'base' people, but look, speak and name themselves their own way */
+  gnome:{name:'Gnome',plural:'Gnomes',icon:'🍄',base:'dwarf',spd:.1,hp:24,dmg:4,life:160,fert:.8,aggr:.2,cost:5,range:3,
+    skins:[[246,212,182],[232,190,156],[214,168,132]],hairs:[[246,244,236],[214,210,200],[200,120,70]],
+    hairNames:['snow-white','silver','auburn'],skinNames:['rosy','peach','tan'],
+    pants:[70,90,140],title:'Burrow of',stock:['chicken','rabbit','cat'],voice:{f:330,type:'square'},
+    p1:["Tin","Bram","Pip","Wob","Fizz","Nim","Cog","Bix","Dob","Quill","Mott","Gim"],
+    p2:["wick","bottle","sprocket","burrow","hollow","whistle","nook","brook","cog","spindle"],
+    n1:["Pip","Fen","Bim","Tob","Nix","Wob","Quim","Dil","Fiz","Ozz","Bel"],
+    n2:["kin","ble","wick","pin","dle","bo","ny","zap","tock","fen"],
+    ph:["bi","pip","ti","zo","wik","fen","ni","pa","tok","lo","bim","zu"],
+    tip:'Tap land to found a gnome burrow. Clever tinkerers with throwing darts, tall red hats and long beards.',
+    lore:'Small, curious tinkerers who dig cozy burrows, keep rabbits and hens, and invent things nobody asked for.'},
+  goblin:{name:'Goblin',plural:'Goblins',icon:'👺',base:'orc',spd:.13,hp:22,dmg:5,life:35,fert:1.5,aggr:.85,cost:4,range:1.2,
+    skins:[[140,170,70],[118,150,60],[160,160,80]],hairs:[[40,34,30],[90,60,40]],
+    hairNames:['black','brown'],skinNames:['bright green','swamp green','sallow'],
+    pants:[90,70,50],title:'Warren of',stock:['pig','rat','chicken'],voice:{f:220,type:'square',growl:true},
+    p1:["Snik","Grub","Rat","Muk","Skab","Nob","Zit","Krik","Gob","Snot","Wort"],
+    p2:["pit","hole","nest","rot","muck","heap","den","burrow","stink","scrap"],
+    n1:["Snik","Grib","Zat","Nok","Skiv","Wib","Krat","Gnar","Pug","Rikk"],
+    n2:["nik","bit","zag","gob","rik","snag","wort","itch","sk","tik"],
+    ph:["gik","sna","rak","zit","nub","krik","ga","zz","ip","rot","ska","bub"],
+    tip:'Tap land to found a goblin warren. Quick, sneaky, breed like rats and love a fight.',
+    lore:'Small and wiry raiders who breed fast, live in warrens of scrap and squabble endlessly.'},
+  saurian:{name:'Saurian',plural:'Saurians',icon:'🦎',base:'human',spd:.11,hp:34,dmg:6,life:90,fert:.8,aggr:.55,cost:6,range:1.2,
+    skins:[[96,160,110],[70,140,140],[150,150,80],[170,100,70]],hairs:[[220,80,60],[240,190,60],[90,180,220]],
+    hairNames:['red crest','gold crest','blue crest'],skinNames:['jade','teal','olive','rust'],
+    pants:[150,120,70],title:'Dominion of',stock:['turtle','crab','chicken'],voice:{f:140,type:'triangle'},
+    p1:["Ssal","Ixa","Tzel","Kesh","Zath","Ossa","Ylla","Thexa","Isk","Raszz"],
+    p2:["thal","izzar","oth","assa","ixal","qeth","zun","sesh","okka"],
+    n1:["Iss","Zek","Tal","Sesh","Kra","Yss","Ox","Thal","Riz","Vass"],
+    n2:["ka","ith","ssa","tzal","or","ix","eth","ra","un"],
+    ph:["ss","tza","ik","ash","zeth","ka","oss","ix","thal","sh","ra","yss"],
+    tip:'Tap land to found a saurian dominion. Scaled, patient, long-lived builders of the warm shores.',
+    lore:'Patient, scaled folk with bright crests. They keep turtles and crabs and build temples by the water.'},
 };
-const RACE_KEYS=['human','elf','dwarf','orc'];
+const RACE_KEYS=['human','elf','dwarf','orc','gnome','goblin','saurian'];
+const RB=r=>(RACES[r]&&RACES[r].base)||r;
+/* ---------- uplifted species: any creature the monolith touches becomes a people of its own ---------- */
+const UPLIFT={
+  sheep:{n:'Woolfolk',ear:'rd',base:'human',fur:[[240,236,226],[214,208,196],[90,80,80]],mane:[[250,248,240],[200,196,186]],title:'Flock of'},
+  cow:{n:'Bovari',ear:'horn',base:'human',fur:[[236,232,224],[150,96,60],[60,50,46]],mane:[[60,50,46],[236,232,224]],title:'Herd of'},
+  pig:{n:'Hogfolk',ear:'rd',base:'orc',fur:[[240,168,172],[200,130,136]],mane:[[150,90,90]],title:'Sty of'},
+  chicken:{n:'Clucklings',ear:'beak',base:'human',fur:[[248,246,240],[176,104,52]],mane:[[226,44,30]],title:'Coop of'},
+  horse:{n:'Equinari',ear:'pt',base:'elf',fur:[[150,94,52],[60,48,44],[226,222,214]],mane:[[48,36,30],[200,190,170]],title:'Herd of'},
+  deer:{n:'Stagkin',ear:'horn',base:'elf',fur:[[178,126,74],[150,104,60]],mane:[[214,196,160]],title:'Grove of'},
+  rabbit:{n:'Hopkin',ear:'long',base:'elf',fur:[[200,196,190],[160,136,112]],mane:[[240,236,230]],title:'Warren of'},
+  wolf:{n:'Wolfkin',ear:'pt',base:'orc',fur:[[134,130,138],[90,86,96],[186,182,188]],mane:[[70,66,76]],title:'Pack of'},
+  bear:{n:'Ursari',ear:'rd',base:'dwarf',fur:[[100,68,44],[70,46,30],[230,226,220]],mane:[[60,40,26]],title:'Den of'},
+  fox:{n:'Foxkin',ear:'pt',base:'elf',fur:[[222,120,42],[170,84,30]],mane:[[248,246,240]],title:'Den of'},
+  buffalo:{n:'Bisonfolk',ear:'horn',base:'dwarf',fur:[[88,58,40],[128,92,62]],mane:[[56,38,28]],title:'Herd of'},
+  dog:{n:'Houndfolk',ear:'rd',base:'human',fur:[[200,152,92],[126,88,54],[230,226,220]],mane:[[90,60,40]],title:'Kennel of'},
+  cat:{n:'Felari',ear:'pt',base:'elf',fur:[[228,142,62],[72,68,80],[240,236,230]],mane:[[150,90,40]],title:'Pride of'},
+  rat:{n:'Ratkin',ear:'rd',base:'orc',fur:[[120,114,120],[84,80,88]],mane:[[240,168,172]],title:'Nest of'},
+  crab:{n:'Clawfolk',ear:'none',base:'dwarf',fur:[[220,70,52],[180,60,46]],mane:[[156,44,38]],title:'Shoal of'},
+  turtle:{n:'Shellfolk',ear:'none',base:'dwarf',fur:[[150,176,100],[120,150,90]],mane:[[64,128,70]],title:'Shell of'},
+  crow:{n:'Corvari',ear:'beak',base:'elf',fur:[[44,42,54],[70,68,86]],mane:[[34,32,42]],title:'Murder of',range:3.2},
+  eagle:{n:'Aquilari',ear:'beak',base:'human',fur:[[116,78,44],[248,246,240]],mane:[[248,246,240]],title:'Eyrie of',range:3.2},
+  skeleton:{n:'Bonefolk',ear:'none',base:'orc',fur:[[234,230,212],[200,196,180]],mane:[[150,146,130]],title:'Ossuary of'},
+  zombie:{n:'Rotfolk',ear:'none',base:'orc',fur:[[118,156,98],[100,130,90]],mane:[[60,70,50]],title:'Crypt of'},
+  dragon:{n:'Drakari',ear:'horn',base:'orc',fur:[[170,40,38],[60,120,70],[50,60,120]],mane:[[236,178,92]],title:'Hoard of'},
+  wraith:{n:'Shadefolk',ear:'none',base:'elf',fur:[[170,200,230],[130,160,200]],mane:[[110,150,196]],title:'Veil of'},
+  spider:{n:'Spinnerkin',ear:'none',base:'orc',fur:[[60,54,70],[96,60,120]],mane:[[240,40,50]],title:'Web of'},
+  ogre:{n:'Ogrekin',ear:'none',base:'orc',fur:[[122,134,78],[100,110,70]],mane:[[40,34,30]],title:'Club of'},
+};
+/* invent a whole people from a species: names, a tongue of its own, a look and a temperament */
+function upliftRaceKey(sp){return 'up_'+sp}
+function makeUpliftRace(sp){
+  const key=upliftRaceKey(sp);if(RACES[key])return key;
+  const S=SPECIES[sp],U=UPLIFT[sp]||{n:S.name+'kin',ear:'rd',base:'human',fur:[[150,120,90]],mane:[[90,70,50]],title:'Clan of'};
+  const C=['b','d','g','k','l','m','n','r','s','t','v','z','sh','th','gr','kr'],V=['a','e','i','o','u','aa','ee','oo'];
+  const syl=()=>pick(C)+pick(V)+(R()<.3?pick(['r','n','k','s','l']):'');
+  const ph=Array.from({length:12},syl),cap1=w=>w.charAt(0).toUpperCase()+w.slice(1);
+  const fierce=!!(S.pred||S.monster);
+  RACES[key]={name:U.n,plural:U.n,icon:S.icon,base:U.base,beast:{ear:U.ear,sp},
+    spd:clamp(.09+(S.spd||.05)*.4,.09,.14),hp:Math.round(clamp(S.hp*.5+18,20,60)),dmg:Math.round(clamp((S.dmg||3)*.6+4,4,14)),
+    life:fierce?50:80,fert:S.breed>.0015?1.3:1,aggr:fierce?.85:.35,cost:6,range:U.range||1.2,
+    skins:U.fur,hairs:U.mane,hairNames:U.mane.map((_,k)=>['dark','light','bright'][k]||'mottled'),skinNames:U.fur.map((_,k)=>['common','pale','dark'][k]||'spotted'),
+    pants:[90,72,52],title:U.title,stock:RACES[U.base].stock,voice:{f:fierce?120:220+((R()*120)|0),type:fierce?'sawtooth':'triangle',growl:fierce},
+    p1:Array.from({length:10},()=>cap1(syl())),p2:Array.from({length:8},()=>syl()+pick(['','dun','mor','vale','den','holt'])),
+    n1:Array.from({length:10},()=>cap1(syl())),n2:Array.from({length:8},syl),ph,
+    tip:`Tap land to found a realm of the ${U.n}, the ${S.name.toLowerCase()}s the monolith awakened.`,
+    lore:`Once ordinary ${S.name.toLowerCase()}s, until the monolith's light woke a mind in them. Now they speak, pray and build.`,uplift:1};
+  RACE_KEYS.push(key);LANG[key]=cap1(ph[0]+ph[1])+'ish';aliasRace(key);
+  return key;
+}
 const DOMAINS={
   stone:{c:[196,196,206],sym:["..#..",".#.#.","#...#","#####","....."]},
   forge:{c:[255,146,40],sym:["#####","#####",".###.","..#..",".###."]},
@@ -212,4 +295,4 @@ const JOBS={
 };
 const JOB_KEYS=Object.keys(JOBS);
 /* each people speaks its own tongue; the names can be changed in the registry */
-const LANG={human:'Common Tongue',elf:'Elvish',dwarf:'Dwarvish',orc:'Orcish'};
+const LANG={human:'Common Tongue',elf:'Elvish',dwarf:'Dwarvish',orc:'Orcish',gnome:'Gnomish',goblin:'Gobbledy',saurian:'Sssaurian'};

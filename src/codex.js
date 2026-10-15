@@ -57,7 +57,7 @@ function cxFaith(T,L){
   <dt>Devotion</dt><dd>${Math.round(T.devo)} of 100, scaling every blessing</dd></dl>
   ${sec?`<h4>Second god</h4><div class="godcard">${glyphSVG(sec.sym,36)}<div><b>${sec.name}, ${sec.title}</b><p class="gdom">${sec.dom}. Half of their gift is shared.</p></div></div>`:''}
   <h4>Tenets</h4><ul class="plain">${rel.tenets.map(t=>`<li>${t}</li>`).join('')}</ul>
-  <h4>Sacred rite</h4><p><b>${d.rite}</b> \u2014 ${d.ritedesc}</p><p class="mnote">Next celebration: ${next}. Rites raise devotion and grant a blessing for a time${{dwarf:', plus a tribute of stone',elf:', healing everyone and waking new trees',human:', plus a feast and calmer streets',orc:', plus a war-frenzy for the horde'}[T.race]}.</p>
+  <h4>Sacred rite</h4><p><b>${d.rite}</b> \u2014 ${d.ritedesc}</p><p class="mnote">Next celebration: ${next}. Rites raise devotion and grant a blessing for a time${{dwarf:', plus a tribute of stone',elf:', healing everyone and waking new trees',human:', plus a feast and calmer streets',orc:', plus a war-frenzy for the horde'}[RB(T.race)]}.</p>
   <h4>Pantheon of the ${L.plural.toLowerCase()}</h4>
   ${PANTHEON[T.race].map(g=>`<div class="pg${g===d?' cur':''}">${glyphSVG(g.sym,30)}<div><b>${g.name}, ${g.title}</b>${g===d?' <span class="tag">patron</span>':''}${g===sec?' <span class="tag">second</span>':''}<p class="gdom">${g.dom}</p><div class="chips2 sm">${buffChips(g.buff,1)}</div></div></div>`).join('')}`;
 }
@@ -65,7 +65,7 @@ function cxCulture(T,L){
   return `<h4>${esc(cultureName(T))}</h4><p class="mnote">Spoken language: ${esc(LANG[T.race])}.</p>
   <h4>Values</h4>${T.values.map(v=>`<div class="val"><b>${v.name}</b><p class="gdom">${v.desc}</p><div class="chips2 sm">${buffChips(v.buff,1)}</div></div>`).join('')}
   <h4>Artistic traditions</h4><p>${ART_FORMS[T.race].map(f=>f.n).join(', ')}.</p>
-  <p class="mnote">Renown ${T.renown}. Art lifts stability, devotion and diplomacy. Physical works stand on the map, like ${{human:'statues',elf:'living sculptures',dwarf:'rune-pillars',orc:'skull totems'}[T.race]}.</p>
+  <p class="mnote">Renown ${T.renown}. Art lifts stability, devotion and diplomacy. Physical works stand on the map, like ${{human:'statues',elf:'living sculptures',dwarf:'rune-pillars',orc:'skull totems'}[RB(T.race)]}.</p>
   <h4>Works of art (${T.arts.length})</h4>
   ${T.arts.length?T.arts.map(a=>`<div class="art"><div class="arth"><b>${a.name}</b><span class="stars" aria-label="${a.q} of 5">${stars(a.q)}</span></div>
     <p class="gdom">${a.form} by ${a.creator}, year ${a.year}. ${a.desc}${a.lost?' (Destroyed.)':''}</p>

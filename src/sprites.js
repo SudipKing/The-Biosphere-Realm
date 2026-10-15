@@ -71,6 +71,45 @@ function personSprite(race,si,hi,col,fr,job){
     gp(g,3,0,h);gp(g,4,0,h);gp(g,3,1,h);
     gp(g,6,2,CL.red);gp(g,7,3,CL.tusk);
     gr(g,7,5,1,2,s);gp(g,7,7,s);
+  }else if(race==='gnome'){
+    if(fr===0){gp(g,3,10,p);gp(g,5,10,p);gr(g,2,11,2,1,CL.boot);gr(g,5,11,2,1,CL.boot)}else{gr(g,3,10,3,1,p);gr(g,3,11,3,1,CL.boot)}
+    gr(g,3,7,4,3,k);gr(g,3,7,1,3,kd);gr(g,3,9,4,1,CL.belt);
+    gr(g,3,4,4,3,s);gp(g,6,5,CL.pink);gp(g,5,4,CL.eye);
+    const hat=[198,48,44];gr(g,2,3,6,1,sh(hat,.8));gr(g,3,2,4,1,hat);gr(g,4,1,3,1,hat);gp(g,5,0,hat);gp(g,6,0,sh(hat,1.2));gr(g,3,3,4,1,kl);
+    gr(g,3,6,4,2,h);gr(g,4,8,2,1,h);gp(g,6,6,hd);
+    gp(g,7,7,s);gp(g,2,7,kd);
+  }else if(race==='goblin'){
+    if(fr===0){gp(g,3,10,p);gp(g,5,10,p);gr(g,2,11,2,1,CL.boot);gr(g,5,11,2,1,CL.boot)}else{gr(g,3,10,3,1,p);gr(g,3,11,3,1,CL.boot)}
+    gr(g,3,6,4,4,kd);gp(g,4,7,k);gp(g,5,8,k);gp(g,6,6,k);gr(g,3,9,4,1,CL.belt);
+    gr(g,3,2,4,4,s);gp(g,3,5,sd);gp(g,6,5,sd);
+    gp(g,1,2,s);gp(g,2,3,s);gp(g,2,2,sd);gp(g,8,2,s);gp(g,7,3,s);gp(g,7,2,sd);
+    gp(g,4,3,[250,220,60]);gp(g,6,3,[250,220,60]);gr(g,4,5,2,1,CL.dark);gp(g,5,5,CL.tusk);
+    gp(g,4,1,h);gp(g,5,1,h);gp(g,5,0,h);
+    gp(g,7,6,s);gp(g,7,7,s);gp(g,2,7,s);
+  }else if(race==='saurian'){
+    legs();
+    gr(g,3,5,3,4,k);gr(g,3,5,1,4,kd);gr(g,3,8,3,1,CL.gold);gp(g,5,6,sd);
+    gr(g,3,1,4,3,s);gr(g,7,2,2,2,s);gp(g,8,3,sd);gp(g,8,2,CL.dark);gp(g,5,2,[250,200,40]);gr(g,3,3,4,1,sd);
+    gp(g,3,0,h);gp(g,4,0,h);gp(g,2,1,h);gp(g,5,0,hd);
+    gp(g,2,8,s);gp(g,1,9,s);gp(g,0,10,sd);gp(g,2,9,sd);
+    gp(g,6,5,s);gp(g,6,6,s);gp(g,7,7,s);
+  }else if(L.beast){
+    /* an uplifted species: a person's body with the head of the creature it once was */
+    const ear=L.beast.ear,mz=sh(s,1.18);
+    legs();
+    gr(g,3,5,4,4,k);gr(g,3,5,1,4,kd);gr(g,3,8,4,1,CL.belt);gp(g,5,8,CL.gold);
+    gr(g,3,1,4,4,s);gr(g,3,4,4,1,sd);
+    if(ear==='beak'){gr(g,7,2,2,1,[244,196,60]);gp(g,7,3,[214,160,40]);gp(g,4,0,h);gp(g,5,0,h);gp(g,3,0,hd)}
+    else if(ear!=='none'){gr(g,6,3,2,2,mz);gp(g,8,3,mz);gp(g,8,3,CL.dark)}
+    gp(g,5,2,CL.eye);
+    if(ear==='pt'){gp(g,3,0,sd);gp(g,6,0,sd)}
+    else if(ear==='rd'){gr(g,2,1,1,2,sd);gr(g,7,1,1,1,sd)}
+    else if(ear==='long'){gp(g,4,0,s);gp(g,5,0,sd);gr(g,4,0,1,1,CL.pink)}
+    else if(ear==='horn'){gp(g,3,0,CL.tusk);gp(g,6,0,CL.tusk);gp(g,2,0,CL.tusk)}
+    else{gp(g,6,2,CL.eye);gr(g,4,3,2,1,sd)}
+    gr(g,2,2,1,3,h);
+    if(ear!=='beak'&&ear!=='none'){gp(g,2,8,s);gp(g,1,8,sd);gp(g,1,9,sd)}
+    gp(g,7,6,s);gp(g,7,7,s);gp(g,2,6,kd);
   }else{
     if(fr===0){gp(g,3,10,p);gp(g,5,10,p);gr(g,2,11,2,1,CL.boot);gr(g,5,11,2,1,CL.boot)}else{gr(g,3,10,3,1,p);gr(g,3,11,3,1,CL.boot)}
     gr(g,2,6,5,4,k);gr(g,2,6,1,4,kd);gr(g,2,9,5,1,CL.belt);gp(g,4,9,CL.gold);
@@ -107,7 +146,7 @@ function jobHat(g,race,job){
   const hat={farmer:[232,200,100],miner:[222,172,44],soldier:CL.steel,builder:[238,140,44],priest:[240,236,226],woodcutter:[196,58,48],hunter:[66,118,70]}[job];
   if(!hat)return;
   const x0=race==='orc'?3:3,top=race==='dwarf'?0:0;
-  if(job==='soldier'&&race==='dwarf')return;
+  if((job==='soldier'&&race==='dwarf')||race==='gnome')return;
   gr(g,x0,top,4,1,hat);
   if(job==='farmer'){gp(g,x0-1,top+1,hat);gp(g,x0+4,top+1,hat);gp(g,x0-1,top,sh(hat,.85))}
   if(job==='miner')gp(g,x0+1,top,[255,246,170]);
@@ -436,7 +475,7 @@ function withProp(g,v,race){
 function buildingSprite(race,type,ci,dom,tier,v){
   if(type===3)return spr('ruin',ruinSprite);
   tier=type===4?0:(tier||0);v=type===0?(v||0):0;
-  return spr(`b|${race}|${type}|${ci}|${dom}|${tier}|${v}`,()=>bake(type===4?monumentGrid(race,KCOL[ci],dom):withProp(tierGrid({human:bHuman,elf:bElf,orc:bOrc,dwarf:bDwarf}[race](type,KCOL[ci],dom),tier),v,race)));
+  return spr(`b|${race}|${type}|${ci}|${dom}|${tier}|${v}`,()=>bake(type===4?monumentGrid(RB(race),KCOL[ci],dom):withProp(tierGrid({human:bHuman,elf:bElf,orc:bOrc,dwarf:bDwarf}[RB(race)](type,KCOL[ci],dom),tier),v,RB(race))));
 }
 const GLOWS=new Map();
 function glowCol(c){const k=c.join();let g=GLOWS.get(k);if(!g){g=glowSprite(c[0],c[1],c[2]);GLOWS.set(k,g)}return g}
@@ -498,4 +537,14 @@ function boatSprite(kind,race,ci){
     gr(g,4,10,12,1,kd);
     return bake(g);
   });
+}
+
+/* the monolith: a black slab with runes that glow */
+function monolithSprite(){
+  const g=G(9,24),rn=[120,220,255],rl=[200,245,255];
+  gr(g,1,2,7,20,[24,22,32]);gr(g,1,2,1,20,[52,50,68]);gr(g,7,2,1,20,[10,8,16]);gr(g,2,1,5,1,[34,32,46]);gr(g,3,0,3,1,[40,38,52]);
+  gr(g,0,22,9,2,[70,66,74]);gr(g,0,22,9,1,[96,92,100]);
+  for(const [x,y] of [[3,5],[5,6],[4,8],[3,10],[5,11],[4,13],[3,15],[5,16],[4,18]])gp(g,x,y,rn);
+  gp(g,4,4,rl);gp(g,4,12,rl);gp(g,4,19,rl);
+  return bake(g);
 }

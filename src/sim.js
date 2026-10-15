@@ -75,6 +75,7 @@ const canStand=(u,i)=>{if(SPECIES[u.sp]&&SPECIES[u.sp].fly)return true;const b=b
 function wander(u,cx,cy,r){const i=sampleNear(cx,cy,r,j=>canStand(u,j),15);if(i>=0)setT(u,i)}
 function moveToward(u,spd){
   const dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);
+  if(u.haste>step)spd*=1.6;
   const bi=bm[tileOf(u)];if(bi){const f=BIOMES[bi].spd;if(f)spd*=f;if(bi===BM.PARA&&u.boost>step)spd*=1.6}
   if(Math.abs(dx)>.05)u.dir=dx>0?1:-1;
   if(d<=spd){u.x=u.tx;u.y=u.ty;return true}
@@ -83,6 +84,7 @@ function moveToward(u,spd){
   u.x=nx;u.y=ny;u.moving=true;return false;
 }
 function hit(t,dmg,src){
+  if(t.shield>step)return;
   if(t.k===0){const df=tribes[t.tribe].fx;if(df.def)dmg/=1+df.def}
   if(src.k===0||src.k===1){const sb=bm[tileOf(src)];if(sb===BM.CLOVER)dmg*=1.2}
   if(t.k===0&&t.traits.includes('Giant'))dmg*=.8
@@ -112,7 +114,7 @@ function chase(u,spd,dmg,range){
   }else{u.tx=t.x;u.ty=t.y;moveToward(u,spd)}
 }
 const isThreat=v=>v.k===1&&SPECIES[v.sp].pred&&!SPECIES[v.sp].minor;
-function enemyNear(u,r){return nearest(u,r,v=>isThreat(v)||(v.k===0&&v.tribe!==u.tribe&&hostile(v.tribe,u.tribe)))}
+function enemyNear(u,r){return nearest(u,r,v=>(isThreat(v)&&v.charm!==u.tribe)||(v.k===0&&v.tribe!==u.tribe&&hostile(v.tribe,u.tribe)))}
 
 /* ---------- people ---------- */
 function updPerson(u){
@@ -337,6 +339,11 @@ function doTask(u,T){
 /* ---------- animals ---------- */
 function updAnimal(u){
   const S=SPECIES[u.sp];
+  if(u.odd&&u.traits){
+    if(u.traits.includes('Blessed')&&u.hp<u.maxhp)u.hp=Math.min(u.maxhp,u.hp+.06);
+    if(u.traits.includes('Cursed')){u.hp-=.03;if(u.hp<=0){die(u);return}}
+    if(u.traits.includes('Berserk')&&!u.target&&R()<.05){const e=nearest(u,6,v=>v!==u);if(e)u.target=e}
+  }
   u.hunger++;
   const i=tileOf(u);
   if(S.monster)u.hunger=0;
@@ -348,17 +355,17 @@ function updAnimal(u){
   if(--u.cd<=0){
     u.cd=15+((R()*25)|0);u.mode=0;
     if(S.monster){
-      if(!u.target){const p=nearest(u,S.sight||9,v=>!isMon(v));if(p)u.target=p}
+      if(!u.target){const c=u.charm,p=nearest(u,S.sight||9,c==null?v=>!isMon(v):v=>(isMon(v)&&v.charm!==c)||(v.k===0&&v.tribe!==c&&hostile(v.tribe,c)));if(p)u.target=p}
       if(!u.target)wander(u,u.x,u.y,8);
     }else if(S.pred){
       if(!u.target){
         const night=isNight();
         if(u.hunger>(night?200:350)){
           let p=nearest(u,12,v=>v.k===1&&S.prey.includes(v.sp));
-          if(!p&&S.people&&u.hunger>(night?S.people*.7:S.people))p=nearest(u,10,v=>v.k===0);
+          if(!p&&S.people&&u.charm==null&&u.hunger>(night?S.people*.7:S.people))p=nearest(u,10,v=>v.k===0);
           if(p)u.target=p;
         }
-        if(!u.target&&S.territorial){const p=nearest(u,3,v=>v.k===0&&adult(v));if(p&&R()<.5){u.target=p;sfx('cry',u.x,u.y,u.sp)}}
+        if(!u.target&&S.territorial&&u.charm==null){const p=nearest(u,3,v=>v.k===0&&adult(v));if(p&&R()<.5){u.target=p;sfx('cry',u.x,u.y,u.sp)}}
       }
       if(!u.target)wander(u,u.x,u.y,7);
     }else{
@@ -373,7 +380,7 @@ function updAnimal(u){
     const t=u.target,d=Math.hypot(t.x-u.x,t.y-u.y);
     if(d<7){u.fcd=34+((R()*30)|0);breathe(u,t)}else u.fcd=0;
   }
-  if(u.target){chase(u,S.chase,S.dmg,u.sp==='dragon'?1.6:1.2);return}
+  if(u.target){chase(u,S.chase||S.flee,(u.dmg||S.dmg||2)*(u.odd&&u.traits&&u.traits.includes('Berserk')?1.5:1),u.sp==='dragon'?1.6:1.2);return}
   moveToward(u,u.mode?S.flee:S.spd);
 }
 
@@ -408,17 +415,18 @@ function updateUnits(){
       const b=bm[i];if(b){biomeTick(u,b);if(u.dead){dead=true;continue}}
     }
     if(u.age>u.life&&!(u.odd&&u.traits.includes('Immortal'))){die(u);dead=true;continue}
+    if(u.frozen>step){u.moving=false;continue}
     if(u.k===0)updPerson(u);else updAnimal(u);
     if(u.dead)dead=true;
   }
   if(dead)units=units.filter(u=>!u.dead);
   for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;T.jobs={};for(const t of T.towns)t.pop=0}
-  const rc={human:0,elf:0,dwarf:0,orc:0},sp={};
+  const rc={},sp={};for(const r of RACE_KEYS)rc[r]=0;
   for(const u of units){
     if(u.k===0){const T=tribes[u.tribe];T.pop++;T.members.push(u);(T.towns[u.town|0]||T.towns[0]).pop++;rc[u.race]++;if(u.job)T.jobs[u.job]=(T.jobs[u.job]||0)+1}
     else{sp[u.sp]=(sp[u.sp]||0)+1;if(u.owner>=0)tribes[u.owner].stock++}
   }
-  cnt.race=rc;cnt.sp=sp;cnt.people=rc.human+rc.elf+rc.dwarf+rc.orc;
+  cnt.race=rc;cnt.sp=sp;let np=0;for(const r in rc)np+=rc[r];cnt.people=np;
 }
 
 /* ---------- kingdoms ---------- */
@@ -760,7 +768,7 @@ function simStep(){
   for(const b of boats){b.px=b.x;b.py=b.y}
   step++;
   updateTimeWeather();
-  updateUnits();updateTribes();updateBoats();updateFire();growth();updateVolcanoes();
+  updateUnits();updateTribes();updateBoats();updateFire();growth();updateWorldFx();
   if(ownDirty||step%40===0)computeDomains();
   if(step%YEAR===0)yearly();
 }
@@ -803,7 +811,7 @@ function genWorld(){
   bld=new Int16Array(N).fill(-1);btype=new Uint8Array(N);burnt=new Uint32Array(N);
   bm=new Uint8Array(N);ore=new Uint8Array(N);oreAmt=new Uint8Array(N);btier=new Uint8Array(N);own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;
   units=[];tribes=[];religions=[];boats=[];fires=new Set();lavas=new Set();burnSet=new Set();step=0;logs=[];wars=[];alliances=[];effects=[];
-  bList=[];bDirty=true;logDirty=true;volcanoes.length=0;dipPending=null;
+  bList=[];bDirty=true;logDirty=true;volcanoes.length=0;wfx.length=0;monoliths.length=0;dipPending=null;
   WX.type='clear';WX.until=900;WX.cloud=WX.rain=WX.snow=WX.fog=WX.storm=0;
   const ox=R()*100,oy=R()*100;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
@@ -821,7 +829,7 @@ function genWorld(){
     const ok=j=>{
       if(!fertile(j)||tree[j])return false;
       const x=j%W,y=(j/W)|0;
-      if(spots.some(s=>Math.hypot(s[0]-x,s[1]-y)<45))return false;
+      if(spots.some(s=>Math.hypot(s[0]-x,s[1]-y)<34))return false;
       if(r==='dwarf')return bio(hgt[j])===4&&ringFind(x,y,8,k=>bio(hgt[k])===5)>=0;
       return true;
     };
@@ -834,7 +842,7 @@ function genWorld(){
     log(`The ${T.title} awoke in the world.`,T.color);
     if(r==='human')startFocus=[x+.5,y+.5];
   };
-  RACE_KEYS.forEach(placeRace);
+  RACE_KEYS.filter(r=>!RACES[r].uplift).forEach(placeRace);
   const herd=(sp,groups,size,pred)=>{for(let k=0;k<groups;k++){const i=randomLand(j=>(pred?pred(j):fertile(j))&&farFrom(j,sp==='wolf'||sp==='bear'?35:8));if(i>=0)for(let m=0;m<size;m++)addAnimal(sp,i%W,(i/W)|0)}};
   herd('sheep',8,3);herd('deer',7,3,j=>fertile(j)&&ringFind(j%W,(j/W)|0,3,k=>tree[k])>=0);herd('rabbit',10,3);
   herd('wolf',3,3);herd('bear',3,1,j=>bio(hgt[j])===4);herd('fox',4,1);herd('horse',3,3);

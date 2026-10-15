@@ -58,7 +58,7 @@ function tribeNear(p){
 }
 const nearP=(p,r)=>units.filter(u=>u.k===0&&!u.dead&&!u.inside&&Math.hypot(u.x-p.x,u.y-p.y)<=r);
 const splashR=()=>1.6+brushSize*.7;
-function addOdd(u,name){u.odd=true;if(!u.traits.includes(name))u.traits.push(name)}
+function addOdd(u,name){if(!u.traits)u.traits=[];u.odd=true;if(!u.traits.includes(name))u.traits.push(name)}
 
 /* ---------- explosions ---------- */
 const BOMBS={
@@ -199,16 +199,27 @@ function plague(p){
   else toast('The plague found few to infect.');
 }
 
-/* ---------- wonders and oddities ---------- */
+/* ---------- wonders and oddities: they touch every living being, people, animals and monsters alike ---------- */
+const nearAll=(p,r)=>units.filter(u=>!u.dead&&!u.inside&&Math.hypot(u.x-p.x,u.y-p.y)<=r);
 function splash(p,fn,col,empty){
-  const list=nearP(p,splashR());
-  if(!list.length){toast(empty||'No one is close enough. Tap near a person.');return false}
-  for(const u of list)fn(u);
+  const list=nearAll(p,splashR());
+  if(!list.length){toast(empty||'Nothing alive is close enough. Tap near a creature or a person.');return false}
+  for(const u of list){if(!u.traits)u.traits=[];fn(u)}
   effects.push({type:'rite',x:p.x,y:p.y,c:col||[255,230,150],t:0,dur:36});sfx('spawn',p.x|0,p.y|0);
   return true;
 }
 function scaleUnit(u,s,hpm,dmgm){
-  u.scale=s;u.maxhp*=hpm;u.hp=u.maxhp;u.dmg*=dmgm;
+  u.scale=(u.scale||1)*s;u.maxhp*=hpm;u.hp=u.maxhp;u.dmg=(u.dmg||1)*dmgm;
+}
+function teleport(u){
+  const j=randomLand(k=>canStand(u,k),300);if(j<0)return;
+  u.x=u.px=j%W+.5;u.y=u.py=((j/W)|0)+.5;u.tx=u.x;u.ty=u.y;u.target=null;u.task=null;u.cd=0;
+  effects.push({type:'rite',x:u.x,y:u.y,c:[180,120,255],t:0,dur:30});
+}
+/* one creature becomes another */
+function morphAnimal(u,sp){
+  const S=SPECIES[sp];u.sp=sp;u.maxhp=u.hp=S.hp*(u.scale||1);u.dmg=S.dmg||0;u.spd=S.spd;u.amph=!!S.amph;u.fly=!!S.fly;u.target=null;u.mode=0;
+  if(!S.dom)u.owner=-1;
 }
 const TAPS={
   meteor:p=>{if(inb(p.x|0,p.y|0)){effects.push({type:'meteor',x:p.x|0,y:p.y|0,t:0,dur:52});SFXQ.push({t:'boom',x:null,y:null})}},
@@ -216,35 +227,57 @@ const TAPS={
   grenade:p=>blast(p.x,p.y,BOMBS.grenade),bomb:p=>blast(p.x,p.y,BOMBS.bomb),
   antimatter:p=>blast(p.x,p.y,BOMBS.antimatter),nuke:p=>blast(p.x,p.y,BOMBS.nuke),tsar:p=>blast(p.x,p.y,BOMBS.tsar),
   molotov,laser,earthquake,volcano,flood,plague,
+  /* new chaos, all of it ticking along in the simulation (see updateWorldFx) */
+  tornado:p=>{wfx.push({type:'tornado',x:p.x,y:p.y,a:R()*6.28,until:step+320,r:1.8});log(`A tornado touched down ${nearTribeText(p.x|0,p.y|0)}.`,[170,170,190]);sfx('thunder',p.x|0,p.y|0)},
+  blackhole:p=>{wfx.push({type:'hole',x:p.x,y:p.y,until:step+160,r:8});sfx('boom',p.x|0,p.y|0);log(`A black hole opened ${nearTribeText(p.x|0,p.y|0)}.`,[150,90,220])},
+  cluster:p=>{for(let k=0;k<7;k++)wfx.push({type:'delay',at:step+k*4+1,x:p.x+(R()-.5)*9,y:p.y+(R()-.5)*9,o:BOMBS.grenade});},
+  shower:p=>{for(let k=0;k<7;k++)effects.push({type:'meteor',x:clamp((p.x+(R()*20-10))|0,1,W-2),y:clamp((p.y+(R()*20-10))|0,1,H-2),t:-k*14,dur:52});SFXQ.push({t:'boom',x:null,y:null})},
+  tstorm:p=>{wfx.push({type:'storm',x:p.x,y:p.y,until:step+200,next:step,r:9});setWeather('storm')},
+  acid:p=>{wfx.push({type:'acid',x:p.x,y:p.y,until:step+260,r:6});log(`Acid rain fell ${nearTribeText(p.x|0,p.y|0)}.`,[140,210,80])},
   /* wonders */
   w_elixir:p=>splash(p,u=>{addOdd(u,'Immortal');u.hp=u.maxhp},[255,240,150]),
-  w_giant:p=>splash(p,u=>{if(u.traits.includes('Giant'))return;u.traits=u.traits.filter(t=>t!=='Tiny');addOdd(u,'Giant');scaleUnit(u,1.55,3,1.5)},[255,160,90]),
-  w_tiny:p=>splash(p,u=>{if(u.traits.includes('Tiny'))return;u.traits=u.traits.filter(t=>t!=='Giant');addOdd(u,'Tiny');scaleUnit(u,.62,.6,.7);u.spd*=1.25},[200,150,255]),
+  w_giant:p=>splash(p,u=>{if(u.traits.includes('Giant'))return;if(u.traits.includes('Tiny')){u.traits=u.traits.filter(t=>t!=='Tiny');scaleUnit(u,1/.62,1/.6,1/.7)}addOdd(u,'Giant');scaleUnit(u,1.55,3,1.5)},[255,160,90]),
+  w_tiny:p=>splash(p,u=>{if(u.traits.includes('Tiny'))return;if(u.traits.includes('Giant')){u.traits=u.traits.filter(t=>t!=='Giant');scaleUnit(u,1/1.55,1/3,1/1.5)}addOdd(u,'Tiny');scaleUnit(u,.62,.6,.7);u.spd*=1.25},[200,150,255]),
   w_bless:p=>splash(p,u=>{u.traits=u.traits.filter(t=>t!=='Cursed');addOdd(u,'Blessed');u.hp=u.maxhp},[255,250,190]),
   w_curse:p=>splash(p,u=>{u.traits=u.traits.filter(t=>t!=='Blessed');addOdd(u,'Cursed')},[120,40,150]),
   w_mad:p=>splash(p,u=>addOdd(u,'Berserk'),[240,60,60]),
-  w_hero:p=>splash(p,u=>{for(const t of ['Strong','Tough','Brave'])if(!u.traits.includes(t))u.traits.push(t);u.maxhp*=1.3;u.hp=u.maxhp;u.dmg*=1.3;u.kills=Math.max(u.kills,5)},[255,210,80]),
-  w_fountain:p=>{
-    const ok=splash(p,u=>{u.hp=u.maxhp;u.age=Math.max(ADULT,u.age*.4);u.traits=u.traits.filter(t=>t!=='Cursed')},[140,220,255]);
-    if(ok)for(const u of units)if(u.k===1&&Math.hypot(u.x-p.x,u.y-p.y)<splashR()&&!isMon(u))u.hp=u.maxhp;
-  },
+  w_hero:p=>splash(p,u=>{for(const t of ['Strong','Tough','Brave'])if(!u.traits.includes(t))u.traits.push(t);u.maxhp*=1.3;u.hp=u.maxhp;u.dmg*=1.3;if(u.k===0)u.kills=Math.max(u.kills,5)},[255,210,80]),
+  w_fountain:p=>splash(p,u=>{u.hp=u.maxhp;u.age=u.k===0?Math.max(ADULT,u.age*.4):Math.max(YEAR*1.5,u.age*.4);u.traits=u.traits.filter(t=>t!=='Cursed');u.frozen=0},[140,220,255]),
   w_love:p=>{
-    const list=nearP(p,splashR()).filter(adult);
-    if(list.length<2){toast('Love needs at least two adults close together.');return}
-    let n=0;for(let k=0;k+1<list.length&&n<3&&units.length<1600;k+=2){addPerson(tribes[list[k].tribe],list[k].x|0,list[k].y|0,list[k],list[k+1]);n++}
+    const list=nearAll(p,splashR()).filter(u=>adult(u)&&!isMon(u));let n=0;
+    const ppl=list.filter(u=>u.k===0);
+    for(let k=0;k+1<ppl.length&&n<3&&units.length<1600;k+=2){addPerson(tribes[ppl[k].tribe],ppl[k].x|0,ppl[k].y|0,ppl[k],ppl[k+1]);n++}
+    const bySp={};for(const u of list)if(u.k===1)(bySp[u.sp]=bySp[u.sp]||[]).push(u);
+    for(const sp in bySp){const a=bySp[sp];for(let k=0;k+1<a.length&&n<8&&units.length<1600;k+=2){addAnimal(sp,a[k].x|0,a[k].y|0,a[k].owner,true).town=a[k].town;n++}}
+    if(!n){toast('Love needs at least two adults of the same kind close together.');return}
     effects.push({type:'rite',x:p.x,y:p.y,c:[255,140,190],t:0,dur:40});sfx('spawn',p.x|0,p.y|0);
   },
   w_mutate:p=>splash(p,u=>{
+    if(u.k===1){const pool=SPECIES_KEYS.filter(k=>k!==u.sp&&!SPECIES[k].monster&&k!=='dragon');morphAnimal(u,pick(pool));return}
     const L=RACES[u.race],g=u.genes,old=g.str;
     g.skin=(R()*L.skins.length)|0;g.hair=(R()*L.hairs.length)|0;g.str=clamp(g.str+(R()-.4)*.5,.6,1.6);g.vit=clamp(g.vit+(R()-.5)*.4,.6,1.6);g.agi=clamp(g.agi+(R()-.5)*.3,.7,1.4);
     u.maxhp*=g.str/old;u.hp=u.maxhp;u.dmg*=g.str/old;
     const t=pick(TRAIT_KEYS);if(!u.traits.includes(t))u.traits.push(t);
   },[120,230,120]),
-  w_portal:p=>splash(p,u=>{
-    const j=randomLand(walk,200);if(j<0)return;
-    u.x=u.px=j%W+.5;u.y=u.py=((j/W)|0)+.5;u.tx=u.x;u.ty=u.y;u.target=null;u.task=null;u.cd=0;
-    effects.push({type:'rite',x:u.x,y:u.y,c:[180,120,255],t:0,dur:30});
-  },[180,120,255]),
+  w_portal:p=>splash(p,teleport,[180,120,255]),
+  w_freeze:p=>splash(p,u=>{u.frozen=step+260;u.target=null},[170,220,255]),
+  w_shield:p=>splash(p,u=>{u.shield=step+700},[255,226,120]),
+  w_haste:p=>splash(p,u=>{u.haste=step+600},[120,240,255]),
+  w_aging:p=>splash(p,u=>{u.age+=u.k===0?YEAR*20:YEAR*4},[190,170,140]),
+  w_clone:p=>{
+    const list=nearAll(p,splashR()).slice(0,8);if(!list.length){toast('Nothing alive is close enough to copy.');return}
+    for(const u of list){
+      if(units.length>=1600)break;
+      if(u.k===0){const T=tribes[u.tribe],c=addPerson(T,u.x|0,u.y|0,null,null,u.race);c.genes={...u.genes};c.traits=u.traits.slice();c.age=u.age;c.maxhp=c.hp=u.maxhp;c.dmg=u.dmg;c.town=u.town;c.odd=u.odd;c.scale=u.scale;if(u.job)setJob(c,u.job)}
+      else{const c=addAnimal(u.sp,u.x|0,u.y|0,u.owner);c.age=u.age;c.town=u.town;c.scale=u.scale;c.maxhp=c.hp=u.maxhp;c.dmg=u.dmg;if(u.traits){c.traits=u.traits.slice();c.odd=u.odd}}
+    }
+    effects.push({type:'rite',x:p.x,y:p.y,c:[200,255,200],t:0,dur:40,big:true});sfx('spawn',p.x|0,p.y|0);
+  },
+  w_charm:p=>{
+    const T=tribeNear(p);if(!T){toast('There is no kingdom near enough to befriend them.');return}
+    const ok=splash(p,u=>{if(u.k!==1)return;u.charm=T.id;u.owner=T.id;u.town=nearestTown(T,u.x,u.y);u.target=null},[255,160,220]);
+    if(ok)toast(`The creatures now serve the ${T.title}.`);
+  },
   w_midas:p=>{
     let n=0;const r=splashR()+1;
     brushAt(p.x,p.y,r,i=>{if(tree[i]&&bio(hgt[i])>=3&&bio(hgt[i])<=5){tree[i]=0;ore[i]=ORE.GOLD;oreAmt[i]=20+((R()*20)|0);markTile(i);n++}});
@@ -409,3 +442,84 @@ function computeDomains(){
   landTiles=Math.max(1,land);ownDirty=false;if(changed)ovDirty=true;
 }
 const sharePct=T=>Math.round(T.area/landTiles*1000)/10;
+
+/* ---------- the monolith: a black slab whose beam wakes a mind in any creature it touches ---------- */
+const monoliths=[],wfx=[];
+TAPS.monolith=p=>{
+  const x=p.x|0,y=p.y|0;if(!inb(x,y))return;
+  const k=monoliths.findIndex(m=>Math.hypot(m.x-x,m.y-y)<1.6);
+  if(k>=0){monoliths.splice(k,1);toast('The monolith sinks back into the earth.');return}
+  if(isWater(y*W+x)){toast('The monolith needs solid ground.');return}
+  monoliths.push({x,y,next:step+60,beams:0});sfx('unveil',x,y);
+  effects.push({type:'beam',x:x+.5,y:y+.5,r:4.5,t:0,dur:50});
+  toast('A monolith rises. Every 10 seconds its beam awakens the creatures around it. Tap it again to remove it.');
+  log(`A black monolith rose ${nearTribeText(x,y)}.`,[160,200,255]);
+};
+function updateMonoliths(){
+  for(const m of monoliths){
+    if(step<m.next)continue;
+    m.next=step+200;m.beams++;
+    effects.push({type:'beam',x:m.x+.5,y:m.y+.5,r:4.5,t:0,dur:50});sfx('unveil',m.x,m.y);
+    let n=0;
+    for(const u of units){
+      if(n>=6)break;
+      if(u.dead||u.k!==1||u.inside||Math.hypot(u.x-m.x-.5,u.y-m.y-.5)>4.5)continue;
+      if(upliftUnit(u))n++;
+    }
+  }
+}
+function upliftUnit(u){
+  const sp=u.sp,key=makeUpliftRace(sp);addRaceTile(key);
+  const tile=ringFind(u.x|0,u.y|0,4,walk);if(tile<0)return false;
+  const tx=tile%W,ty=(tile/W)|0;
+  let T=null,bd=30*30;
+  for(const t of tribes){if(!t.alive||t.race!==key)continue;for(const H of t.towns){const d=(H.x-tx)**2+(H.y-ty)**2;if(d<bd){bd=d;T=t}}}
+  if(!T){T=newTribe(key,tx,ty);log(`Touched by the monolith, ${SPECIES[sp].name.toLowerCase()}s awoke as the ${RACES[key].plural} and founded the ${T.title}.`,T.color)}
+  const pp=addPerson(T,tx,ty,null,null,key);
+  pp.x=pp.px=u.x;pp.y=pp.py=u.y;pp.tx=pp.x;pp.ty=pp.y;pp.age=ADULT+((R()*6*YEAR)|0);pp.town=nearestTown(T,tx,ty);
+  T.pop++;
+  effects.push({type:'rite',x:pp.x,y:pp.y,c:[160,220,255],t:0,dur:40});
+  die(u);
+  return true;
+}
+
+/* ---------- lasting chaos: tornadoes, black holes, storms, acid rain, cluster bombs ---------- */
+function updateWorldFx(){
+  updateVolcanoes();updateMonoliths();
+  for(let k=wfx.length-1;k>=0;k--){
+    const f=wfx[k];
+    if(f.type==='delay'){if(step>=f.at){blast(f.x,f.y,f.o);wfx.splice(k,1)}continue}
+    if(step>f.until){if(f.type==='hole')blast(f.x,f.y,{r:3.5,void:true,core:1,shake:14,dur:40,c:[150,90,220],dark:true,name:'The black hole',snd:'boom'});wfx.splice(k,1);continue}
+    if(f.type==='tornado'){
+      f.a+=(R()-.5)*.5;f.x+=Math.cos(f.a)*.09;f.y+=Math.sin(f.a)*.09;
+      if(!inb(f.x|0,f.y|0)){wfx.splice(k,1);continue}
+      for(const u of units){
+        if(u.dead||u.inside)continue;const d=Math.hypot(u.x-f.x,u.y-f.y);if(d>=f.r)continue;
+        if(R()<.035){die(u);continue}
+        const a=Math.atan2(u.y-f.y,u.x-f.x)+1.4,nx=u.x+Math.cos(a)*.22,ny=u.y+Math.sin(a)*.22;
+        if(inb(nx|0,ny|0)){u.x=nx;u.y=ny;u.tx=nx;u.ty=ny}
+      }
+      for(const b of boats)if(Math.hypot(b.x-f.x,b.y-f.y)<f.r&&R()<.05)b.dead=true;
+      if(R()<.6){const X=(f.x+(R()-.5)*3)|0,Y=(f.y+(R()-.5)*3)|0;if(inb(X,Y)){const i=Y*W+X;if(tree[i]&&R()<.35){tree[i]=0;markTile(i)}if(bld[i]>=0&&R()<.05){destroyBld(i);burn(i,500)}}}
+    }else if(f.type==='hole'){
+      for(const u of units){
+        if(u.dead)continue;const dx=f.x-u.x,dy=f.y-u.y,d=Math.hypot(dx,dy);if(d>f.r)continue;
+        if(d<.7){die(u);continue}
+        const pull=.12*(1-d/f.r)+.03;u.x+=dx/d*pull;u.y+=dy/d*pull;u.tx=u.x;u.ty=u.y;u.inside=false;
+      }
+      for(const b of boats)if(Math.hypot(b.x-f.x,b.y-f.y)<f.r*.6)b.dead=true;
+      if(R()<.5){const a=R()*6.28,d=R()*3,X=(f.x+Math.cos(a)*d)|0,Y=(f.y+Math.sin(a)*d)|0;if(inb(X,Y)){const i=Y*W+X;destroyBld(i);tree[i]=0;hgt[i]=Math.max(0,hgt[i]-.02);afterH(i)}}
+      shake=reduceMotion?0:Math.max(shake,3);
+    }else if(f.type==='storm'){
+      if(step>=f.next){f.next=step+5+((R()*6)|0);strike({x:f.x+(R()-.5)*f.r*2,y:f.y+(R()-.5)*f.r*2})}
+    }else if(f.type==='acid'){
+      for(let n=0;n<6;n++){
+        const a=R()*6.28,d=Math.sqrt(R())*f.r,X=(f.x+Math.cos(a)*d)|0,Y=(f.y+Math.sin(a)*d)|0;if(!inb(X,Y))continue;const i=Y*W+X;
+        if(tree[i]&&R()<.06){tree[i]=0;markTile(i)}
+        if(bld[i]>=0&&R()<.004)destroyBld(i);
+        if(R()<.01&&(bio(hgt[i])===3||bio(hgt[i])===4)){bm[i]=BM.WASTE;markDirty(i)}
+      }
+      for(const u of units){if(u.dead||u.inside||Math.hypot(u.x-f.x,u.y-f.y)>=f.r)continue;u.hp-=.12;if(u.hp<=0)die(u)}
+    }
+  }
+}

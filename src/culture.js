@@ -237,7 +237,7 @@ function legendOf(T){
 
 /* ---------- art ---------- */
 function artTitle(T,form){
-  const W=ART_WORDS[T.race],adj=pick(W.adj),noun=pick(W.noun),d=T.rel.patron,r=T.race;
+  const W=ART_WORDS[T.race],adj=pick(W.adj),noun=pick(W.noun),d=T.rel.patron,r=RB(T.race);
   const opts=[
     {k:'deity',desc:`A devotion to ${d.name}, ${d.title}.`,t:{human:[`Hymn to ${d.name}`,`${d.name}\u2019s ${noun}`],elf:[`Ode to ${d.name}`,`The ${noun} of ${d.name}`],dwarf:[`${d.name}\u2019s ${noun}`,`The ${adj} ${noun} of ${d.name}`],orc:[`Praise of ${d.name}`,`${d.name}\u2019s ${noun}`]}[r]},
     {k:'place',desc:`A tribute to the homeland of ${T.name}.`,t:{human:[`The ${adj} ${noun} of ${T.name}`],elf:[`${T.name}, ${adj} ${noun}`],dwarf:[`The ${adj} ${noun} of ${T.name}`],orc:[`The ${adj} ${noun} of ${T.name}`]}[r]},
@@ -274,7 +274,7 @@ function culturalTick(T){
 function festival(T){
   const d=T.rel.patron,at=T.templeAt>=0?T.templeAt:T.hall;
   T.devo=Math.min(100,T.devo+4);T.bless=step+700;T.food-=Math.min(T.food*.15,10)|0;
-  switch(T.race){
+  switch(RB(T.race)){
     case'dwarf':T.mat+=6;break;
     case'elf':for(const m of T.members)m.hp=m.maxhp;
       for(let k=0,n=0;k<14&&n<8;k++){const t=sampleNear(T.cx,T.cy,12,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&!nearBld(i),20);if(t>=0){tree[t]=1;markTile(t);n++}}break;
@@ -291,7 +291,7 @@ function omen(x,y){
   for(const T of tribes){
     if(!T.alive||Math.hypot(T.cx-x,T.cy-y)>26)continue;
     const p=T.rel.patron.id;
-    const dv=T.race==='orc'?(p==='ash'?12:8):T.race==='dwarf'?(p==='forge'?7:3):T.race==='elf'?-8:-5;
+    const rb=RB(T.race),dv=rb==='orc'?(p==='ash'?12:8):rb==='dwarf'?(p==='forge'?7:3):rb==='elf'?-8:-5;
     T.devo=clamp(T.devo+dv,0,100);
     if(n++<2)log(dv>0?`The ${T.title} hailed the falling star as a sign from ${T.rel.patron.name}.`
       :`The ${T.title} trembled at the omen: ${T.rel.patron.name} had turned a cold face to them.`,dv>0?DOMAINS[T.rel.patron.sym].c:[170,170,200]);
@@ -373,3 +373,9 @@ function diplomacyYear(){
   }
 }
 const cultureName=T=>T.cultureName||`${T.values.map(v=>v.name).join(' & ')} culture`;
+/* a newer people shares the pantheon, doctrines, tenets, values, art and legends of its base people */
+function aliasRace(r){
+  const b=RB(r);if(b===r)return;
+  for(const tb of [PANTHEON,DOC_W,SECT_WORD,TENETS,VALUES,ART_FORMS,ART_WORDS,LEGENDS,LEGEND_SETTLER,LEGEND_REBEL])if(!tb[r])tb[r]=tb[b];
+}
+for(const r of RACE_KEYS)aliasRace(r);

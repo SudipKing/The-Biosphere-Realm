@@ -1,6 +1,6 @@
 # The Biosphere Realm
 
-A living god-simulation sandbox for the browser. Shape continents, seed four peoples (humans, elves, dwarves and orcs), release animals, and watch kingdoms grow, pray, create art, sail, ally, feud and fall through day, night, seasons and weather.
+A living god-simulation sandbox for the browser. Shape continents, seed seven peoples (humans, elves, dwarves, orcs, gnomes, goblins and saurians), awaken new ones with the monolith, release animals, and watch kingdoms grow, pray, create art, sail, ally, feud and fall through day, night, seasons and weather.
 
 Everything is generated in code: the pixel art, the world, the languages, the music and every sound. There are no asset files and no dependencies.
 
@@ -58,8 +58,18 @@ The dashboard on the left has six tabs (keys `1` to `6`). **Inspect** and **Move
 | 🐾 **Creatures** | The four peoples, farm and wild animals, crabs and turtles, crows and eagles, and monsters: skeletons, zombies, dragons, wraiths, giant spiders and ogres |
 | 🕊️ **Diplomacy & Noosphere** | Declare war, make peace, forge or break alliances, inspire art, enlighten a kingdom to the next age, bless, curse, spark a revolt, send missionaries, gift supplies, send settlers |
 | 🌿 **Nature & Disasters** | Biome seeds, ore deposits, rain, lightning, fire, earthquake, volcano, flood, plague |
-| 💥 **Chaos** | Meteor, grenade, bomb, molotov, orbital laser, nuke, Tsar Bomba, antimatter |
-| ✨ **Wonders & Oddities** | Wishing star (a surprise), elixir of life, giant potion, shrink mushroom, halo, hex, madness, hero's mantle, fountain of youth, love potion, mutation, portal, Midas touch, garden blessing, treasure chest, feast, hourglass |
+| 💥 **Chaos** | Meteor, grenade, bomb, molotov, orbital laser, nuke, Tsar Bomba, antimatter, tornado, black hole, cluster bomb, meteor shower, thunderstorm, acid rain |
+| ✨ **Wonders & Oddities** | The monolith, freeze, divine shield, haste, age blast, cloning, charm, wishing star (a surprise), elixir of life, giant potion, shrink mushroom, halo, hex, madness, hero's mantle, fountain of youth, love potion, mutation, portal, Midas touch, garden blessing, treasure chest, feast, hourglass |
+
+### The monolith and new peoples
+
+Place a **monolith** anywhere from the Wonders tab. Every 10 seconds it fires a beam, and any animal or monster within a few tiles becomes a new sapient people: wolves become Wolfkin, sheep become Woolfolk, dragons become Drakari, and so on. Each awakened people gets its own look, invented language, names, kingdom, villages and faith, and its own tile in the Creatures tab so you can place more of them. Tap a monolith again to remove it.
+
+Wonders and chaos touch every being: animals and monsters can be frozen, shielded, hastened, cloned, cursed, made giant or driven mad, and every blast, tornado and acid rain hurts them too.
+
+### War and numbers
+
+Every war shows a red arrow on the map from the attacker toward the kingdom it is attacking. Each kingdom's banner reads its total population and its soldiers (for example 23/4⚔).
 
 ### Biomes
 

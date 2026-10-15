@@ -161,6 +161,11 @@ function decorTile(buf,pw,lx,ly,tx,ty,bmi,b0){
     buf[(ly+py)*pw+lx+px]=P(184,180,172);
   }
 }
+function bmAt(fx,fy,px,py){
+  const q=((py>>1)<<1)*OW+((px>>1)<<1),a=pnoise[q]/255,b=pnoise[(q+524287)%pnoise.length]/255;
+  const X=clamp((fx+.5+(a-.5)*.95)|0,0,W-1),Y=clamp((fy+.5+(b-.5)*.95)|0,0,H-1);
+  return bm[Y*W+X];
+}
 function renderTile(i){
   const tx=i%W,ty=(i/W)|0,ch=chunks[((ty/CHT)|0)*CCW+((tx/CHT)|0)],buf=ch.buf,pw=ch.pw;
   const lx=(tx-ch.x0)*TS,ly=(ty-ch.y0)*TS;
@@ -168,13 +173,15 @@ function renderTile(i){
   let dirt=0;
   if(bld[i]!==-1)dirt=1;
   else for(let k=0;k<8;k++){const X=tx+N8[k][0],Y=ty+N8[k][1];if(X>=0&&Y>=0&&X<W&&Y<H&&bld[Y*W+X]!==-1){dirt=.55;break}}
+  /* biome borders are ragged and organic rather than square: near an edge each pixel borrows a neighbour's biome */
+  const edge=(tx>0&&bm[i-1]!==bmi)||(tx<W-1&&bm[i+1]!==bmi)||(ty>0&&bm[i-W]!==bmi)||(ty<H-1&&bm[i+W]!==bmi);
   for(let sy=0;sy<TS;sy++){
     const py=ty*TS+sy,fy=ty+(sy+.5)/TS-.5,row=py*OW;
     let o=(ly+sy)*pw+lx;
     for(let sx=0;sx<TS;sx++,o++){
       const px=tx*TS+sx,fx=tx+(sx+.5)/TS-.5,n=pnoise[row+px]/255,n2=pnoise[(row+px+524287)%pnoise.length]/255;
       const hb=hAt(fx,fy);
-      buf[o]=pcol(hb+(n-.5)*.01,hb-hAt(fx-.35,fy-.35),n,n2,lv,bt,lv?hash(px>>1,(py>>1)+lt):0,bmi,tx,ty,dirt);
+      buf[o]=pcol(hb+(n-.5)*.01,hb-hAt(fx-.35,fy-.35),n,n2,lv,bt,lv?hash(px>>1,(py>>1)+lt):0,edge?bmAt(fx,fy,px,py):bmi,tx,ty,dirt);
     }
   }
   tq[i]=curSea;
@@ -182,7 +189,9 @@ function renderTile(i){
   if(ore[i]&&!lv)drawOre(buf,pw,lx,ly,ore[i],tx,ty);
   if(tree[i]&&!lv){
     const kind=treeKind(i),T=TREES[kind],rows=T.rows,v=.86+hash(tx,ty+999)*.26,pal=treePal(kind,v,tx,ty,bmi);
-    for(let y=0;y<8;y++){const r=rows[y];for(let x=0;x<8;x++){const c=r[x];if(c!=='.'&&pal[c]!==undefined)buf[(ly+y)*pw+lx+x]=pal[c]}}
+    /* each tree is nudged and sometimes mirrored, so a forest never looks like a grid */
+    const jx=((hash(tx+3,ty)*3)|0)-1,jy=-((hash(tx,ty+3)*2)|0),fl=hash(tx+9,ty+9)<.5;
+    for(let y=0;y<8;y++){const r=rows[y],Y=y+jy;if(Y<0||Y>7)continue;for(let x=0;x<8;x++){const c=r[fl?7-x:x],X=x+jx;if(X<0||X>7)continue;if(c!=='.'&&pal[c]!==undefined)buf[(ly+Y)*pw+lx+X]=pal[c]}}
   }
   ch.dirty=true;
 }

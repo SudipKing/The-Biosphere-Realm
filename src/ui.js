@@ -80,7 +80,7 @@ function renderInspect(){
     else{
       const T=tribes[bld[i]],L=RACES[T.race],ty=btype[i];
       const names={human:['Cottage','Great hall','Chapel','Statue'],elf:['Tree home','Elder tree hall','Moon shrine','Spirit stone'],
-        dwarf:['Stone house','Mountain hall','Forge temple','Rune-pillar'],orc:['Hide tent','War lodge','Totem shrine','Skull totem']}[T.race];
+        dwarf:['Stone house','Mountain hall','Forge temple','Rune-pillar'],orc:['Hide tent','War lodge','Totem shrine','Skull totem']}[RB(T.race)];
       sprite=buildingSprite(T.race,ty,T.ci,T.rel.domain,btier[i]);
       const art=ty===4?T.arts.find(x=>x.i===i):null;
       const fol=units.filter(u=>u.k===0&&tribes[u.tribe].rel===T.rel).length;
@@ -152,7 +152,7 @@ const TABS=[
     ['deep','🔵','Deep ocean','Paint the deep sea.'],
   ]},
   {ic:'🐾',name:'Creatures',items:[
-    ...RACE_KEYS.map(r=>[r,{race:r},RACES[r].plural,{
+    ...RACE_KEYS.map(r=>[r,{race:r},RACES[r].plural,RACES[r].tip?RACES[r].tip+' Tap inside another people\u2019s kingdom to send settlers to live among them.':{
       human:'Tap land to found a human kingdom, or near one to add to it. Adaptable, quick to grow.',
       elf:'Tap land to found an elven realm. Long-lived archers who plant forests.',
       dwarf:'Tap land, ideally highlands near mountains, to found a dwarf hold. Tough miners.',
@@ -198,8 +198,15 @@ const TABS=[
     ['nuke',WICON.nuke,'Nuke','Tap for a nuclear bomb: huge blast and a wasteland of fallout.'],
     ['tsar',WICON.tsar,'Tsar bomb','Tap for the biggest bomb ever built. Expect a very different map.'],
     ['antimatter',WICON.antimatter,'Antimatter','Tap to annihilate everything in a wide circle, leaving only a deep pit.'],
+    ['tornado','🌪️','Tornado','Tap to start a tornado that wanders for a while, flinging creatures and tearing up trees and homes.'],
+    ['blackhole','⚫','Black hole','Tap to open a black hole that drags in everything nearby, then collapses into a pit.'],
+    ['cluster','💥','Cluster bomb','Tap to scatter a string of small blasts across the area.'],
+    ['shower','🌌','Meteor shower','Tap to bring down a shower of meteors around the spot.'],
+    ['tstorm','⛈️','Thunderstorm','Tap to park a thunderstorm overhead. Lightning strikes again and again.'],
+    ['acid','☣️','Acid rain','Tap for acid rain: it hurts every living thing, kills trees, eats homes and leaves wasteland.'],
   ]},
   {ic:'✨',name:'Wonders & Oddities',items:[
+    ['monolith',()=>monolithSprite(),'Monolith','Place a black monolith anywhere. Every 10 seconds its beam turns any animal or monster nearby into a brand-new sapient people, with its own kingdom, language and faith. Tap it again to remove it.'],
     ['w_wish','🌠','Wishing star','Tap for a surprise. Anything can happen: a dragon, a rain of gold, a meteor shower, the dead…'],
     ['w_elixir','⚗️','Elixir of life','Splash people with an elixir: they never grow old and are fully healed.'],
     ['w_giant','🧪','Giant potion','Splash people to make them towering giants with triple health.'],
@@ -216,6 +223,12 @@ const TABS=[
     ['w_lush','🌸','Garden blessing','Turns the land to a flower meadow and heals everything in it.'],
     ['w_chest','🎁','Treasure chest','Leaves a deposit of gold, silver or gems at the tap.'],
     ['w_feast','🎉','Feast','Tap a kingdom to hold a festival at once: devotion, blessings and rites.'],
+    ['w_freeze','🧊','Freeze','Freezes every creature nearby solid for a while.'],
+    ['w_shield','🛡️','Divine shield','Every creature nearby is untouchable for a while.'],
+    ['w_haste','💨','Haste','Every creature nearby moves much faster for a while.'],
+    ['w_aging','👴','Age blast','Every creature nearby grows many years older at once.'],
+    ['w_clone','👯','Cloning','Makes an exact copy of each creature or person nearby.'],
+    ['w_charm','💘','Charm','Animals and monsters nearby come to serve the closest kingdom. Charmed monsters fight its enemies.'],
     ['w_time','⏳','Hourglass','Tap to let a whole year pass in a blink.'],
   ]},
 ];
@@ -405,14 +418,14 @@ function renderPanel(force){
   $('cBoats').textContent=boats.length;$('cAnimals').textContent=animals;
   let claimed=0;for(const T of alive)claimed+=T.area;
   $('claimed').textContent=`${Math.round(claimed/landTiles*100)}% of the land is claimed by a kingdom.`;
-  $('races').innerHTML=RACE_KEYS.map(r=>`<span title="${RACES[r].plural}">${RACES[r].icon} <b>${cnt.race[r]||0}</b></span>`).join('');
+  $('races').innerHTML=RACE_KEYS.filter(r=>cnt.race[r]||!RACES[r].base).map(r=>`<span title="${RACES[r].plural}">${RACES[r].icon} <b>${cnt.race[r]||0}</b></span>`).join('');
   if(!force&&window.innerWidth<=860&&!side.classList.contains('open'))return;
   $('fauna').innerHTML=SPECIES_KEYS.filter(s=>cnt.sp[s]).map(s=>`<span title="${SPECIES[s].name}">${SPECIES[s].icon} ${cnt.sp[s]}</span>`).join('')||'<span>No animals</span>';
   alive.sort((a,b)=>b.pop-a.pop);
   $('kings').innerHTML=alive.length?alive.map(T=>{
     const foes=wars.filter(w=>w.a===T.id||w.b===T.id).map(w=>tribes[w.a===T.id?w.b:w.a].name);
     return `<li><button class="king" data-id="${T.id}"><span class="sw" style="background:${css(T.color)}"></span><span class="nm">${RACES[T.race].icon} ${T.title}</span>
-      <span class="meta">${T.pop} ${RACES[T.race].plural.toLowerCase()}, ${T.houses} ${T.houses===1?'building':'buildings'}, ${T.stock} livestock${T.fish?`, ${T.fish} boats`:''}</span>
+      <span class="meta">${T.pop} ${RACES[T.race].plural.toLowerCase()} / ${(T.jobs&&T.jobs.soldier)||0} soldiers, ${T.houses} ${T.houses===1?'building':'buildings'}, ${T.stock} livestock${T.fish?`, ${T.fish} boats`:''}</span>
       <span class="meta">${AGE_NAME[T.age]} · holds ${sharePct(T)}% of the land</span>
       <span class="dom"><i style="width:${Math.min(100,Math.max(2,sharePct(T)*3))}%;background:${css(T.color)}"></i></span>
       <span class="faith">${T.rel.name} · ${T.rel.patron.dom}</span>
@@ -452,3 +465,14 @@ function frame(t){
 }
 genWorld();initFlocks();resize();setTool('inspect');renderPanel(true);
 requestAnimationFrame(frame);
+
+/* a people newly awakened by the monolith gets its own tile in the Creatures tab */
+function addRaceTile(key){
+  if(SPAWNABLE.has(key))return;
+  const t=[key,{race:key},RACES[key].plural,RACES[key].tip+' Tap inside another people\u2019s kingdom to send settlers to live among them.'];
+  HINT[key]=t[3];NAMES[key]=t[2];SPAWNABLE.add(key);REPEAT.add(key);
+  const pane=panes[1],tile=mkTile(t);
+  const races=[...pane.querySelectorAll('.tile')].filter(b=>RACES[b.dataset.tool]);
+  const last=races[races.length-1];if(last)last.after(tile);else pane.prepend(tile);
+  toast(`A new people has awoken: the ${RACES[key].plural}! You can now place them from the Creatures tab.`);
+}
