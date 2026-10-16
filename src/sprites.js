@@ -474,8 +474,46 @@ function withProp(g,v,race){
   }
   return n;
 }
+/* village works: forge, dock, watchtower, windmill (the windmill's sails are drawn by the renderer so they can turn) */
+function workGrid(type,k){
+  const kd=sh(k,.7),kl=sh(k,1.2);let g;
+  if(type===5){ /* forge: stone smithy, glowing hearth, chimney */
+    g=G(16,15);
+    gr(g,11,0,3,6,CL.stone);gr(g,11,0,3,1,CL.stoneD);gr(g,11,0,1,6,CL.stoneL);
+    gr(g,0,6,16,2,CL.woodD);gr(g,1,5,14,1,k);gr(g,2,4,12,1,kd);
+    gr(g,1,8,14,7,CL.stone);gbricks(g,1,8,14,7,CL.stone,CL.stoneD);gr(g,0,14,16,1,CL.stoneD);
+    gr(g,3,9,5,5,CL.dark);gr(g,4,11,3,3,CL.fire2);gr(g,5,12,1,2,CL.fire1);gp(g,5,11,CL.fire1);gr(g,3,9,5,1,CL.stoneD);
+    gr(g,10,10,4,2,CL.steelD);gr(g,9,12,6,1,CL.steel);gr(g,11,13,2,2,CL.woodD);gp(g,11,10,CL.steelL);gp(g,9,9,k);
+  }else if(type===6){ /* dock: planks on posts, a crate and a flag */
+    g=G(18,11);
+    gr(g,0,4,18,3,CL.wood);for(let x=0;x<18;x+=3)gr(g,x,4,1,3,CL.woodD);gr(g,0,4,18,1,[168,120,74]);
+    for(const x of [1,6,11,16])gr(g,x,7,1,4,CL.woodD);
+    gr(g,2,1,3,3,[146,104,62]);gr(g,2,1,3,1,[186,140,86]);gp(g,3,2,CL.woodD);
+    gr(g,8,2,3,2,CL.hide);gp(g,9,2,CL.woodD);
+    gr(g,15,0,1,4,CL.woodD);gr(g,16,0,2,2,k);gp(g,17,1,kd);
+  }else if(type===7){ /* watchtower: tall stone shaft, crenellated platform, banner */
+    g=G(10,26);
+    gr(g,5,0,1,4,CL.woodD);gr(g,6,0,3,2,k);gp(g,8,1,kd);
+    gr(g,1,4,8,1,kd);gr(g,2,5,6,1,k);
+    for(const x of [1,3,5,7])gp(g,x,6,CL.stoneL);
+    gr(g,1,7,8,2,CL.stoneL);
+    gr(g,2,9,6,13,CL.stone);gbricks(g,2,9,6,13,CL.stone,CL.stoneD);gr(g,2,9,1,13,CL.stoneL);gr(g,7,9,1,13,CL.stoneD);
+    gr(g,4,11,2,3,CL.dark);gp(g,4,11,CL.glass);gr(g,4,17,2,2,CL.dark);
+    gr(g,1,22,8,1,CL.stoneL);gr(g,0,23,10,3,CL.stone);gbricks(g,0,23,10,3,CL.stone,CL.stoneD);gr(g,4,23,2,3,CL.wood);gr(g,0,25,10,1,CL.stoneD);
+  }else{ /* windmill body: tapered tower, kingdom-colour cap, hub at (7,7) */
+    g=G(14,20);
+    for(let r=0;r<5;r++){const hw=Math.min(r,2)+2;gr(g,7-hw,2+r,hw*2,1,r%2?k:kd)}
+    gr(g,6,0,2,2,kd);gp(g,6,0,kl);
+    for(let y=7;y<16;y++){const hw=3+(((y-7)/2)|0);gr(g,7-hw,y,hw*2,1,CL.plaster);gp(g,7-hw,y,CL.woodD);gp(g,6+hw,y,CL.woodD)}
+    gr(g,6,6,2,2,CL.woodD);gp(g,6,6,CL.steelL);
+    gr(g,6,11,3,5,CL.wood);gr(g,6,11,1,5,CL.woodD);gp(g,8,13,CL.gold);gr(g,3,9,2,2,CL.glass);
+    gr(g,2,16,10,1,CL.stoneL);gr(g,1,17,12,3,CL.stone);gbricks(g,1,17,12,3,CL.stone,CL.stoneD);gr(g,1,19,12,1,CL.stoneD);
+  }
+  return g;
+}
 function buildingSprite(race,type,ci,dom,tier,v){
   if(type===3)return spr('ruin',ruinSprite);
+  if(type>=5)return spr('w|'+type+'|'+ci,()=>bake(workGrid(type,KCOL[ci])));
   tier=type===4?0:(tier||0);v=type===0?(v||0):0;
   return spr(`b|${race}|${type}|${ci}|${dom}|${tier}|${v}`,()=>bake(type===4?monumentGrid(RB(race),KCOL[ci],dom):withProp(tierGrid({human:bHuman,elf:bElf,orc:bOrc,dwarf:bDwarf}[RB(race)](type,KCOL[ci],dom),tier),v,RB(race))));
 }

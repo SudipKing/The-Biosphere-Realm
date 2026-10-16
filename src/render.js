@@ -278,6 +278,8 @@ function draw(dt){
       const b=it.b,T=b.t>=0?tribes[b.t]:null;
       const s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier,b.v):buildingSprite('',3,0,'');
       blit(s.c,s.w,s.h,(b.x+.5)*TS-s.w/2,(b.y+1)*TS-s.h+1,1);
+      if(b.ty===8){const hx=(b.x+.5)*TS-s.w/2+8,hy=(b.y+1)*TS-s.h+1+8,L=7,a=(reduceMotion?0:frameN*.045)+b.x;ctx.strokeStyle='#e8dcc0';ctx.lineWidth=Math.max(1,pz*1.1);ctx.beginPath();for(let q=0;q<4;q++){const an=a+q*1.5708;ctx.moveTo(SX(hx),SY(hy));ctx.lineTo(SX(hx+Math.cos(an)*L),SY(hy+Math.sin(an)*L))}ctx.stroke();ctx.strokeStyle='#8a6038';ctx.lineWidth=Math.max(1,pz*.5);ctx.beginPath();for(let q=0;q<4;q++){const an=a+q*1.5708+.08;ctx.moveTo(SX(hx),SY(hy));ctx.lineTo(SX(hx+Math.cos(an)*L),SY(hy+Math.sin(an)*L))}ctx.stroke()}
+      if(T&&close&&b.ty===5&&RC()<.012*(dt/16.7)&&effects.length<300)effects.push({type:'smoke',x:b.x+.85,y:b.y-.6,t:0,dur:80});
       if(T&&close&&b.ty<2&&(T.race==='human'||T.race==='dwarf')&&RC()<.006*(dt/16.7)&&effects.length<300)
         effects.push({type:'smoke',x:b.x+(T.race==='human'?.85:.95)-(b.ty===1?.4:0),y:b.y-1.2,t:0,dur:80});
     }else if(it.u){
@@ -358,7 +360,7 @@ function draw(dt){
     ctx.globalAlpha=dark*.85;
     for(const bb of visB){
       if(bb.ty===3)continue;const T=tribes[bb.t];
-      const rad=(bb.ty===1?3.4:bb.ty===4?1.9:2.4)*tz,X=SX((bb.x+.5)*TS),Y=SY((bb.y+.3)*TS);
+      const rad=(bb.ty===1?3.4:bb.ty===4?1.9:bb.ty===5?2.8:bb.ty===8||bb.ty===6?1.2:2.4)*tz,X=SX((bb.x+.5)*TS),Y=SY((bb.y+.3)*TS);
       ctx.drawImage((bb.ty===2||bb.ty===4)?glowCol(DOMAINS[T.rel.domain].c):(T.race==='elf'?GLOW_C:GLOW_W),X-rad,Y-rad,rad*2,rad*2);
     }
     for(const bo of boats){const [x,y]=ipos(bo);if(!inView(x,y))continue;const rad=1.2*tz;ctx.drawImage(GLOW_W,SX(x*TS)-rad,SY(y*TS)-rad,rad*2,rad*2)}

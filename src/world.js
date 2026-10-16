@@ -427,7 +427,7 @@ function computeDomains(){
   const f=held/landTiles,squeeze=f>DOM_FULL?Math.max(.5,1-(f-DOM_FULL)*2.5):1;
   const rads=tribes.map(T=>T.alive?domainRadius(T)*squeeze*(T.area/landTiles>.18?.8:1):0);
   own.fill(-1);ownScore.fill(9);
-  for(const T of tribes){T.area=0;for(const t of T.towns)t.houses=0}
+  for(const T of tribes){T.area=0;for(const t of T.towns){t.houses=0;t.forge=0;t.dock=0;t.tower=0;t.mill=0}}
   let land=0;
   for(let i=0;i<N;i++){const l=bio(hgt[i])>=2;landM[i]=l;if(l)land++}
   /* scores are squared normalised distances, so no square roots in the inner loop */
@@ -435,8 +435,10 @@ function computeDomains(){
     const o=bld[i];if(o<0)continue;
     const T=tribes[o];if(!T||!T.alive)continue;
     const bx=i%W,by=(i/W)|0;
-    if(btype[i]<3)T.towns[nearestTown(T,bx,by)].houses++;
-    const m=btype[i]===1?1.25:btype[i]===4?.55:1,rad=rads[o]*m,r2=rad*rad,inv=1/r2,rr=Math.ceil(rad);
+    const bt=btype[i];
+    if(bt<3)T.towns[nearestTown(T,bx,by)].houses++;
+    else if(bt>=5){const tw=T.towns[nearestTown(T,bx,by)];if(bt===5)tw.forge=1;else if(bt===6)tw.dock=1;else if(bt===7)tw.tower++;else tw.mill=1}
+    const m=bt===1?1.25:bt===4?.55:bt>=5?.5:1,rad=rads[o]*m,r2=rad*rad,inv=1/r2,rr=Math.ceil(rad);
     /* a building always holds its own tile */
     if(ownScore[i]>0){ownScore[i]=0;own[i]=o}
     for(let dy=-rr;dy<=rr;dy++){
