@@ -10,6 +10,8 @@ for(let cy=0;cy<CCH;cy++)for(let cx=0;cx<CCW;cx++){
   chunks.push({c,x,img,buf:new Uint32Array(img.data.buffer),x0:cx*CHT,y0:cy*CHT,tw,th,pw:tw*TS,dirty:false,dx0:CHT,dy0:CHT,dx1:-1,dy1:-1});
 }
 const tileFlag=new Uint8Array(N);let tileQ=[];
+/* derived village layout (never saved, rebuilt from the buildings): dirt roads, and crop fields beside houses */
+const road=new Uint8Array(N),fld=new Uint8Array(N),roadNew=new Uint8Array(N),fldNew=new Uint8Array(N);
 let pnoise=null,frameN=0,curSea=1;
 /* seasons repaint as a random dissolve (not a sweep), so a change of season creeps across the whole map at once */
 const tq=new Uint8Array(N),perm=new Uint32Array(N);let permPtr=0;
@@ -33,14 +35,14 @@ const paraCol=(ph)=>[128+120*Math.sin(ph),128+120*Math.sin(ph+2.1),128+120*Math.
 function pcol(h,dh,n,n2,lv,bt,lvn,bmi,tx,ty,dirt){
   if(lv)return lvn<.25?P(76,32,24):lvn<.72?P(232,92,26):P(255,172,54);
   let r,g,b;
-  if(h<.30){const t=Math.max(0,h)/.30;r=18+t*16;g=48+t*40;b=104+t*48;if(n2<.018){r+=22;g+=28;b+=28}return P(r,g,b)}
-  if(h<.38){const t=(h-.30)/.08;r=40+t*44;g=114+t*52;b=172+t*26;
-    if(h>.367){if(n<.75)return P(204,232,238)}else if(n2<.03){r+=20;g+=24;b+=20}
+  if(h<.30){const t=h<.14?0:h<.22?.5:1;r=24+t*10;g=72+t*26;b=140+t*30;if(n2<.022){r+=28;g+=36;b+=30}else if(n>.993){r-=10;g-=14;b-=8}return P(r,g,b)}
+  if(h<.38){const t=h<.335?0:1;r=62+t*34;g=150+t*38;b=212+t*22;
+    if(h>.367){if(n<.75)return P(204,232,238)}else if(n2<.04){r+=24;g+=26;b+=18}else if(n>.985){r-=14;g-=14;b-=8}
     if(curSea===3&&h>.34){const k=(h-.34)/.04*.7;r+=(228-r)*k;g+=(240-g)*k;b+=(250-b)*k}
     return P(r,g,b)}
-  if(h<.42){r=226;g=210;b=152;if(n<.08){r=204;g=184;b=128}else if(n>.95){r=242;g=230;b=184}
+  if(h<.42){r=238;g=224;b=168;if(n<.08){r=212;g=192;b=136}else if(n>.95){r=250;g=240;b=198}
     if(curSea===3){r+=(244-r)*.18;g+=(246-g)*.18;b+=(250-b)*.18}}
-  else if(h<.62){const t=(h-.42)/.2;r=108-t*28;g=178-t*32;b=78-t*16;
+  else if(h<.62){const t=(h-.42)/.2;r=100-t*26;g=184-t*32;b=72-t*14;
     if(n<.35){r*=.92;g*=.93;b*=.92}
     if(n>.988){if(n2<.33){r=250;g=236;b=110}else if(n2<.66){r=250;g=250;b=246}else{r=236;g=140;b=186}}
     else if(n>.955){r*=.76;g*=.82;b*=.76}}
@@ -186,7 +188,8 @@ function renderTile(i){
     }
   }
   tq[i]=curSea;
-  if(!lv&&!tree[i]&&!ore[i]&&bld[i]===-1&&!bt){const b0=bio(hgt[i]);if(b0>=2&&b0<=4)decorTile(buf,pw,lx,ly,tx,ty,bmi,b0)}
+  if(!lv&&!tree[i]&&!ore[i]&&bld[i]===-1&&!bt&&!road[i]&&!fld[i]){const b0=bio(hgt[i]);if(b0>=2&&b0<=4)decorTile(buf,pw,lx,ly,tx,ty,bmi,b0)}
+  if((road[i]||fld[i])&&!lv&&!bt&&hgt[i]>=.38)paintVillage(buf,pw,lx,ly,tx,ty,i);
   if(ore[i]&&!lv)drawOre(buf,pw,lx,ly,ore[i],tx,ty);
   if(tree[i]&&!lv){
     const kind=treeKind(i),T=TREES[kind],rows=T.rows,v=.86+hash(tx,ty+999)*.26,pal=treePal(kind,v,tx,ty,bmi);
@@ -203,6 +206,7 @@ function uploadChunk(ch){
   ch.dirty=false;ch.dx0=ch.dy0=CHT;ch.dx1=ch.dy1=-1;
 }
 function initTerrain(){
+  computeRoads();
   pnoise=new Uint8Array(OW*OH);
   for(let i=0;i<pnoise.length;i++){const x=i%OW,y=(i/OW)|0;pnoise[i]=(hash(x,y)*255)|0}
   tileFlag.fill(0);tileQ=[];
@@ -235,3 +239,78 @@ function updateTerrain(){
   }
 }
 const CHUNK_UPLOADS=6;let upPtr=0;
+
+/* roads and fields are painted over the ground: roads have ragged edges where they meet grass, fields are furrowed rows that follow the seasons */
+function paintVillage(buf,pw,lx,ly,tx,ty,i){
+  if(fld[i]){
+    const v=fld[i],vert=v===2,sea=curSea;
+    for(let sy=0;sy<TS;sy++)for(let sx=0;sx<TS;sx++){
+      const n=pnoise[(ty*TS+sy)*OW+tx*TS+sx]/255,q=vert?sx:sy,furrow=(q&1)===0;let c;
+      if(sx===0&&(tx===0||fld[i-1]!==v)||sy===0&&(ty===0||fld[i-W]!==v)||sx===TS-1&&(tx===W-1||fld[i+1]!==v)||sy===TS-1&&(ty===H-1||fld[i+W]!==v))c=P(112,78,48);
+      else if(sea===3)c=furrow?P(170,150,138):(n<.3?P(226,232,242):P(240,244,250));
+      else if(furrow)c=P(122,86,54);
+      else if(sea===0)c=n<.4?P(110,186,64):P(150,214,92);
+      else if(sea===1)c=n<.4?P(232,190,62):P(250,222,104);
+      else c=n<.5?P(188,148,82):P(210,170,102);
+      buf[(ly+sy)*pw+lx+sx]=c;
+    }
+    return;
+  }
+  const conn=j=>road[j]||bld[j]!==-1,L=tx>0&&conn(i-1),Rr=tx<W-1&&conn(i+1),U=ty>0&&conn(i-W),D=ty<H-1&&conn(i+W);
+  for(let sy=0;sy<TS;sy++)for(let sx=0;sx<TS;sx++){
+    const n=pnoise[(ty*TS+sy)*OW+tx*TS+sx]/255;
+    if(((sx===0&&!L)||(sx===TS-1&&!Rr)||(sy===0&&!U)||(sy===TS-1&&!D))&&n<.55)continue;
+    let c=n<.22?P(166,128,86):n>.9?P(226,196,146):P(198,164,114);
+    if(curSea===3&&n>.35)c=P(222,224,230);
+    buf[(ly+sy)*pw+lx+sx]=c;
+  }
+}
+/* the village plan: every house is joined by a dirt path to its village centre, villages to the capital,
+   and farming peoples get a 2x2 crop field beside some houses. Pure function of the buildings, so saves need nothing */
+function computeRoads(){
+  roadNew.fill(0);fldNew.fill(0);
+  const mark=(x,y)=>{if(!inb(x,y))return false;const j=y*W+x;if(hgt[j]<.38||lava[j])return false;if(bld[j]===-1&&!ore[j])roadNew[j]=1;return true};
+  const walk=(x0,y0,x1,y1,hf)=>{
+    let x=x0,y=y0;
+    if(hf){while(x!==x1){if(!mark(x,y))return;x+=x<x1?1:-1}while(y!==y1){if(!mark(x,y))return;y+=y<y1?1:-1}}
+    else{while(y!==y1){if(!mark(x,y))return;y+=y<y1?1:-1}while(x!==x1){if(!mark(x,y))return;x+=x<x1?1:-1}}
+    mark(x,y);
+  };
+  for(const T of tribes){
+    if(!T.alive||!T.towns.length)continue;
+    const c0=T.towns[0];
+    for(let k=1;k<T.towns.length;k++){
+      const H=T.towns[k];if(!H.houses)continue;
+      if(Math.abs(H.x-c0.x)+Math.abs(H.y-c0.y)<=60)walk(H.x,H.y,c0.x,c0.y,k&1);
+    }
+  }
+  for(let i=0;i<N;i++){
+    const o=bld[i];if(o<0||btype[i]>=3)continue;
+    const T=tribes[o];if(!T||!T.alive||!T.towns.length)continue;
+    const bx=i%W,by=(i/W)|0,H=T.towns[nearestTown(T,bx,by)];
+    if(Math.abs(H.x-bx)+Math.abs(H.y-by)<=16)walk(bx,by+1,H.x,H.y,hash(bx,by+13)<.5);
+  }
+  for(let i=0;i<N;i++){
+    const o=bld[i];if(o<0||btype[i]!==0)continue;
+    const T=tribes[o];if(!T||!T.alive)continue;
+    const rb=RB(T.race);if(rb!=='human'&&rb!=='elf')continue;
+    const bx=i%W,by=(i/W)|0;if(hash(bx+3,by+5)>.9)continue;
+    const s0=(hash(bx+5,by+9)*8)|0;
+    for(let c=0;c<8;c++){
+      const [dx,dy]=FIELD_OFF[(s0+c)&7],fx=bx+dx,fy=by+dy;let ok=true;
+      for(let yy=0;yy<2&&ok;yy++)for(let xx=0;xx<2;xx++){
+        const X=fx+xx,Y=fy+yy;if(!inb(X,Y)){ok=false;break}
+        const j=Y*W+X;
+        if(bio(hgt[j])!==3||tree[j]||ore[j]||bld[j]!==-1||roadNew[j]||fldNew[j]||fire[j]||lava[j]){ok=false;break}
+      }
+      if(!ok)continue;
+      const v=1+((hash(fx,fy)*2)|0);
+      for(let yy=0;yy<2;yy++)for(let xx=0;xx<2;xx++)fldNew[(fy+yy)*W+fx+xx]=v;
+      break;
+    }
+  }
+  for(let i=0;i<N;i++){
+    if(road[i]!==roadNew[i]||fld[i]!==fldNew[i]){road[i]=roadNew[i];fld[i]=fldNew[i];markDirty(i)}
+  }
+}
+const FIELD_OFF=[[2,-1],[-3,0],[-3,-2],[2,1],[0,2],[0,-3],[-1,2],[3,-1]];

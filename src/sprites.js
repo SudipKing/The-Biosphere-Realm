@@ -314,15 +314,16 @@ function bHuman(type,k,dom){
   if(type===0){
     g=G(16,16);
     gr(g,11,1,2,5,CL.stone);gr(g,11,1,2,1,CL.stoneD);
-    for(let r=0;r<8;r++){const hf=1+r;gr(g,8-hf,r,hf*2,1,r===7?kd:(r%2?k:sh(k,.86)))}
+    for(let r=0;r<8;r++){const hf=1+r;gr(g,8-hf,r,hf*2,1,r===7?kd:(r%2?k:sh(k,.86)));gp(g,8-hf,r,kl);gp(g,7+hf,r,kd);if(r>1&&r<7)for(let x=9-hf+(r&1);x<7+hf;x+=3)gp(g,x,r,kd)}
+    gr(g,8,0,1,1,kl);gr(g,10,8,5,1,kd);
     gr(g,1,8,14,8,CL.plaster);gr(g,1,8,14,1,CL.woodD);gr(g,1,8,1,8,CL.woodD);gr(g,14,8,1,8,CL.woodD);gr(g,7,8,1,8,CL.woodD);
-    gr(g,3,10,3,3,CL.glass);gp(g,4,11,CL.woodD);gr(g,3,13,3,1,CL.woodD);
+    gr(g,3,10,3,3,CL.glass);gp(g,4,11,CL.woodD);gr(g,3,13,3,1,CL.woodD);gr(g,2,10,1,3,k);gr(g,6,10,1,3,k);
     gr(g,9,11,3,5,CL.wood);gr(g,9,11,1,5,CL.woodD);gp(g,11,13,CL.gold);
     gr(g,0,15,16,1,CL.stoneD);
   }else if(type===1){
     g=G(22,23);
     gr(g,10,0,1,4,CL.woodD);gr(g,11,0,4,2,k);gp(g,13,0,kl);
-    for(let r=0;r<10;r++){const hf=2+r;gr(g,11-hf,3+r,hf*2,1,r===9?kd:(r%2?k:sh(k,.86)))}
+    for(let r=0;r<10;r++){const hf=2+r;gr(g,11-hf,3+r,hf*2,1,r===9?kd:(r%2?k:sh(k,.86)));gp(g,11-hf,3+r,kl);gp(g,10+hf,3+r,kd)}
     gr(g,10,6,2,2,CL.glass);
     gr(g,1,13,20,10,CL.plaster);gr(g,1,13,20,1,CL.woodD);gr(g,1,13,1,10,CL.woodD);gr(g,20,13,1,10,CL.woodD);
     gr(g,6,13,1,10,CL.woodD);gr(g,15,13,1,10,CL.woodD);
@@ -351,7 +352,7 @@ function bElf(type,k,dom){
     gr(g,4,16,8,2,CL.wood);gr(g,4,17,8,1,CL.woodD);
     gr(g,7,13,2,4,CL.dark);gr(g,7,12,2,1,CL.dark);gp(g,9,11,CL.glow);
     gell(g,8,5,8,5.4,CL.leafD);gell(g,8,4.4,7.2,4.6,CL.leaf);gell(g,6,3,3.2,2,CL.leafL);
-    gp(g,3,6,kl);gp(g,12,7,k);gp(g,9,2,kl);gp(g,13,4,CL.glow);gp(g,4,3,CL.glow);
+    gp(g,3,6,kl);gp(g,12,7,k);gp(g,9,2,kl);gp(g,13,4,CL.glow);gp(g,4,3,CL.glow);gr(g,14,0,1,5,CL.woodD);gr(g,12,0,2,2,k);
   }else if(type===1){
     g=G(22,22);
     gr(g,8,10,6,11,CL.wood);for(let y=11;y<20;y+=2){gp(g,9,y,CL.woodD);gp(g,12,y+1,CL.woodD)}
@@ -407,7 +408,7 @@ function bDwarf(type,k,dom){
     gell(g,9,14,9,12,CL.stone);gbricks(g,0,0,18,14,CL.stone,CL.stoneD,true);
     for(let x=0;x<18;x++){for(let y=0;y<14;y++){if(g.d[y*18+x]&&!(x>=13&&x<15&&y<4)){gp(g,x,y,CL.moss);if(y+1<14)gp(g,x,y+1,CL.leafD);break}}}
     gr(g,6,7,6,7,CL.stoneL);gr(g,7,8,4,6,CL.wood);gr(g,7,8,1,6,CL.woodD);gp(g,8,10,CL.steelD);gp(g,10,10,CL.steelD);gp(g,9,12,CL.gold);
-    gr(g,8,4,2,3,k);gp(g,8,6,kd);
+    gr(g,8,4,2,3,k);gp(g,8,6,kd);gr(g,3,0,1,5,CL.woodD);gr(g,4,0,3,2,k);gp(g,6,1,kd);
     gp(g,3,9,CL.glow);gp(g,14,9,CL.glow);
   }else if(type===1){
     g=G(24,20);
@@ -547,4 +548,17 @@ function monolithSprite(){
   for(const [x,y] of [[3,5],[5,6],[4,8],[3,10],[5,11],[4,13],[3,15],[5,16],[4,18]])gp(g,x,y,rn);
   gp(g,4,4,rl);gp(g,4,12,rl);gp(g,4,19,rl);
   return bake(g);
+}
+
+/* a village's bonfire: ring of stones, crossed logs and a flame that flickers over three frames */
+function bonfireSprite(fr){
+  return spr('fire|'+fr,()=>{
+    const g=G(9,11);
+    gr(g,0,8,9,2,CL.stoneD);for(const x of [0,2,4,6,8])gp(g,x,8,CL.stoneL);
+    gr(g,1,7,7,1,CL.woodD);gr(g,2,6,5,1,CL.wood);
+    const f=[[2,3,5],[3,2,4],[2,4,4]][fr];
+    gr(g,3,f[0]+2,3,4,CL.fire3);gr(g,3,f[0]+3,3,3,CL.fire2);gr(g,4,f[0],1,3,CL.fire2);gr(g,4,f[0]+4,1,2,CL.fire1);
+    gp(g,2,f[1]+3,CL.fire2);gp(g,6,f[2]+2,CL.fire2);
+    return bake(g);
+  });
 }
