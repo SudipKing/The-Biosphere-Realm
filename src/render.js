@@ -71,7 +71,7 @@ function unitSprite(u,fr){
   return s;
 }
 /* draw list objects are pooled and reused every frame */
-const drawPool=[],items=[],vis=[],visB=[];
+const drawPool=[],items=[],vis=[],visB=[],fireSpots=[];
 function drawItem(y){let it=drawPool[items.length];if(!it){it={y:0,b:null,u:null,boat:null,mono:null,x:0,ry:0};drawPool.push(it)}it.y=y;it.b=it.u=it.boat=it.mono=null;items.push(it);return it}
 const byY=(a,b)=>a.y-b.y;
 /* bake the sprites a fresh world needs up front, so the first zoom-in doesn't stall */
@@ -200,7 +200,18 @@ function draw(dt){
   }
   const blit=(img,w,h,X,Y,sc)=>{const a=SX(X),b=SY(Y);ctx.drawImage(img,a,b,Math.round(w*pz*sc),Math.round(h*pz*sc))};
 
-  items.length=0;vis.length=0;visB.length=0;
+  items.length=0;vis.length=0;visB.length=0;fireSpots.length=0;
+  /* each village keeps a bonfire at its heart (drawn under the people), flickering and lighting the night */
+  for(const T of tribes){
+    if(!T.alive)continue;
+    for(const H of T.towns){
+      if(H.houses<2||!inView(H.x,H.y))continue;
+      let bx=H.x;const by=H.y;
+      if(bld[by*W+bx]!==-1){bx++;if(!inb(bx,by)||bld[by*W+bx]!==-1){bx-=2;if(!inb(bx,by)||bld[by*W+bx]!==-1)continue}}
+      const s=bonfireSprite(((frameN>>2)+bx*3+by)%3);
+      blit(s.c,s.w,s.h,(bx+.5)*TS-s.w/2,(by+1)*TS-s.h+1,1);fireSpots.push(bx+.5,by+.4);
+    }
+  }
   for(const b of bList)if(inView(b.x,b.y)){drawItem(b.y+.95).b=b;visB.push(b)}
   for(const u of units){
     if(u.inside)continue;
@@ -292,6 +303,7 @@ function draw(dt){
       ctx.drawImage((bb.ty===2||bb.ty===4)?glowCol(DOMAINS[T.rel.domain].c):(T.race==='elf'?GLOW_C:GLOW_W),X-rad,Y-rad,rad*2,rad*2);
     }
     for(const bo of boats){const [x,y]=ipos(bo);if(!inView(x,y))continue;const rad=1.2*tz;ctx.drawImage(GLOW_W,SX(x*TS)-rad,SY(y*TS)-rad,rad*2,rad*2)}
+    for(let k=0;k<fireSpots.length;k+=2){const rad=(3+(reduceMotion?0:Math.sin(frameN/5+k)*.3))*tz;ctx.drawImage(GLOW_F,SX(fireSpots[k]*TS)-rad,SY(fireSpots[k+1]*TS)-rad,rad*2,rad*2)}
     for(const m of monoliths){if(!inView(m.x,m.y))continue;const rad=3*tz;ctx.drawImage(GLOW_C,SX((m.x+.5)*TS)-rad,SY((m.y-.5)*TS)-rad,rad*2,rad*2)}
     if(dark>.5&&!reduceMotion){
       ctx.globalAlpha=(dark-.5)*1.6;ctx.fillStyle='rgb(220,255,140)';

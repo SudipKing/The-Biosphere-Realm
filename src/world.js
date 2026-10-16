@@ -459,6 +459,7 @@ function computeDomains(){
     }
   }
   landTiles=Math.max(1,land);ownDirty=false;lastDomains=step;if(changed)ovDirty=true;
+  computeRoads();
 }
 const sharePct=T=>Math.round(T.area/landTiles*1000)/10;
 
