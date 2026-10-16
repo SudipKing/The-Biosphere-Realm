@@ -37,7 +37,8 @@ function blankUnit(){
     race:undefined,tribe:undefined,town:undefined,job:undefined,xp:undefined,jhp:undefined,jdmg:undefined,genes:undefined,
     traits:undefined,name:undefined,gen:undefined,parents:undefined,pa:undefined,pb:undefined,born:undefined,kills:undefined,
     home:undefined,odd:undefined,frozen:undefined,shield:undefined,haste:undefined,charm:undefined,boost:undefined,
-    btype:undefined,_sp:undefined,_sg:undefined,_ssp:undefined};
+    btype:undefined,_sp:undefined,_sg:undefined,_ssp:undefined,
+    _atkAt:0,_ax:0,_ay:0,_hitAt:0,_kx:0,_ky:0};
 }
 function mkUnit(k,x,y){
   const u=blankUnit();
@@ -77,8 +78,11 @@ function addPerson(T,x,y,pa,pb,race){
   u.life=L.life*YEAR*g.vit*(has('Long-lived')?1.3:1)*(.85+R()*.3);
   return u;
 }
+/* visual-only queues drained by render.js (never read by the sim, never saved) */
+const HITQ=[],DEATHQ=[];
 function die(u){
   if(u.dead)return;u.dead=true;
+  if(!u.inside&&DEATHQ.length<200)DEATHQ.push(u);
   if(u.k===0&&u.kills>=5){const T=tribes[u.tribe];log(`${u.name}, hero of the ${T.title}, has fallen after ${u.kills} victories.`,T.color,false,{x:u.x,y:u.y,ic:'🎖️',p:1});T.heroes.push({name:u.name,kills:u.kills,y:year()});T.renown+=1}
 }
 function setT(u,i){u.tx=(i%W)+.5;u.ty=((i/W)|0)+.5}
@@ -94,7 +98,7 @@ function moveToward(u,spd){
   if(!inb(nx|0,ny|0)||!canStand(u,(ny|0)*W+(nx|0))){u.target=null;u.task=null;u.cd=0;wander(u,u.x,u.y,5);return false}
   u.x=nx;u.y=ny;u.moving=true;return false;
 }
-function hit(t,dmg,src){
+function hit(t,dmg,src,melee){
   if(t.shield>step)return;
   if(t.k===0){const df=tribes[t.tribe].fx;if(df.def)dmg/=1+df.def}
   if(src.k===0||src.k===1){const sb=bm[tileOf(src)];if(sb===BM.CLOVER)dmg*=1.2}
@@ -102,9 +106,12 @@ function hit(t,dmg,src){
   if(src.k===0&&t.k===0){const sf=tribes[src.tribe].fx;
     if(sf.raze&&R()<.12*sf.raze){const b=ringFind(t.x,t.y,3,i=>bld[i]===t.tribe&&btype[i]<4&&!fire[i]);if(b>=0)ignite(b,true)}}
   t.hp-=dmg;
+  t._hitAt=performance.now();
+  {const kx=t.x-src.x,ky=t.y-src.y,kd=Math.hypot(kx,ky)||1;t._kx=kx/kd;t._ky=ky/kd}
+  if(HITQ.length<60)HITQ.push({x:t.x,y:t.y,d:dmg,m:melee?1:0,k:t.hp<=0?1:0});
   sfx(src.k===0&&t.k===0?'clang':'thud',t.x,t.y);
   if(t.hp<=0){
-    die(t);
+    die(t);if(t.k===0)sfx('death',t.x,t.y);
     if(src.k===1&&src.sp==='zombie'&&t.k===0&&units.length<1600){const z=addAnimal('zombie',t.x|0,t.y|0);z.x=z.px=t.x;z.y=z.py=t.y;sfx('cry',t.x,t.y,'zombie')}
     if(t.k===1){const f=SPECIES[t.sp].food;if(src.k===0)tribes[src.tribe].food+=f;else src.hunger=0}
     else{if(src.k===1)src.hunger=0;else{src.kills=(src.kills||0)+1;const f=tribes[src.tribe].fx;if(f.lifesteal)src.hp=Math.min(src.maxhp,src.hp+src.maxhp*f.lifesteal)}}
@@ -118,11 +125,18 @@ function chase(u,spd,dmg,range){
   if(d>15){u.target=null;u.task=null;return}
   if(d<range){
     if(--u.atk<=0){
-      u.atk=10;
+      u.atk=10;u._atkAt=performance.now();
       if(range>2){if(effects.length<300)effects.push({type:'arrow',x0:u.x,y0:u.y-.7,x1:t.x,y1:t.y-.5,t:0,dur:7,c:u.k===0?magicColor(u):null});sfx('arrow',u.x,u.y)}
-      hit(t,dmg,u);
+      else{
+        /* melee: face the foe and spread out a little so a brawl is a clump, not one stacked pixel */
+        const ax=t.x-u.x,ay=t.y-u.y,ad=Math.hypot(ax,ay)||1;u._ax=ax/ad;u._ay=ay/ad;
+        const m=nearest(u,.45,v=>v.k===0&&v.target&&!v.frozen);
+        if(m){const sx=u.x-m.x,sy=u.y-m.y,sd=Math.hypot(sx,sy)||1,nx=u.x+sx/sd*.18,ny=u.y+sy/sd*.18;
+          if(inb(nx|0,ny|0)&&canStand(u,(ny|0)*W+(nx|0))){u.x=nx;u.y=ny}}
+      }
+      hit(t,dmg,u,range<=2);
     }
-  }else{u.tx=t.x;u.ty=t.y;moveToward(u,spd)}
+  }else{if(u.atk<5)u.atk=5;u.tx=t.x;u.ty=t.y;moveToward(u,spd)}
 }
 const isThreat=v=>v.k===1&&SPECIES[v.sp].pred&&!SPECIES[v.sp].minor;
 function enemyNear(u,r){return nearest(u,r,v=>(isThreat(v)&&v.charm!==u.tribe)||(v.k===0&&v.tribe!==u.tribe&&hostile(v.tribe,u.tribe)))}

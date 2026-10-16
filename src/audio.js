@@ -96,6 +96,7 @@ function speak(o,t,race,child){
 }
 const SFX={
   clang:(o,t)=>{osc(o,'square',1860,1800,t,.002,.12,.08);osc(o,'square',2710,2650,t,.002,.09,.05);noiseHit(o,'bandpass',4200,3000,3,t,.002,.07,.2)},
+  death:(o,t)=>{osc(o,'sawtooth',240,70,t,.005,.3,.12);osc(o,'sine',90,40,t+.05,.01,.25,.3);noiseHit(o,'lowpass',500,200,1,t+.04,.002,.12,.15)},
   thud:(o,t)=>{osc(o,'sine',150,55,t,.003,.14,.4);noiseHit(o,'lowpass',700,300,1,t,.002,.08,.2)},
   arrow:(o,t)=>noiseHit(o,'highpass',2500,6000,1,t,.01,.14,.18),
   chop:(o,t)=>{noiseHit(o,'bandpass',800,600,4,t,.002,.07,.45);osc(o,'sine',320,200,t,.002,.06,.2)},
