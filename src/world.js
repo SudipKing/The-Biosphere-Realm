@@ -218,7 +218,8 @@ function teleport(u){
 }
 /* one creature becomes another */
 function morphAnimal(u,sp){
-  const S=SPECIES[sp];u.sp=sp;u.maxhp=u.hp=S.hp*(u.scale||1);u.dmg=S.dmg||0;u.spd=S.spd;u.amph=!!S.amph;u.fly=!!S.fly;u.target=null;u.mode=0;
+  const S=SPECIES[sp];if(S.amph&&!(bio(hgt[tileOf(u)])>=1&&bio(hgt[tileOf(u)])<=3))return;
+  u.sp=sp;u.maxhp=u.hp=S.hp*(u.scale||1);u.dmg=S.dmg||0;u.spd=S.spd;u.amph=!!S.amph;u.fly=!!S.fly;u.target=null;u.mode=0;
   if(!S.dom)u.owner=-1;
 }
 const TAPS={
@@ -505,7 +506,7 @@ function upliftUnit(u){
 
 /* ---------- lasting chaos: tornadoes, black holes, storms, acid rain, cluster bombs ---------- */
 function updateWorldFx(){
-  updateVolcanoes();updateMonoliths();
+  updateVolcanoes();updateMonoliths();faunaWorld();
   for(let k=wfx.length-1;k>=0;k--){
     const f=wfx[k];
     if(f.type==='delay'){if(step>=f.at){blast(f.x,f.y,f.o);wfx.splice(k,1)}continue}
@@ -540,6 +541,6 @@ function updateWorldFx(){
         if(R()<.01&&(bio(hgt[i])===3||bio(hgt[i])===4)){bm[i]=BM.WASTE;markDirty(i)}
       }
       for(const u of units){if(u.dead||u.inside||Math.hypot(u.x-f.x,u.y-f.y)>=f.r)continue;u.hp-=.12;if(u.hp<=0)die(u)}
-    }
+    }else if(WFX2[f.type])WFX2[f.type](f);
   }
 }
