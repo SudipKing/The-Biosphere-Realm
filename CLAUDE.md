@@ -13,7 +13,7 @@ A WorldBox-style god-simulation sandbox that runs entirely in the browser. Plain
 
 ## Architecture
 
-Scripts share one global scope and load in this order (see `index.html`): `data, core, sim, culture, world, terrain, sprites, audio, render, codex, ui, save`. Function declarations are hoisted across files. Top-level `const`/`let` tables must only be read at runtime, never at load time by an earlier file.
+Scripts share one global scope and load in this order (see `index.html`): `data, core, sim, culture, world, terrain, sprites, audio, fauna, render, codex, ui, save`. Function declarations are hoisted across files. Top-level `const`/`let` tables must only be read at runtime, never at load time by an earlier file.
 
 | File | Role |
 | --- | --- |
@@ -25,6 +25,7 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 | `terrain.js` | Terrain drawn into 32x32-tile chunks with dirty-tile queue (edits stay cheap) |
 | `sprites.js` | Procedural pixel-art: people, animals, buildings, monuments, boats. Cached by key with `spr()` |
 | `audio.js` | Web Audio synthesis: generative music, a unique voice per species, babbling language per race, rites, ambience |
+| `fauna.js` | WorldBox-style creatures added later: sprites, calls, special behaviours (`act`), biome spawns, and their powers (`FAUNA_ITEMS`, `WFX2`) |
 | `render.js` | Camera with eased zoom and inertia, interpolated drawing, lighting, weather overlays, spatial sound mixing |
 | `codex.js` | Realm Codex panel (Overview, Faith, Culture and Art, History) |
 | `ui.js` | Power tray (`TABS`), inspector, side panel, World panel, help and first-run card, input, main loop |
@@ -57,7 +58,9 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 - **Peoples.** `RACES` entries with `base` (gnome→dwarf, goblin→orc, saurian→human, uplifted species) share the base people's pantheon, doctrines, tenets, values, art, legends and building style: `aliasRace` copies the culture tables, and `RB(race)` is used wherever a table is keyed by race. `RACE_KEYS` can grow at runtime, so never hard-code the four original races in counts.
 - **Monolith and uplift.** `TAPS.monolith` places a slab in `monoliths`; `updateMonoliths` fires every 200 steps, and `upliftUnit` turns animals within 4.5 tiles into people of `makeUpliftRace(sp)` (generated names, language, look from `UPLIFT`), joining a nearby kingdom of their kind or founding one. `addRaceTile` gives the new people a Creatures tile. Uplifted sprites use the `L.beast` branch of `personSprite`.
 - **Lasting chaos.** `wfx` (tornado, hole, storm, acid, delay) is updated in `updateWorldFx` (simulation) and drawn by `drawWorldFx` (render reads only). Creature effects use `u.frozen`, `u.shield`, `u.haste` (step numbers), `u.charm` (kingdom id) and odd traits on animals too (`u.traits` is created on demand).
-- **Heralds (event callouts).** `log(msg, color, local, where)` takes an optional `where = {x, y, ic, p}` (use `newsAt(T, icon, priority)`; priority 1 minor to 3 major). Those events go into `news` and `tickHeralds` (`ui.js`) shows them as cards over the map with **Go there** (key `G` goes to the newest). At most 3 cards on desktop and 1 on phones, with the most important kept. Timers pause while the game is paused or the pointer rests on a card. `drawHeraldRings` (`render.js`) rings each spot on the map. Tag only events the sim causes, not ones the player triggers directly.
+- **Events.** There are no on-map pop-ups. `log(msg, color, local, where)` stores `where` on the log entry, and the Chronicle and the tray mini-log (`#miniLog`) offer Go there for it.
+- **Combat visuals.** `hit()` and `die()` push to `HITQ`/`DEATHQ` (visual only, never read by the sim); `render.js` drains them into slash arcs, hit flashes, damage numbers and fading corpses. Lunge and knockback are draw offsets from `u._atkAt`/`u._hitAt`.
+- **Village look.** `computeRoads()` (terrain.js) derives `road` and `fld` from buildings after `computeDomains` and on load; they are never saved.
 - **Wars on the map.** `drawWarArrows` draws a red arrow from `w.a` (attacker) to `w.b` for every war; kingdom banners show `pop/soldiers`.
 - **Detail.** Biome edges are dithered per pixel (`bmAt`), trees are nudged and mirrored, and the domain layer picks each sub-pixel's owner from the four nearest tiles so borders run smoothly.
 - **Layout.** The dashboard (`.tray`) is the left grid column on desktop and the bottom row on phones.
@@ -84,6 +87,8 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 - Wildlife caps and breeding: `SPECIES` in `data.js`. Predators migrate back in yearly if they die out.
 
 ## Known issues and ideas
+
+- Save/load continuation diverged on 1 of 12 test seeds (seed s1, 60 years) after the creatures in `fauna.js` were added. Not yet traced.
 
 - One kingdom per race at world start, so faith diversity comes only from schisms and rebellions. Consider more starting kingdoms or a world-size option.
 - Ideas the player liked or asked about: trade and caravans, race-specific music, mobile polish, optional goals or feats, a shareable world postcard image, map presets and world size.

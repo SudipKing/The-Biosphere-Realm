@@ -392,7 +392,7 @@ function updAnimal(u){
           if(!p&&S.people&&u.charm==null&&u.hunger>(night?S.people*.7:S.people))p=nearest(u,10,v=>v.k===0);
           if(p)u.target=p;
         }
-        if(!u.target&&S.territorial&&u.charm==null){const p=nearest(u,3,v=>v.k===0&&adult(v));if(p&&R()<.5){u.target=p;sfx('cry',u.x,u.y,u.sp)}}
+        if(!u.target&&S.territorial&&u.charm==null){const p=nearest(u,3,v=>v.k===0&&adult(v));if(p&&R()<.5*S.territorial){u.target=p;sfx('cry',u.x,u.y,u.sp)}}
       }
       if(!u.target)wander(u,u.x,u.y,7);
     }else{
