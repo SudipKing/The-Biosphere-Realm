@@ -28,9 +28,20 @@ function newTribe(race,x,y,parent,opts){
 function hostile(a,b){return wars.some(w=>(w.a===a&&w.b===b)||(w.a===b&&w.b===a))}
 
 /* ---------- creatures ---------- */
+/* every unit gets the same fields in the same order, so V8 keeps one hidden class for people and animals alike
+   (undefined means "not set"; the sim tests those with ==null, >step and so on) */
+function blankUnit(){
+  return{id:0,k:0,x:0,y:0,tx:0,ty:0,px:0,py:0,hp:10,maxhp:10,dmg:5,spd:.08,age:0,life:1e9,
+    hunger:0,cd:0,atk:0,task:null,target:null,dead:false,busy:0,dir:1,moving:false,inside:false,mode:0,
+    sp:undefined,owner:undefined,v:undefined,male:undefined,amph:undefined,fly:undefined,fcd:undefined,scale:undefined,
+    race:undefined,tribe:undefined,town:undefined,job:undefined,xp:undefined,jhp:undefined,jdmg:undefined,genes:undefined,
+    traits:undefined,name:undefined,gen:undefined,parents:undefined,pa:undefined,pb:undefined,born:undefined,kills:undefined,
+    home:undefined,odd:undefined,frozen:undefined,shield:undefined,haste:undefined,charm:undefined,boost:undefined,
+    btype:undefined,_sp:undefined,_sg:undefined,_ssp:undefined};
+}
 function mkUnit(k,x,y){
-  const u={id:uid++,k,x:x+.3+R()*.4,y:y+.3+R()*.4,tx:0,ty:0,px:0,py:0,hp:10,maxhp:10,dmg:5,spd:.08,age:0,life:1e9,
-    hunger:(R()*300)|0,cd:(R()*10)|0,atk:0,task:null,target:null,dead:false,busy:0,dir:R()<.5?1:-1,moving:false,inside:false,mode:0};
+  const u=blankUnit();
+  u.id=uid++;u.k=k;u.x=x+.3+R()*.4;u.y=y+.3+R()*.4;u.hunger=(R()*300)|0;u.cd=(R()*10)|0;u.dir=R()<.5?1:-1;
   u.tx=u.px=u.x;u.ty=u.py=u.y;units.push(u);return u;
 }
 function addAnimal(sp,x,y,owner=-1,baby=false){
@@ -71,7 +82,7 @@ function die(u){
   if(u.k===0&&u.kills>=5){const T=tribes[u.tribe];log(`${u.name}, hero of the ${T.title}, has fallen after ${u.kills} victories.`,T.color,false,{x:u.x,y:u.y,ic:'🎖️',p:1});T.heroes.push({name:u.name,kills:u.kills,y:year()});T.renown+=1}
 }
 function setT(u,i){u.tx=(i%W)+.5;u.ty=((i/W)|0)+.5}
-const canStand=(u,i)=>{if(SPECIES[u.sp]&&SPECIES[u.sp].fly)return true;const b=bio(hgt[i]);if(u.amph)return b>=1&&b<=3&&!lava[i];return walk(i)};
+const canStand=(u,i)=>{if(u.fly)return true;const b=bio(hgt[i]);if(u.amph)return b>=1&&b<=3&&!lava[i];return walk(i)};
 function wander(u,cx,cy,r){const i=sampleNear(cx,cy,r,j=>canStand(u,j),15);if(i>=0)setT(u,i)}
 function moveToward(u,spd){
   const dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);
@@ -192,7 +203,7 @@ function decide(u,T){
 }
 const townOf=(u,T)=>T.towns[u.town|0]||T.towns[0];
 function nearestTown(T,x,y){let b=0,bd=1e9;for(let k=0;k<T.towns.length;k++){const t=T.towns[k],d=(t.x-x)**2+(t.y-y)**2;if(d<bd){bd=d;b=k}}return b}
-function nearBld(i){const x=i%W,y=(i/W)|0;for(const [dx,dy] of N8){const X=x+dx,Y=y+dy;if(inb(X,Y)&&bld[Y*W+X]!==-1)return true}return false}
+function nearBld(i){const x=i%W,y=(i/W)|0;for(let k=0;k<8;k++){const X=x+N8[k][0],Y=y+N8[k][1];if(inb(X,Y)&&bld[Y*W+X]!==-1)return true}return false}
 function getMat(u,T,mineFirst,woodFirst){
   const mine=()=>{const t=ringFind(u.x,u.y,16,i=>bio(hgt[i])===5);if(t>=0){setT(u,t);u.task='mine';return true}return false};
   const wood=()=>{const t=ringFind(u.x,u.y,14,i=>tree[i]&&!fire[i]);if(t>=0){setT(u,t);u.task=u.race==='elf'?'gather':'chop';return true}return false};
@@ -275,6 +286,7 @@ function getOre(u,T){
   const want=wantOre(T);
   const ok=i=>!fire[i]&&!lava[i]&&bld[i]===-1&&(own[i]<0||own[i]===T.id);
   let t=ringFind(u.x,u.y,24,i=>ore[i]===want&&ok(i));
+  if(t<0)t=ringFind(u.x,u.y,40,i=>ore[i]===want&&ok(i));
   if(t<0)t=ringFind(u.x,u.y,16,i=>ore[i]>0&&ore[i]!==ORE.GEMS&&ok(i));
   if(t<0)return false;
   setT(u,t);u.task='mine';return true;
@@ -419,18 +431,19 @@ function updateUnits(){
     if(u.k===0)updPerson(u);else updAnimal(u);
     if(u.dead)dead=true;
   }
-  if(dead)units=units.filter(u=>!u.dead);
+  if(dead){let n=0;for(let i=0;i<units.length;i++){const u=units[i];if(!u.dead)units[n++]=u}units.length=n}
   census();
 }
 /* head counts per kingdom, village, people and species, rebuilt from the unit list */
 function census(){
-  for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;T.jobs={};for(const t of T.towns)t.pop=0}
-  const rc={},sp={};for(const r of RACE_KEYS)rc[r]=0;
+  for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;const jb=T.jobs;for(const j in jb)jb[j]=0;for(const t of T.towns)t.pop=0}
+  /* counters are reused and zeroed in place, so a step allocates nothing here */
+  const rc=cnt.race,sp=cnt.sp;for(const r of RACE_KEYS)rc[r]=0;for(const k in sp)sp[k]=0;
   for(const u of units){
     if(u.k===0){const T=tribes[u.tribe];T.pop++;T.members.push(u);(T.towns[u.town|0]||T.towns[0]).pop++;rc[u.race]++;if(u.job)T.jobs[u.job]=(T.jobs[u.job]||0)+1}
     else{sp[u.sp]=(sp[u.sp]||0)+1;if(u.owner>=0)tribes[u.owner].stock++}
   }
-  cnt.race=rc;cnt.sp=sp;let np=0;for(const r in rc)np+=rc[r];cnt.people=np;
+  let np=0;for(const r in rc)np+=rc[r];cnt.people=np;
 }
 
 /* ---------- kingdoms ---------- */
@@ -743,6 +756,7 @@ const phaseIcon=()=>({Night:'🌙',Dawn:'🌅',Morning:'🌤️',Noon:'☀️',A
 function yearly(){
   const y=year();
   culturalYear();
+  prospect();
   /* wild animals wander in from beyond the map edge when numbers run low */
   for(const sp of ['wolf','bear','fox','deer','rabbit']){
     const S=SPECIES[sp];
@@ -809,8 +823,21 @@ function oreVeins(type,count,pred,rad,amt){
     for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
       const X=cx+dx,Y=cy+dy;if(!inb(X,Y)||Math.hypot(dx,dy)>r*(.55+R()*.5))continue;
       const j=Y*W+X,b=bio(hgt[j]);
-      if(b>=3&&b<=5&&!ore[j]){ore[j]=type;oreAmt[j]=amt+((R()*22)|0);tree[j]=0}
+      if(b>=3&&b<=5&&!ore[j]&&bld[j]===-1&&!lava[j]){ore[j]=type;oreAmt[j]=amt+((R()*22)|0);tree[j]=0}
     }
+  }
+}
+/* the map's lodes are finite, so each year a rumour of a new lode keeps a floor of every metal alive (a mountain's hidden seam, a freshly cracked hillside) */
+const ORE_FLOOR={[ORE.STONE]:30,[ORE.COPPER]:26,[ORE.IRON]:26,[ORE.COAL]:22,[ORE.SILVER]:14,[ORE.GOLD]:12};
+function prospect(){
+  const have=new Int16Array(8);
+  for(let i=0;i<N;i++)if(ore[i])have[ore[i]]++;
+  const hi=j=>bio(hgt[j])>=4&&bio(hgt[j])<=5,mt=j=>bio(hgt[j])===5,any=j=>bio(hgt[j])>=3&&bio(hgt[j])<=5;
+  for(const k in ORE_FLOOR){
+    const t=+k;if(have[t]>=ORE_FLOOR[t]||R()>=.6)continue;
+    if(t===ORE.STONE)oreVeins(t,1,any,1.8,30);
+    else if(t===ORE.SILVER||t===ORE.GOLD)oreVeins(t,1,mt,1.5,26);
+    else oreVeins(t,1,hi,2,30);
   }
 }
 function genOres(){

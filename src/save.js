@@ -4,10 +4,11 @@
    units point at each other by id. A load builds the whole world first and swaps it in only when the file checks out,
    so a bad file never harms the world on screen. New world state must be added to saveWorld and buildWorld. */
 const SAVE_FORMAT='biosphere-realm',SAVE_VERSION=1;
-/* the tile layers that are saved, with their types; own and ownScore are rebuilt by computeDomains */
+/* the tile layers that are saved, with their types. own is saved too, so a loaded world carries on exactly where it was
+   instead of redrawing its borders early; ownScore is scratch space for computeDomains */
 const SAVE_ARRAYS={hgt:Float32Array,tree:Uint8Array,fire:Uint8Array,lava:Uint16Array,bld:Int16Array,btype:Uint8Array,burnt:Uint32Array,
-  bm:Uint8Array,ore:Uint8Array,oreAmt:Uint8Array,btier:Uint8Array};
-const tileLayers=()=>({hgt,tree,fire,lava,bld,btype,burnt,bm,ore,oreAmt,btier});
+  bm:Uint8Array,ore:Uint8Array,oreAmt:Uint8Array,btier:Uint8Array,own:Int16Array};
+const tileLayers=()=>({hgt,tree,fire,lava,bld,btype,burnt,bm,ore,oreAmt,btier,own});
 
 function toB64(a){
   const u=new Uint8Array(a.buffer,a.byteOffset,a.byteLength);let s='';
@@ -27,7 +28,7 @@ function plainUnit(u){
   return o;
 }
 function saveWorld(){
-  const tribeOut=tribes.map(T=>{const o={};for(const k in T)if(k!=='members'&&k!=='fx'&&k!=='jobs')o[k]=k==='rel'?T.rel.id:T[k];return o});
+  const tribeOut=tribes.map(T=>{const o={};for(const k in T)if(k!=='members'&&k!=='jobs')o[k]=k==='rel'?T.rel.id:T[k];return o});
   const relOut=religions.map(r=>{
     const P=PANTHEON[r.race],o={};
     for(const k in r)if(k!=='patron'&&k!=='second'&&k!=='doc'&&k!=='tenets')o[k]=r[k];
@@ -41,7 +42,7 @@ function saveWorld(){
   for(const k in SAVE_ARRAYS)arrays[k]=toB64(L[k]);
   return {
     format:SAVE_FORMAT,version:SAVE_VERSION,W,H,savedAt:new Date().toISOString(),year:year(),
-    seedText:worldSeed,rng:rngS,salt:seed,step,uid,seasonLock,startFocus,story,
+    seedText:worldSeed,rng:rngS,salt:seed,step,uid,seasonLock,startFocus,story,lastDomains,ownDirty,landTiles,
     WX:Object.assign({},WX),
     arrays,
     races:RACE_KEYS.filter(k=>RACES[k].uplift).map(k=>({key:k,def:RACES[k]})),
@@ -71,7 +72,7 @@ function buildWorld(o){
     if(u.k===0&&!(u.tribe>=0&&u.tribe<nT&&known(u.race)))throw new Error('a person in it belongs to no kingdom');
     if(u.k===1&&(!SPECIES[u.sp]||u.owner>=nT))throw new Error('an animal in it is broken');
   }
-  for(let i=0;i<N;i++)if(arr.bld[i]>=nT)throw new Error('a building in it belongs to no kingdom');
+  for(let i=0;i<N;i++)if(arr.bld[i]>=nT||arr.own[i]>=nT)throw new Error('a building or border in it belongs to no kingdom');
   const races=o.races||[];
   for(const r of races)if(!/^up_[a-z]+$/.test(r.key)||!r.def||!r.def.base||!RACES[r.def.base])throw new Error('a people in it is broken');
   /* faiths of woken peoples use the god tables of the people they are based on */
@@ -83,8 +84,8 @@ function buildWorld(o){
     return Object.assign(rest,{patron:P[s.patron],second:s.second>=0?P[s.second]:null,doc,tenets:(s.tenets||[]).map(i=>TN[i]).filter(Boolean),
       names:[patronName,secondName]});
   });
-  const tribes=o.tribes.map(s=>Object.assign({},s,{rel:religions[s.rel],members:[],jobs:{},fx:zeroFx()}));
-  const byId=new Map(),mk=s=>{const u=Object.assign({},s);byId.set(u.id,u);return u};
+  const tribes=o.tribes.map(s=>Object.assign({},s,{rel:religions[s.rel],members:[],jobs:{},fx:s.fx&&typeof s.fx==='object'?Object.assign(zeroFx(),s.fx):null}));
+  const byId=new Map(),mk=s=>{const u=Object.assign(blankUnit(),s);byId.set(u.id,u);return u};
   const units=o.units.map(mk);
   const boats=o.boats.map(b=>Object.assign({},b,{pass:(b.pass||[]).map(mk)}));
   for(const u of byId.values())u.target=u.target!=null?byId.get(u.target)||null:null;
@@ -97,6 +98,9 @@ function applyWorld(w){
   const o=w.o,a=w.arr;
   ({hgt,tree,fire,lava,bld,btype,burnt,bm,ore,oreAmt,btier}=a);
   resetWorldState();
+  /* borders come back as saved, with the same countdown to their next redraw */
+  own=a.own;ownSnap=Int16Array.from(own);ovFull=true;lastDomains=o.lastDomains??-99;ownDirty=o.ownDirty??true;
+  if(o.landTiles)landTiles=o.landTiles;
   /* peoples woken by the monolith come back exactly as they were saved */
   for(const r of w.races){RACES[r.key]=r.def;if(!RACE_KEYS.includes(r.key))RACE_KEYS.push(r.key);aliasRace(r.key)}
   religions=w.religions;tribes=w.tribes;units=w.units;boats=w.boats;uid=w.uid;
@@ -111,8 +115,9 @@ function applyWorld(w){
   Object.assign(LANG,o.lang||{});
   for(let i=0;i<N;i++){if(fire[i])fires.add(i);if(lava[i])lavas.add(i);if(burnt[i]>step)burnSet.add(i)}
   updateLight();census();rebuildGrid();
-  for(const T of tribes)T.fx=computeFx(T);
-  computeDomains();initTerrain();
+  for(const T of tribes)if(!T.fx)T.fx=computeFx(T);
+  if(o.landTiles==null)computeDomains();
+  initTerrain();
   syncRaceTiles(new Set(w.races.map(r=>r.key)));
 }
 

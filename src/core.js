@@ -90,14 +90,16 @@ function randomLand(pred,tries=4000){for(let t=0;t<tries;t++){const i=(R()*N)|0;
 const GC=8,GW=Math.ceil(W/GC),GH=Math.ceil(H/GC),grid=[];
 for(let i=0;i<GW*GH;i++)grid.push([]);
 function rebuildGrid(){
-  for(const c of grid)c.length=0;
-  for(const u of units){if(u.dead||u.inside)continue;grid[clamp(u.y/GC|0,0,GH-1)*GW+clamp(u.x/GC|0,0,GW-1)].push(u)}
+  for(let i=0;i<grid.length;i++)grid[i].length=0;
+  for(let i=0;i<units.length;i++){const u=units[i];if(u.dead||u.inside)continue;grid[clamp(u.y/GC|0,0,GH-1)*GW+clamp(u.x/GC|0,0,GW-1)].push(u)}
 }
 function nearest(u,r,pred){
   let best=null,bd=r*r;
   const gx0=clamp((u.x-r)/GC|0,0,GW-1),gx1=clamp((u.x+r)/GC|0,0,GW-1),gy0=clamp((u.y-r)/GC|0,0,GH-1),gy1=clamp((u.y+r)/GC|0,0,GH-1);
   for(let gy=gy0;gy<=gy1;gy++)for(let gx=gx0;gx<=gx1;gx++){
-    for(const v of grid[gy*GW+gx]){
+    const cell=grid[gy*GW+gx];
+    for(let n=0;n<cell.length;n++){
+      const v=cell[n];
       if(v.dead||v===u||v.inside)continue;
       const dx=v.x-u.x,dy=v.y-u.y,d=dx*dx+dy*dy;
       if(d<bd&&pred(v)){bd=d;best=v}
