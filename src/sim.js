@@ -22,7 +22,7 @@ function newTribe(race,x,y,parent,opts){
     nextFest:year()+3,bless:0,frenzy:0,legendIdx:(R()*2)|0,fx:zeroFx(),age:0,res:{stone:0,copper:0,iron:0,coal:0,silver:0,gold:0,gems:0},area:0,jobs:{},know:0,colonies:0,towns:[{x,y,name,founded:year(),houses:0,pop:0}]};
   tribes.push(T);
   T.fx=computeFx(T);
-  if(schism)log(`A schism split the ${parent.title}: the ${T.title} turned to the ${rel.name}, in the name of ${rel.patron.name}.`,DOMAINS[rel.domain].c);
+  if(schism)log(`A schism split the ${parent.title}: the ${T.title} turned to the ${rel.name}, in the name of ${rel.patron.name}.`,DOMAINS[rel.domain].c,false,newsAt(T,'⛪',2));
   return T;
 }
 function hostile(a,b){return wars.some(w=>(w.a===a&&w.b===b)||(w.a===b&&w.b===a))}
@@ -68,7 +68,7 @@ function addPerson(T,x,y,pa,pb,race){
 }
 function die(u){
   if(u.dead)return;u.dead=true;
-  if(u.k===0&&u.kills>=5){const T=tribes[u.tribe];log(`${u.name}, hero of the ${T.title}, has fallen after ${u.kills} victories.`,T.color);T.heroes.push({name:u.name,kills:u.kills,y:year()});T.renown+=1}
+  if(u.k===0&&u.kills>=5){const T=tribes[u.tribe];log(`${u.name}, hero of the ${T.title}, has fallen after ${u.kills} victories.`,T.color,false,{x:u.x,y:u.y,ic:'🎖️',p:1});T.heroes.push({name:u.name,kills:u.kills,y:year()});T.renown+=1}
 }
 function setT(u,i){u.tx=(i%W)+.5;u.ty=((i/W)|0)+.5}
 const canStand=(u,i)=>{if(SPECIES[u.sp]&&SPECIES[u.sp].fly)return true;const b=bio(hgt[i]);if(u.amph)return b>=1&&b<=3&&!lava[i];return walk(i)};
@@ -440,7 +440,7 @@ function updateTribes(){
       for(let i=0;i<N;i++)if(bld[i]===T.id){bld[i]=-2;btype[i]=3;markTile(i)}
       T.houses=0;T.hall=-1;bDirty=true;ownDirty=true;
       wars=wars.filter(w=>w.a!==T.id&&w.b!==T.id);alliances=alliances.filter(a=>a.a!==T.id&&a.b!==T.id);
-      log(`The ${T.title} has fallen into ruin.`,T.color);
+      log(`The ${T.title} has fallen into ruin.`,T.color,false,newsAt(T,'🏚️',3));
       continue;
     }
     if(R()<T.houses*.0025)T.food++;
@@ -491,7 +491,7 @@ const AGE_COL=[[170,130,80],[170,170,176],[214,128,64],[130,140,160],[190,200,22
 function checkAge(T){
   while(T.age<5&&AGE_REQ[T.age+1](T)){
     T.age++;
-    log(`The ${T.title} entered the ${AGE_NAME[T.age]}. ${AGE_WHY[T.age]}`,AGE_COL[T.age]);
+    log(`The ${T.title} entered the ${AGE_NAME[T.age]}. ${AGE_WHY[T.age]}`,AGE_COL[T.age],false,newsAt(T,'⚒️',T.age>1?2:1));
     const at=T.hall>=0?T.hall:-1;if(at>=0){effects.push({type:'rite',x:at%W+.5,y:((at/W)|0)+.5,c:AGE_COL[T.age],t:0,dur:80,big:true});sfx('fanfare',at%W,(at/W)|0)}
     T.fx=computeFx(T);
   }
@@ -613,7 +613,7 @@ function landSettlers(b){
   if(!T.alive){b.dead=true;return}
   const H=addTown(T,x,y),ti=T.towns.length-1;
   for(const m of b.pass){m.town=ti;m.x=m.px=x+.3+R()*.4;m.y=m.py=y+.3+R()*.4;m.tx=m.x;m.ty=m.y;m.cd=0;units.push(m)}
-  log(`Settlers from the ${T.title} landed on new shores and founded the village of ${H.name}.`,T.color);
+  log(`Settlers from the ${T.title} landed on new shores and founded the village of ${H.name}.`,T.color,false,{x:x+.5,y:y+.5,ic:'⛵',p:1});
   sfx('fanfare',x,y);
   b.dead=true;
 }
@@ -744,7 +744,7 @@ function yearly(){
   }
   for(const w of wars.slice())if(y>=w.until){
     wars.splice(wars.indexOf(w),1);
-    log(`The ${tribes[w.a].title} and the ${tribes[w.b].title} made peace.`,[120,190,120]);
+    log(`The ${tribes[w.a].title} and the ${tribes[w.b].title} made peace.`,[120,190,120],false,newsAt(tribes[w.b],'🕊️',1));
   }
   diplomacyYear();
   for(const T of tribes){
@@ -757,9 +757,12 @@ function yearly(){
     if(n>3)log(`The temple of the ${T.title} cleansed the land of its blight.`,DOMAINS[T.rel.domain].c,true);
   }
 }
-function log(m,c,local){
+/* a big event can carry a place (at) so the interface can call it out on the map */
+const newsAt=(T,ic,p)=>({x:T.cx+.5,y:T.cy+.5,ic,p});
+function log(m,c,local,where){
   const col=c||[150,140,170];
   if(!local){logs.unshift({y:year(),m,c:col});if(logs.length>240)logs.pop();logDirty=true}
+  if(where&&!local){news.push({y:year(),m,c:col,x:where.x,y2:where.y,ic:where.ic,p:where.p,s:step});if(news.length>24)news.shift()}
   for(const T of tribes)if(T.hist&&m.includes(T.title)){T.hist.unshift({y:year(),m,c:col});if(T.hist.length>70)T.hist.pop()}
 }
 
@@ -810,7 +813,7 @@ function genWorld(){
   hgt=new Float32Array(N);tree=new Uint8Array(N);fire=new Uint8Array(N);lava=new Uint16Array(N);
   bld=new Int16Array(N).fill(-1);btype=new Uint8Array(N);burnt=new Uint32Array(N);
   bm=new Uint8Array(N);ore=new Uint8Array(N);oreAmt=new Uint8Array(N);btier=new Uint8Array(N);own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;
-  units=[];tribes=[];religions=[];boats=[];fires=new Set();lavas=new Set();burnSet=new Set();step=0;logs=[];wars=[];alliances=[];effects=[];
+  units=[];tribes=[];religions=[];news=[];boats=[];fires=new Set();lavas=new Set();burnSet=new Set();step=0;logs=[];wars=[];alliances=[];effects=[];
   bList=[];bDirty=true;logDirty=true;volcanoes.length=0;wfx.length=0;monoliths.length=0;dipPending=null;
   WX.type='clear';WX.until=900;WX.cloud=WX.rain=WX.snow=WX.fog=WX.storm=0;
   const ox=R()*100,oy=R()*100;

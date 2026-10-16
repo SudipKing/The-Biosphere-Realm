@@ -15,6 +15,7 @@ let hgt,tree,fire,lava,bld,btype,burnt,bm,ore,oreAmt,btier,own,ownScore;
 let ownDirty=true,ovDirty=true,showDomains=true,seasonLock=-1;
 let units,tribes,religions,boats,fires,lavas,burnSet,step,logs,wars,alliances,effects,bList,bDirty,uid=1;
 let cnt={people:0,race:{},sp:{}};
+let news=[];
 let shake=0,logDirty=true,startFocus=[W/2,H/2];
 let tod=.3,sunH=0,light=1;
 const WX={type:'clear',until:0,cloud:0,rain:0,snow:0,fog:0,storm:0,wind:1};

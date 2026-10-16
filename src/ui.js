@@ -317,13 +317,14 @@ document.addEventListener('keydown',e=>{
   else if(k==='0')fitView();
   else if(k==='escape'){select(null);closeCodex();closeRegistry();closeChron();dipPending=null}
   else if(k==='c')chronOpen?closeChron():openChron();
+  else if(k==='g'&&lastHerald)goHerald(lastHerald);
   else if(k>='1'&&k<='6')showTab(+k-1);
 });
 document.addEventListener('pointerdown',()=>audioInit(),{capture:true});
 document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur',()=>keys.clear());
 $('newWorld').addEventListener('click',()=>{
-  genWorld();initFlocks();select(null);closeCodex();cam.fit=fitPz();cam.pz=cam.tpz=Math.max(cam.fit,2*dpr);centerOn(startFocus[0],startFocus[1]);renderPanel(true);
+  genWorld();initFlocks();clearHeralds();select(null);closeCodex();cam.fit=fitPz();cam.pz=cam.tpz=Math.max(cam.fit,2*dpr);centerOn(startFocus[0],startFocus[1]);renderPanel(true);
 });
 $('zin').addEventListener('click',()=>stepZoom(cw/2,ch/2,1));
 $('zout').addEventListener('click',()=>stepZoom(cw/2,ch/2,-1));
@@ -442,6 +443,52 @@ function renderPanel(force){
   }
 }
 
+/* heralds: big events pop up over the map with a way to fly there; render.js rings each one on the map */
+const heraldEl=document.createElement('div');heraldEl.className='heralds';heraldEl.setAttribute('aria-live','polite');heraldEl.setAttribute('aria-label','Big events');
+stage.appendChild(heraldEl);
+let heralds=[],lastHerald=null;
+const HERALD_MS=9000;
+function heraldMax(){return window.innerWidth<=860?1:3}
+function goHerald(h){
+  follow=false;flyTo(h.x,h.y,Math.max(cam.tpz,3*dpr));lastHerald=h;
+  h.ring=performance.now();dropHerald(h);
+}
+function dropHerald(h){
+  heralds=heralds.filter(x=>x!==h);
+  if(h.el){h.el.classList.add('out');const el=h.el;setTimeout(()=>el.remove(),reduceMotion?0:220);h.el=null}
+  if(h.ring)heraldRings.push(h);
+}
+const heraldRings=[];
+function addHerald(n){
+  const h={x:n.x,y:n.y2,m:n.m,c:n.c,ic:n.ic,p:n.p,yr:n.y,left:HERALD_MS};
+  const el=document.createElement('div');el.className='herald';el.style.setProperty('--ev',css(n.c));
+  el.innerHTML=`<span class="h-ic" aria-hidden="true"></span><p><span class="h-yr">Year ${n.y}</span> <span class="h-m"></span></p>
+    <div class="h-act"><button class="h-go">Go there</button><button class="h-x" aria-label="Dismiss">×</button></div>`;
+  el.querySelector('.h-ic').textContent=n.ic||'📜';el.querySelector('.h-m').textContent=n.m;
+  el.querySelector('.h-go').addEventListener('click',()=>goHerald(h));
+  el.querySelector('.h-x').addEventListener('click',()=>dropHerald(h));
+  el.addEventListener('pointerenter',()=>h.hold=true);el.addEventListener('pointerleave',()=>h.hold=false);
+  el.addEventListener('focusin',()=>h.hold=true);el.addEventListener('focusout',()=>h.hold=false);
+  h.el=el;heraldEl.appendChild(el);heralds.push(h);lastHerald=h;
+}
+function tickHeralds(dt){
+  if(news.length){
+    /* at high speed a burst can arrive at once: keep the most important, newest last */
+    const fresh=news.splice(0).sort((a,b)=>a.p-b.p||a.s-b.s);
+    for(const n of fresh.slice(-heraldMax())){
+      if(heralds.length>=heraldMax()){
+        const weakest=heralds.reduce((a,b)=>b.p<a.p||(b.p===a.p&&b.left<a.left)?b:a);
+        if(weakest.p>n.p)continue;dropHerald(weakest);
+      }
+      addHerald(n);
+    }
+  }
+  /* cards wait while the world is paused or the pointer rests on them */
+  if(speed>0)for(let k=heralds.length-1;k>=0;k--){const h=heralds[k];if(!h.hold&&(h.left-=dt)<=0)dropHerald(h)}
+  for(let k=heraldRings.length-1;k>=0;k--)if(performance.now()-heraldRings[k].ring>4000)heraldRings.splice(k,1);
+}
+function clearHeralds(){for(const h of heralds.slice())dropHerald(h);heraldRings.length=0;news.length=0;lastHerald=null}
+
 /* main loop: fixed-rate simulation, rendering interpolated in between */
 let last=performance.now(),acc=0,panelT=0,inspT=0;
 function frame(t){
@@ -454,6 +501,7 @@ function frame(t){
   }else alpha=1;
   if(painting&&hover&&BRUSH.has(tool))applyBrush(hover,dt);
   updEffects(dt);
+  tickHeralds(dt);
   draw(dt);
   panelT+=dt;inspT+=dt;
   if(panelT>700){panelT=0;renderPanel(false)}

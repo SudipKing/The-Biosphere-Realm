@@ -474,7 +474,7 @@ function upliftUnit(u){
   const tx=tile%W,ty=(tile/W)|0;
   let T=null,bd=30*30;
   for(const t of tribes){if(!t.alive||t.race!==key)continue;for(const H of t.towns){const d=(H.x-tx)**2+(H.y-ty)**2;if(d<bd){bd=d;T=t}}}
-  if(!T){T=newTribe(key,tx,ty);log(`Touched by the monolith, ${SPECIES[sp].name.toLowerCase()}s awoke as the ${RACES[key].plural} and founded the ${T.title}.`,T.color)}
+  if(!T){T=newTribe(key,tx,ty);log(`Touched by the monolith, ${SPECIES[sp].name.toLowerCase()}s awoke as the ${RACES[key].plural} and founded the ${T.title}.`,T.color,false,newsAt(T,'✨',3))}
   const pp=addPerson(T,tx,ty,null,null,key);
   pp.x=pp.px=u.x;pp.y=pp.py=u.y;pp.tx=pp.x;pp.ty=pp.y;pp.age=ADULT+((R()*6*YEAR)|0);pp.town=nearestTown(T,tx,ty);
   T.pop++;

@@ -262,7 +262,7 @@ function makeArt(T){
   if(spot>=0){bld[spot]=T.id;btype[spot]=4;T.monuments++;bDirty=true;ownDirty=true;markDirty(spot)}
   T.arts.unshift(art);T.renown+=q;T.devo=Math.min(100,T.devo+q*(t.theme==='deity'?1.5:.7));
   const at=spot>=0?spot:(T.hall>=0?T.hall:-1);
-  log(`The ${T.title} unveiled the ${f.n.toLowerCase()} \u201c${art.name}\u201d.`,[240,208,110],!(q>=4||spot>=0));
+  log(`The ${T.title} unveiled the ${f.n.toLowerCase()} \u201c${art.name}\u201d.`,[240,208,110],!(q>=4||spot>=0),q>=4&&spot>=0?{x:spot%W+.5,y:((spot/W)|0)+.5,ic:'🗿',p:1}:null);
   if(at>=0){const x=at%W+.5,y=((at/W)|0)+.5;effects.push({type:'rite',x,y,c:[255,220,120],t:0,dur:50});sfx('unveil',x,y)}
 }
 function culturalTick(T){
@@ -305,7 +305,7 @@ function convert(T){
   }
   if(!best)return;
   const old=T.rel;T.rel=best.rel;T.devo=55;T.fx=computeFx(T);
-  log(`Missionaries of the ${best.title} converted the ${T.title} from the ${old.name} to the ${best.rel.name}.`,DOMAINS[best.rel.patron.sym].c);
+  log(`Missionaries of the ${best.title} converted the ${T.title} from the ${old.name} to the ${best.rel.name}.`,DOMAINS[best.rel.patron.sym].c,false,newsAt(T,'📿',2));
 }
 function rebellion(T){
   if(tribes.filter(t=>t.alive).length>=36)return;
@@ -318,7 +318,7 @@ function rebellion(T){
   NT.pop=movers.length;NT.members=movers;T.pop-=movers.length;T.members=T.members.filter(m=>m.tribe===T.id);
   T.stab=Math.min(100,T.stab+25);NT.stab=45;
   wars.push({a:T.id,b:NT.id,until:year()+3+((R()*3)|0)});T.foes.push(NT.name);NT.foes.push(T.name);
-  log(`Unrest tore through the ${T.title}: rebels led by ${movers[0].name} broke away to found the ${NT.title}, worshipping ${NT.rel.patron.name}.`,[210,110,60]);
+  log(`Unrest tore through the ${T.title}: rebels led by ${movers[0].name} broke away to found the ${NT.title}, worshipping ${NT.rel.patron.name}.`,[210,110,60],false,newsAt(NT,'🔥',3));
 }
 function culturalYear(){
   const y=year();
@@ -340,13 +340,13 @@ function culturalYear(){
 function declareWar(a,b){
   const y=year(),len=Math.max(1,3+((R()*5)|0)-Math.round((a.fx.dipl+b.fx.dipl)*3));
   wars.push({a:a.id,b:b.id,until:y+len});a.foes.push(b.name);b.foes.push(a.name);
-  if(a.rel!==b.rel&&R()<.5)log(`Holy war! The ${a.title} march on the ${b.title} in the name of ${a.rel.patron.name}.`,[194,65,45]);
-  else log(`War broke out between the ${a.title} and the ${b.title}.`,[194,65,45]);
+  if(a.rel!==b.rel&&R()<.5)log(`Holy war! The ${a.title} march on the ${b.title} in the name of ${a.rel.patron.name}.`,[194,65,45],false,newsAt(b,'⚔️',3));
+  else log(`War broke out between the ${a.title} and the ${b.title}.`,[194,65,45],false,newsAt(b,'⚔️',3));
   sfx('horn',null,null);
   for(const [side,foe] of [[a,b],[b,a]])for(const al of alliesOf(side)){
     if(al===foe||hostile(al.id,foe.id)||allied(al.id,foe.id)||R()>.55)continue;
     wars.push({a:al.id,b:foe.id,until:y+len});
-    log(`The ${al.title} honored their alliance with the ${side.title} and joined the war against the ${foe.title}.`,[194,65,45]);
+    log(`The ${al.title} honored their alliance with the ${side.title} and joined the war against the ${foe.title}.`,[194,65,45],false,newsAt(al,'🛡️',1));
   }
 }
 function diplomacyYear(){
@@ -360,7 +360,7 @@ function diplomacyYear(){
     const pa=.15*dp*(a.race===b.race?1.5:.6)*(a.rel===b.rel?1.5:1);
     if(R()<pa){
       alliances.push({a:a.id,b:b.id,until:y+8+((R()*8)|0)});
-      log(`The ${a.title} and the ${b.title} sealed an alliance.`,[96,190,140]);sfx('fanfare',null,null);continue;
+      log(`The ${a.title} and the ${b.title} sealed an alliance.`,[96,190,140],false,newsAt(a,'🤝',1));sfx('fanfare',null,null);continue;
     }
     let p=.14*(RACES[a.race].aggr+RACES[b.race].aggr);
     if(a.race!==b.race)p*=1.5;
