@@ -611,6 +611,6 @@ function drawWorldFx(ox,oy,pz,inView){
       ctx.strokeStyle='rgba(170,255,80,.75)';ctx.lineWidth=Math.max(1,pz*.6);ctx.beginPath();
       for(let k=0;k<40;k++){const a=hash(k,7)*6.28,d=Math.sqrt(hash(k,9))*r,yy=((frameN*6+k*37)%(tz*3));ctx.moveTo(X+Math.cos(a)*d,Y+Math.sin(a)*d*.6-tz*2+yy);ctx.lineTo(X+Math.cos(a)*d-pz,Y+Math.sin(a)*d*.6-tz*2+yy+tz*.5)}
       ctx.stroke();
-    }
+    }else if(FXDRAW[f.type])FXDRAW[f.type](f,X,Y,tz,pz);
   }
 }

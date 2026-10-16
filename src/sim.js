@@ -364,6 +364,7 @@ function updAnimal(u){
   if(u.hunger>(S.pred?2400:1800)){die(u);return}
   if(u.owner>=0&&!tribes[u.owner].alive)u.owner=-1;
   if(u.target&&u.target.dead)u.target=null;
+  if(S.act&&FAUNA[S.act](u,S))return;
   if(--u.cd<=0){
     u.cd=15+((R()*25)|0);u.mode=0;
     if(S.monster){
@@ -392,7 +393,7 @@ function updAnimal(u){
     const t=u.target,d=Math.hypot(t.x-u.x,t.y-u.y);
     if(d<7){u.fcd=34+((R()*30)|0);breathe(u,t)}else u.fcd=0;
   }
-  if(u.target){chase(u,S.chase||S.flee,(u.dmg||S.dmg||2)*(u.odd&&u.traits&&u.traits.includes('Berserk')?1.5:1),u.sp==='dragon'?1.6:1.2);return}
+  if(u.target){chase(u,S.chase||S.flee,(u.dmg||S.dmg||2)*(u.odd&&u.traits&&u.traits.includes('Berserk')?1.5:1),u.sp==='dragon'?1.6:(S.range||1.2));return}
   moveToward(u,u.mode?S.flee:S.spd);
 }
 
@@ -697,7 +698,7 @@ function growth(){
 
 /* biomes creep outward and some of them give birth to creatures */
 const AGGR_BM=new Set([BM.CORRUPT,BM.WASTE,BM.PARA]);
-const WILD_PICK=SPECIES_KEYS.filter(k=>!SPECIES[k].monster&&!SPECIES[k].dom&&k!=='eagle'&&k!=='wolf'&&k!=='bear');
+const WILD_PICK=SPECIES_KEYS.filter(k=>!SPECIES[k].monster&&!SPECIES[k].dom&&!(SPECIES[k].pred&&!SPECIES[k].minor)&&k!=='eagle');
 function spawnMon(sp,i){if(units.length<1500&&(cnt.sp[sp]||0)<SPECIES[sp].cap){addAnimal(sp,i%W,(i/W)|0);cnt.sp[sp]=(cnt.sp[sp]||0)+1}}
 function biomeLife(i){
   const b=bm[i],B=BIOMES[b];
@@ -714,6 +715,7 @@ function biomeLife(i){
     if(R()<.006)spawnMon('skeleton',i);else if(R()<.0015)spawnMon('zombie',i);
   }else if(b===BM.JUNGLE){if(R()<.002)spawnMon('spider',i)}
   else if(b===BM.PARA){if(R()<.0015&&units.length<1500){const sp=pick(WILD_PICK);addAnimal(sp,i%W,(i/W)|0)}}
+  faunaBiome(i,b);
 }
 function setBiome(i,b,treeP){
   bm[i]=b;
@@ -757,6 +759,7 @@ function yearly(){
   const y=year();
   culturalYear();
   prospect();
+  faunaYear();
   /* wild animals wander in from beyond the map edge when numbers run low */
   for(const sp of ['wolf','bear','fox','deer','rabbit']){
     const S=SPECIES[sp];
@@ -897,6 +900,7 @@ function genWorld(seedText){
   herd('wolf',3,3);herd('bear',3,1,j=>bio(hgt[j])===4);herd('fox',4,1);herd('horse',3,3);
   herd('buffalo',3,3,j=>bm[j]===BM.SAV||fertile(j));herd('crow',5,3,j=>!isWater(j));herd('eagle',2,1,j=>!isWater(j));herd('rat',3,2);
   herd('crab',5,2,j=>bio(hgt[j])===2);herd('turtle',3,1,j=>bio(hgt[j])===2||bio(hgt[j])===1);
+  genFauna(herd);
   updateUnits();
   initTerrain();
 }
@@ -929,7 +933,7 @@ function spawnAt(p,kind){
   }else{
     const S=SPECIES[kind];let owner=-1;
     if(S.dom){let bd=14*14;for(const t of tribes){if(!t.alive)continue;const d=(t.cx-tx)**2+(t.cy-ty)**2;if(d<bd){bd=d;owner=t.id}}}
-    const n=kind==='bear'||kind==='dragon'||kind==='ogre'||kind==='eagle'?1:kind==='horse'||kind==='cow'||kind==='wolf'||kind==='buffalo'?2:3;
+    const n=['bear','dragon','ogre','eagle','rhino','crocodile','treant','golem','demon','sandworm','mage','fireelem','unicorn'].includes(kind)?1:kind==='horse'||kind==='cow'||kind==='wolf'||kind==='buffalo'||kind==='hyena'||kind==='llama'?2:3;
     for(let k=0;k<n;k++)addAnimal(kind,tx,ty,owner);
     sfx('cry',tx+.5,ty+.5,kind);
   }

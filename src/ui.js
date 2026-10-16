@@ -206,6 +206,7 @@ const TABS=[
     ['volcano','🌋','Volcano','Tap to raise a volcano that spews lava for years.'],
     ['flood','💧','Flood','Tap to drown the land in a great flood.'],
     ['plague','🦠','Plague','Tap near a kingdom: a plague sweeps it and some of the dead rise as zombies.'],
+    ...FAUNA_ITEMS.nature,
   ]},
   {ic:'💥',name:'Chaos',items:[
     ['meteor','☄️','Meteor','Tap to call down a meteor. It leaves a crater of lava.'],
@@ -222,6 +223,7 @@ const TABS=[
     ['shower','🌌','Meteor shower','Tap to bring down a shower of meteors around the spot.'],
     ['tstorm','⛈️','Thunderstorm','Tap to park a thunderstorm overhead. Lightning strikes again and again.'],
     ['acid','☣️','Acid rain','Tap for acid rain: it hurts every living thing, kills trees, eats homes and leaves wasteland.'],
+    ...FAUNA_ITEMS.chaos,
   ]},
   {ic:'✨',name:'Wonders & Oddities',items:[
     ['monolith',()=>monolithSprite(),'Monolith','Place a black monolith anywhere. Every 10 seconds its beam turns any animal or monster nearby into a brand-new sapient people, with its own kingdom, language and faith. Tap it again to remove it.'],
@@ -248,6 +250,7 @@ const TABS=[
     ['w_clone','👯','Cloning','Makes an exact copy of each creature or person nearby.'],
     ['w_charm','💘','Charm','Animals and monsters nearby come to serve the closest kingdom. Charmed monsters fight its enemies.'],
     ['w_time','⏳','Hourglass','Tap to let a whole year pass in a blink.'],
+    ...FAUNA_ITEMS.wonders,
   ]},
 ];
 const PINNED=[

@@ -270,6 +270,7 @@ function animalSprite(sp,fr,v,male,saddle){
       gr(g,1,6,2,5,sk);gr(g,12,6,2,4,sk);gr(g,1,10,2,2,sd);
       gr(g,5,0,6,5,sk);gr(g,5,0,6,1,sd);gp(g,6,2,CL.red);gp(g,9,2,CL.red);gr(g,6,4,4,1,CL.tusk);gp(g,6,3,CL.tusk);gp(g,9,3,CL.tusk);gp(g,4,1,sd);gp(g,11,1,sd);
       gr(g,13,1,2,10,ls);gr(g,12,0,4,3,CL.woodD);gp(g,12,1,CL.stoneD);gp(g,15,2,CL.stoneD);break}
+    default:g=faunaSprite(sp,fr,v,male);
   }
   return bake(g);
 }
