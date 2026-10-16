@@ -781,12 +781,11 @@ function yearly(){
     if(n>3)log(`The temple of the ${T.title} cleansed the land of its blight.`,DOMAINS[T.rel.domain].c,true);
   }
 }
-/* a big event can carry a place (at) so the interface can call it out on the map */
+/* a big event can carry a place; the Chronicle offers a quiet Go there for it */
 const newsAt=(T,ic,p)=>({x:T.cx+.5,y:T.cy+.5,ic,p});
 function log(m,c,local,where){
   const col=c||[150,140,170];
-  if(!local){logs.unshift({y:year(),m,c:col});if(logs.length>240)logs.pop();logDirty=true}
-  if(where&&!local){news.push({y:year(),m,c:col,x:where.x,y2:where.y,ic:where.ic,p:where.p,s:step});if(news.length>24)news.shift()}
+  if(!local){const e={y:year(),m,c:col};if(where){e.x=where.x;e.wy=where.y}logs.unshift(e);if(logs.length>240)logs.pop();logDirty=true}
   for(const T of tribes)if(T.hist&&m.includes(T.title)){T.hist.unshift({y:year(),m,c:col});if(T.hist.length>70)T.hist.pop()}
 }
 
@@ -849,7 +848,7 @@ function genOres(){
 /* what a new or loaded world starts without: derived layers, caches, transient effects and the storyteller's memory */
 function resetWorldState(){
   own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;ovDirty=true;lastDomains=-99;ownSnap=null;
-  fires=new Set();lavas=new Set();burnSet=new Set();news=[];effects=[];story=newStory();
+  fires=new Set();lavas=new Set();burnSet=new Set();effects=[];story=newStory();
   bList=[];bDirty=true;logDirty=true;volcanoes.length=0;wfx.length=0;monoliths.length=0;dipPending=null;
 }
 function genWorld(seedText){

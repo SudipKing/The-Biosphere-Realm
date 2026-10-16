@@ -336,7 +336,6 @@ document.addEventListener('keydown',e=>{
   else if(k==='escape'){select(null);closePanels();closeWelcome();closeWorldPop();dipPending=null}
   else if(e.key==='?'||(k==='/'&&e.shiftKey))helpEl.hidden?openHelp():closeHelp();
   else if(k==='c')chronOpen?closeChron():openChron();
-  else if(k==='g'&&lastHerald)goHerald(lastHerald);
   else if(k>='1'&&k<='6')showTab(+k-1);
 });
 document.addEventListener('pointerdown',()=>audioInit(),{capture:true});
@@ -365,7 +364,7 @@ $('seedCopy').addEventListener('click',()=>{
 $('seedIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('newWorld').click()});
 /* what every fresh or loaded world needs from the interface */
 function afterWorld(){
-  initFlocks();clearHeralds();select(null);closePanels();dipPending=null;follow=false;
+  initFlocks();select(null);closePanels();dipPending=null;follow=false;
   cam.fit=fitPz();cam.vx=cam.vy=0;cam.flyTo=null;renderPanel(true);warmSprites();
 }
 $('newWorld').addEventListener('click',()=>{
@@ -499,55 +498,19 @@ function renderPanel(force){
     <span title="${rel.patron.dom}">${rel.name} <small style="color:var(--muted)">${rel.doc.name}</small></span><span class="n">${v.n} in ${v.k}</span></div>`).join(''):`<p class="empty">No faiths yet.</p>`;
   if(logDirty||force){
     $('log').innerHTML=logs.slice(0,40).map(l=>`<li><span class="yr">Y${l.y}</span><span style="border-left:3px solid ${css(l.c)};padding-left:8px">${l.m}</span></li>`).join('');
+    renderMiniLog();
     logDirty=false;
   }
 }
-
-/* heralds: big events pop up over the map with a way to fly there; render.js rings each one on the map */
-const heraldEl=document.createElement('div');heraldEl.className='heralds';heraldEl.setAttribute('aria-live','polite');heraldEl.setAttribute('aria-label','Big events');
-stage.appendChild(heraldEl);
-let heralds=[],lastHerald=null;
-const HERALD_MS=9000;
-function heraldMax(){return window.innerWidth<=860?1:3}
-function goHerald(h){
-  follow=false;flyTo(h.x,h.y,Math.max(cam.tpz,3*dpr));lastHerald=h;
-  h.ring=performance.now();dropHerald(h);
+/* the last few events, quietly, at the foot of the tray; a place-tagged one can be tapped to fly there */
+function renderMiniLog(){
+  const el=$('miniLog');if(!el)return;
+  el.innerHTML=logs.length?logs.slice(0,3).map((l,k)=>{
+    const t=`<span class="yr">Y${l.y}</span> ${l.m}`;
+    return l.x!=null?`<button class="ml" data-x="${l.x}" data-y="${l.wy}" style="border-left-color:${css(l.c)}" title="Go there">${t}</button>`
+      :`<p class="ml" style="border-left-color:${css(l.c)}">${t}</p>`}).join(''):'<p class="ml empty">Nothing has happened yet.</p>';
 }
-function dropHerald(h){
-  heralds=heralds.filter(x=>x!==h);
-  if(h.el){h.el.classList.add('out');const el=h.el;setTimeout(()=>el.remove(),reduceMotion?0:220);h.el=null}
-  if(h.ring)heraldRings.push(h);
-}
-const heraldRings=[];
-function addHerald(n){
-  const h={x:n.x,y:n.y2,m:n.m,c:n.c,ic:n.ic,p:n.p,yr:n.y,left:HERALD_MS};
-  const el=document.createElement('div');el.className='herald';el.style.setProperty('--ev',css(n.c));
-  el.innerHTML=`<span class="h-ic" aria-hidden="true"></span><p><span class="h-yr">Year ${n.y}</span> <span class="h-m"></span></p>
-    <div class="h-act"><button class="h-go">Go there</button><button class="h-x" aria-label="Dismiss">×</button></div>`;
-  el.querySelector('.h-ic').textContent=n.ic||'📜';el.querySelector('.h-m').textContent=n.m;
-  el.querySelector('.h-go').addEventListener('click',()=>goHerald(h));
-  el.querySelector('.h-x').addEventListener('click',()=>dropHerald(h));
-  el.addEventListener('pointerenter',()=>h.hold=true);el.addEventListener('pointerleave',()=>h.hold=false);
-  el.addEventListener('focusin',()=>h.hold=true);el.addEventListener('focusout',()=>h.hold=false);
-  h.el=el;heraldEl.appendChild(el);heralds.push(h);lastHerald=h;
-}
-function tickHeralds(dt){
-  if(news.length){
-    /* at high speed a burst can arrive at once: keep the most important, newest last */
-    const fresh=news.splice(0).sort((a,b)=>a.p-b.p||a.s-b.s);
-    for(const n of fresh.slice(-heraldMax())){
-      if(heralds.length>=heraldMax()){
-        const weakest=heralds.reduce((a,b)=>b.p<a.p||(b.p===a.p&&b.left<a.left)?b:a);
-        if(weakest.p>n.p)continue;dropHerald(weakest);
-      }
-      addHerald(n);
-    }
-  }
-  /* cards wait while the world is paused or the pointer rests on them */
-  if(speed>0)for(let k=heralds.length-1;k>=0;k--){const h=heralds[k];if(!h.hold&&(h.left-=dt)<=0)dropHerald(h)}
-  for(let k=heraldRings.length-1;k>=0;k--)if(performance.now()-heraldRings[k].ring>4000)heraldRings.splice(k,1);
-}
-function clearHeralds(){for(const h of heralds.slice())dropHerald(h);heraldRings.length=0;news.length=0;lastHerald=null}
+$('miniLog').addEventListener('click',e=>{const b=e.target.closest('button.ml');if(b){follow=false;flyTo(+b.dataset.x,+b.dataset.y,Math.max(cam.tpz,3*dpr))}});
 
 /* main loop: fixed-rate simulation, rendering interpolated in between */
 let last=performance.now(),acc=0,panelT=0,inspT=0;
@@ -563,7 +526,6 @@ function frame(t){
   }else alpha=1;
   if(painting&&hover&&BRUSH.has(tool))applyBrush(hover,dt);
   updEffects(dt);
-  tickHeralds(dt);
   draw(dt);
   panelT+=dt;inspT+=dt;
   if(panelT>700){panelT=0;renderPanel(false)}

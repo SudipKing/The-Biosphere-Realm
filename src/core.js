@@ -25,7 +25,6 @@ let hgt,tree,fire,lava,bld,btype,burnt,bm,ore,oreAmt,btier,own,ownScore;
 let ownDirty=true,ovDirty=true,showDomains=true,seasonLock=-1;
 let units,tribes,religions,boats,fires,lavas,burnSet,step,logs,wars,alliances,effects,bList,bDirty,uid=1;
 let cnt={people:0,race:{},sp:{}};
-let news=[];
 /* the storyteller: year a kingdom last rose or fell (sig fingerprints the kingdom count), earliest year it may act again, what it did */
 const newStory=()=>({last:0,next:0,sig:0,fired:[]});
 let story=newStory();

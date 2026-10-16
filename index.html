@@ -6,7 +6,7 @@
 <title>The Biosphere Realm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Silkscreen:wght@400;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -79,7 +79,7 @@
       <ol>
         <li><b>Pick a power</b> from the tray, then tap or drag on the map. Try placing a people, then blessing them.</li>
         <li><b>Zoom</b> with the scroll wheel or a pinch. Move with the hand tool, a right-drag or W A S D.</li>
-        <li><b>Tap anyone</b>, from a shepherd to a great hall, to read their story. Big events pop up with a Go there button.</li>
+        <li><b>Tap anyone</b>, from a shepherd to a great hall, to read their story. Big events are written quietly into the Chronicle.</li>
       </ol>
       <div class="row-btns"><button class="btn primary" id="welcomeGo">Start playing</button><button class="btn" id="welcomeHelp">All shortcuts</button></div>
     </div>
@@ -92,14 +92,13 @@
           <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Move the map (arrow keys too)</dd>
           <dt><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></dt><dd>Zoom in, zoom out, show the whole world</dd>
           <dt><kbd>1</kbd> to <kbd>6</kbd></dt><dd>Open a tab of powers</dd>
-          <dt><kbd>G</kbd></dt><dd>Go to the newest big event</dd>
           <dt><kbd>C</kbd></dt><dd>Open the Chronicle, the whole history of the world</dd>
           <dt><kbd>?</kbd></dt><dd>This help</dd>
           <dt><kbd>Esc</kbd></dt><dd>Close panels and cancel a diplomacy pick</dd>
         </dl>
         <h4>Reading the map</h4>
         <p>Each kingdom's land is tinted in its colour. Its banner shows its name, its people and, after the sword, its soldiers.</p>
-        <p>Red arrows point from an attacker to the kingdom it is at war with. Rings on the map mark the place of a big event.</p>
+        <p>Red arrows point from an attacker to the kingdom it is at war with.</p>
         <p>Zoomed far out, the Inspect tool opens the codex of the kingdom you tap.</p>
         <h4>Keeping a world</h4>
         <p>The World button saves this world to a file you can load later, and shows its seed. Share a seed and others get the same map.</p>
@@ -115,6 +114,7 @@
         <div class="trayHead"><span id="trayName"></span></div>
         <div class="trayGrid" id="trayGrid"></div>
       </div>
+      <div class="miniLog" id="miniLog" aria-label="Latest events" aria-live="off"></div>
     </div>
   </nav>
 

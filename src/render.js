@@ -322,7 +322,6 @@ function draw(dt){
   drawWorldFx(ox,oy,pz,inView);
   drawEffects(ox,oy,pz,dt);
   drawWarArrows(ox,oy,pz);
-  drawHeraldRings(ox,oy,pz);
   drawLabels(ox,oy,pz,inView);
   if(sel){
     let px,py,ok=true;
@@ -537,28 +536,6 @@ function processSound(ox,oy,pz,vis,fireVis,dt){
 }
 
 /* red arrows from every aggressor toward the kingdom it is attacking */
-/* rings on the map where a called-out event happened (heralds live in ui.js) */
-function drawHeraldRings(ox,oy,pz){
-  if(!heralds.length&&!heraldRings.length)return;
-  const tz=pz*TS,now=performance.now(),base=Math.max(22*dpr,tz*2.2);
-  ctx.save();ctx.lineWidth=Math.max(2,2*dpr);
-  for(const h of heralds){
-    const X=ox+h.x*tz,Y=oy+h.y*tz,k=reduceMotion?.5:(now/1400)%1;
-    const r=base*(.6+k*.7),a=1-k*.8;
-    ctx.beginPath();ctx.ellipse(X,Y,r,r*.5,0,0,7);
-    ctx.strokeStyle=`rgba(20,8,30,${a*.6})`;ctx.lineWidth=Math.max(4,4*dpr);ctx.stroke();
-    ctx.strokeStyle=`rgba(${h.c[0]},${h.c[1]},${h.c[2]},${a})`;ctx.lineWidth=Math.max(2,2*dpr);ctx.stroke();
-  }
-  for(const h of heraldRings){
-    const t=(now-h.ring)/4000,X=ox+h.x*tz,Y=oy+h.y*tz;
-    for(let r=0;r<3;r++){
-      const k=reduceMotion?.3+r*.25:((t*3+r/3)%1);
-      ctx.strokeStyle=`rgba(255,236,150,${(1-k)*(1-t)})`;
-      ctx.beginPath();ctx.ellipse(X,Y,base*(.4+k*1.6),base*(.4+k*1.6)*.5,0,0,7);ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
 function drawWarArrows(ox,oy,pz){
   if(!wars.length)return;
   const tz=pz*TS,lw=Math.max(2.5*dpr,Math.min(7*dpr,tz*.5));

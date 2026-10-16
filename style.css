@@ -2,20 +2,31 @@
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
-  --bg:#ebe5f5; --panel:#faf7ff; --ink:#261e38; --muted:#6a6084; --line:#d8cfe8;
-  --accent:#b77a0a; --sel:#3b2d62; --sel-ink:#ffe39a; --well:#12305e; --war:#c2412d;
-  --pixel:"Pixelify Sans","Courier New",monospace;
+  /* light: a warm parchment take on the same chunky look */
+  --bg:#e9dfcf; --panel:#f6efe2; --ink:#2b2236; --muted:#6f6279; --line:#2b2236;
+  --accent:#c4691a; --sel:#e0892b; --sel-ink:#2a1600; --well:#12305e; --war:#c2412d;
+  --hdr:#d9cbb4; --hdrln:#2b2236; --brand:#b4540a; --btn:#efe4d0; --btnhi:#fff8ea; --btnlo:#c9b99f;
+  --trbg:#d9cbb4; --trln:#2b2236; --tabbg:#c4b496; --tabink:#3a2e45; --tile:#efe4d0; --tilehi:#fff8ea; --tilelo:#bfae92;
+  --tr:#e0892b; --trink:#2a1600; --ok:#2f7a48;
+  --pixel:"Silkscreen","Pixelify Sans","Courier New",monospace;
+  --pixel2:"Pixelify Sans","Silkscreen","Courier New",monospace;
   --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#1a1527; --panel:#251e36; --ink:#ece5fb; --muted:#a49ac0; --line:#3a3052;
-    --accent:#f2c14e; --sel:#f2c14e; --sel-ink:#241a00; --war:#ff7a62;
+    --bg:#17121f; --panel:#241f2c; --ink:#efe8f7; --muted:#a79bb8; --line:#120f18;
+    --accent:#ffb347; --sel:#e0892b; --sel-ink:#1b0f00; --war:#ff7a62;
+    --hdr:#2a2433; --hdrln:#120f18; --brand:#ffb347; --btn:#3b3347; --btnhi:#4d4360; --btnlo:#2a2433;
+    --trbg:#241f2c; --trln:#120f18; --tabbg:#3b3347; --tabink:#d8cfe6; --tile:#3b3347; --tilehi:#51466a; --tilelo:#2a2433;
+    --tr:#e0892b; --trink:#1b0f00; --ok:#6fcf8a;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#1a1527; --panel:#251e36; --ink:#ece5fb; --muted:#a49ac0; --line:#3a3052;
-  --accent:#f2c14e; --sel:#f2c14e; --sel-ink:#241a00; --war:#ff7a62;
+  --bg:#17121f; --panel:#241f2c; --ink:#efe8f7; --muted:#a79bb8; --line:#120f18;
+  --accent:#ffb347; --sel:#e0892b; --sel-ink:#1b0f00; --war:#ff7a62;
+  --hdr:#2a2433; --hdrln:#120f18; --brand:#ffb347; --btn:#3b3347; --btnhi:#4d4360; --btnlo:#2a2433;
+  --trbg:#241f2c; --trln:#120f18; --tabbg:#3b3347; --tabink:#d8cfe6; --tile:#3b3347; --tilehi:#51466a; --tilelo:#2a2433;
+  --tr:#e0892b; --trink:#1b0f00; --ok:#6fcf8a;
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
 *,*::before,*::after{box-sizing:border-box}
@@ -191,28 +202,38 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 @media (max-width:1600px){.brand small{display:none}}
 .group .grid.two .tool{padding:5px 5px;gap:4px;font-size:12.5px}
 
-/* ---- the power tray: a dashboard on the left, tabs on top of a dark box of tiles ---- */
-.tray{grid-area:tray;min-width:0;min-height:0;display:flex;flex-direction:column;--tr:#e2382d;--trbg:#3b403a;--trln:#272a26}
-.tabs{display:flex;align-items:flex-end;gap:2px;padding:0 4px;flex:none}
-.tab{border:0;cursor:pointer;background:#575c53;color:#eceee4;padding:7px 0 5px;font-size:18px;line-height:1;flex:1;min-width:0;
-  clip-path:polygon(10% 0,90% 0,100% 100%,0 100%);margin-bottom:-3px;position:relative;z-index:1}
-.tab:hover{background:#6c7266}
-.tab[aria-selected="true"]{background:var(--tr);color:#fff;padding-bottom:8px;z-index:2}
+/* ---- the power tray: category tabs on top of a dark box of square tool buttons ---- */
+.tray{grid-area:tray;min-width:0;min-height:0;display:flex;flex-direction:column}
+.tabs{display:flex;align-items:flex-end;gap:3px;padding:0 3px;flex:none}
+.tab{border:3px solid var(--trln);border-bottom:0;cursor:pointer;background:var(--tabbg);color:var(--tabink);padding:6px 0 5px;font-size:18px;line-height:1;flex:1;min-width:0;
+  border-radius:6px 6px 0 0;margin-bottom:-3px;position:relative;z-index:1;box-shadow:inset 0 3px 0 var(--tilehi)}
+.tab:hover{background:var(--tilehi)}
+.tab[aria-selected="true"]{background:var(--tr);color:var(--trink);padding-bottom:8px;z-index:2;box-shadow:inset 0 3px 0 rgba(255,255,255,.35)}
 .tab:focus-visible{outline-offset:-4px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.trayBody{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;background:var(--trbg);border:3px solid var(--trln);border-radius:12px;padding:8px;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.07);position:relative;z-index:0}
-.trayPin{display:flex;gap:6px;flex:none;padding-bottom:8px;border-bottom:3px solid var(--trln)}
+.trayBody{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;background:var(--trbg);border:4px solid var(--trln);border-radius:4px;padding:8px;
+  box-shadow:inset 0 3px 0 var(--tilehi);position:relative;z-index:0}
+.trayPin{display:flex;gap:5px;flex:none;padding-bottom:8px;border-bottom:3px solid var(--trln)}
 .trayMain{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px}
-.trayHead{flex:none;color:#cfd3c6;font-family:var(--pixel);font-size:15px;padding:0 2px}
-.trayGrid{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#6b7164 transparent;padding-right:2px}
-.pane{display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:space-between}
+.trayHead{flex:none;color:var(--accent);font-family:var(--pixel);font-size:12px;letter-spacing:.5px;text-transform:uppercase;padding:0 2px}
+.trayGrid{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--tilehi) transparent;padding-right:2px}
+.pane{display:grid;grid-template-columns:repeat(4,46px);gap:5px;justify-content:space-between}
 .pane[hidden]{display:none}
-.tile{width:56px;height:56px;border-radius:10px;border:2px solid #1f221e;background:#2c302b;display:grid;place-items:center;cursor:pointer;padding:0;color:#fff}
-.tile:hover{background:#3b403a;border-color:#565d51}
-.tile[aria-pressed="true"]{border-color:var(--tr);background:#47302c;box-shadow:0 0 0 2px rgba(226,56,45,.4)}
-.tile canvas{width:44px;height:44px;image-rendering:pixelated;pointer-events:none}
-.tile .emo{font-size:27px;line-height:1;pointer-events:none}
+.tile{width:46px;height:46px;border-radius:3px;border:3px solid var(--trln);background:var(--tile);display:grid;place-items:center;cursor:pointer;padding:0;color:var(--ink);
+  box-shadow:inset 0 -4px 0 var(--tilelo),inset 0 2px 0 var(--tilehi)}
+.tile:hover{background:var(--tilehi)}
+.tile:active{box-shadow:inset 0 2px 0 var(--tilelo);transform:translateY(1px)}
+.tile[aria-pressed="true"]{background:var(--tr);box-shadow:inset 0 -4px 0 rgba(0,0,0,.28),inset 0 2px 0 rgba(255,255,255,.35)}
+.tile canvas{width:34px;height:34px;image-rendering:pixelated;pointer-events:none}
+.tile .emo{font-size:22px;line-height:1;pointer-events:none}
+.miniLog{flex:none;border-top:3px solid var(--trln);padding-top:6px;display:flex;flex-direction:column;gap:3px;max-height:96px;overflow:hidden}
+.miniLog::before{content:"Chronicle";font-family:var(--pixel);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--accent)}
+.miniLog .ml{display:block;margin:0;text-align:left;font-size:11.5px;line-height:1.25;color:var(--ink);background:var(--tilelo);border:0;border-left:4px solid var(--muted);
+  padding:2px 5px;max-height:3.8em;overflow:hidden;width:100%}
+.miniLog button.ml{cursor:pointer}
+.miniLog button.ml:hover{background:var(--tile)}
+.miniLog .yr{font-family:var(--pixel);font-size:10px;color:var(--accent)}
+.miniLog .empty{color:var(--muted)}
 .chip[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink);border-color:var(--sel)}
 .dom{grid-column:2;height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin:2px 0 1px}
 .dom i{display:block;height:100%;border-radius:4px}
@@ -220,11 +241,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
   .tray{display:block}
   .tabs{padding:0 12px}.tab{flex:none;min-width:50px;padding:6px 12px 4px;font-size:18px}
   .trayBody{flex-direction:row;padding:8px}
-  .trayMain{flex:1;min-width:0}.trayHead{display:none}
+  .trayMain{flex:1;min-width:0}.trayHead{display:none}.miniLog{display:none}
   .trayGrid{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
-  .pane{grid-template-columns:none;grid-template-rows:repeat(2,48px);grid-auto-flow:column;grid-auto-columns:48px;gap:5px;width:max-content;justify-content:start}
-  .trayPin{order:2;display:grid;grid-template-rows:repeat(2,48px);gap:5px;padding:0 0 0 8px;border-bottom:0;border-left:3px solid var(--trln);align-content:start}
-  .tile{width:48px;height:48px}.tile canvas{width:38px;height:38px}.tile .emo{font-size:23px}
+  .pane{grid-template-columns:none;grid-template-rows:repeat(2,44px);grid-auto-flow:column;grid-auto-columns:44px;gap:5px;width:max-content;justify-content:start}
+  .trayPin{order:2;display:grid;grid-template-rows:repeat(2,44px);gap:5px;padding:0 0 0 8px;border-bottom:0;border-left:3px solid var(--trln);align-content:start}
+  .tile{width:44px;height:44px}.tile canvas{width:32px;height:32px}.tile .emo{font-size:21px}
 }
 
 /* registry and chronicle panels share the codex look */
@@ -241,22 +262,6 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 #chHead canvas{width:40px;height:40px;image-rendering:pixelated}
 #chBody .log{gap:9px}
 
-/* heralds: big events called out over the map, left edge in the event's chronicle colour */
-.heralds{position:absolute;left:10px;bottom:10px;width:min(400px,calc(100% - 70px));display:flex;flex-direction:column;gap:6px;pointer-events:none;z-index:2}
-.herald{pointer-events:auto;position:relative;display:grid;grid-template-columns:24px 1fr auto;gap:0 8px;align-items:center;background:var(--panel);color:var(--ink);
-  border:2px solid var(--line);border-left:5px solid var(--ev);border-radius:10px;padding:6px 26px 6px 8px;box-shadow:0 6px 18px rgba(8,4,20,.35);
-  animation:herald-in .22s ease-out}
-.herald.out{opacity:0;transform:translateX(-12px);transition:opacity .2s,transform .2s}
-.herald .h-ic{font-size:20px;line-height:1.2;text-align:center}
-.herald p{margin:0;font-size:13.5px;line-height:1.3}
-.herald .h-yr{font-family:var(--pixel);color:var(--muted);font-size:13px;margin-right:2px}
-.herald .h-act{display:contents}
-.herald .h-go{white-space:nowrap;border:2px solid var(--line);background:var(--sel);color:var(--sel-ink);border-color:var(--sel);border-radius:8px;padding:2px 10px;font-weight:700;font-size:13px;cursor:pointer}
-.herald .h-x{position:absolute;top:1px;right:1px;border:0;background:none;color:var(--muted);font-size:17px;line-height:1;padding:3px 6px;cursor:pointer}
-.herald .h-x:hover{color:var(--ink)}
-@keyframes herald-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.herald{animation:none}.herald.out{transition:none}}
-@media (max-width:860px){.heralds{left:8px;bottom:8px;width:calc(100% - 64px)}.herald p{font-size:13px}}
 
 /* short landscape (a phone held sideways): map on the left, tray and hint stacked on the right, so the map never collapses */
 @media (max-width:860px) and (max-height:520px) and (orientation:landscape){
@@ -268,7 +273,6 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
   .trayBody{padding:6px}
   .tray{display:flex}
   .hint p{-webkit-line-clamp:1}
-  .heralds{width:calc(100% - 64px)}
 }
 
 /* world panel: seed, save, load and a deliberate new world, opened from the header */
@@ -302,3 +306,38 @@ kbd{display:inline-block;min-width:1.6em;text-align:center;font-family:var(--pix
 /* on phones the header scrolls sideways, so the World and Overview buttons come straight after the title where they're always seen */
 @media (max-width:860px){.top .brand{order:-2}#worldBtn,#openSide{order:-1}}
 @media (max-width:860px){.welcome{top:auto;bottom:8px;transform:translateX(-50%)}.welcome h2{font-size:19px}.welcome ol{font-size:13.5px}}
+
+/* ---- WorldBox-style chrome: thick dark outlines, inset bevels, pixel type ---- */
+.app{gap:8px}
+.top{background:var(--hdr);border-bottom:4px solid var(--hdrln);margin:-10px -10px 0;padding:8px 10px;gap:10px}
+.brand{color:var(--brand);font-size:20px;letter-spacing:1px;text-shadow:2px 2px 0 var(--hdrln)}
+.brand small{font-family:var(--body);text-shadow:none;letter-spacing:0}
+.year{font-family:var(--pixel);font-size:14px;color:var(--ink)}
+.chip,.snd,.btn,.seg{border:3px solid var(--line);border-radius:4px;background:var(--btn);color:var(--ink);box-shadow:inset 0 -3px 0 var(--btnlo),inset 0 2px 0 var(--btnhi)}
+.chip{padding:3px 10px;font-size:13px}
+.chip:hover,.btn:hover,.snd:hover{border-color:var(--line);background:var(--btnhi)}
+.chip:active,.btn:active,.snd:active{box-shadow:inset 0 2px 0 var(--btnlo)}
+.btn.primary,.chip[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink);box-shadow:inset 0 -3px 0 rgba(0,0,0,.28),inset 0 2px 0 rgba(255,255,255,.35);border-color:var(--line)}
+.btn.danger{border-color:var(--line);color:var(--war)}
+.seg{display:flex;overflow:hidden;padding:0;box-shadow:none}
+.seg button{font-family:var(--pixel);font-size:13px;border-right:3px solid var(--line);background:var(--btn);box-shadow:inset 0 -3px 0 var(--btnlo),inset 0 2px 0 var(--btnhi)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink);box-shadow:inset 0 -3px 0 rgba(0,0,0,.28),inset 0 2px 0 rgba(255,255,255,.35)}
+.snd[aria-pressed="false"]::after{background:var(--war)}
+.stage{border:4px solid var(--line);border-radius:4px}
+.zoom button{border:3px solid var(--line);border-radius:4px;background:var(--btn);color:var(--ink);box-shadow:inset 0 -3px 0 var(--btnlo),inset 0 2px 0 var(--btnhi)}
+.zoom button:hover{background:var(--btnhi)}
+.side,.inspect,.codex,.pop,.welcome{border:4px solid var(--line);border-radius:4px;box-shadow:inset 0 3px 0 var(--btnhi),0 8px 0 rgba(0,0,0,.25)}
+.side h2,.cx-body h4,.insp-head h3,.cx-head h3,.welcome h2{font-family:var(--pixel2);color:var(--brand)}
+.count,.val,.art,.town,.rg-row,.chips span,.bchip{border:3px solid var(--line);border-radius:4px;background:var(--btn)}
+.rg-in{border:3px solid var(--line);border-radius:4px}
+.cx-tabs{border-bottom:3px solid var(--line)}
+.cx-tabs button{border-radius:4px;border:3px solid transparent}
+.cx-tabs button:hover{border-color:var(--line)}
+.mbar,.mbar i{border-radius:0}
+kbd{border:3px solid var(--line);border-radius:4px}
+.allyc,.king .ally{color:var(--ok)}
+.hint{background:var(--hdr);border:3px solid var(--line);border-radius:4px;padding:0 10px}
+.ch-go{margin-left:6px}
+@media (max-width:860px){.top{margin:-8px -8px 0;padding:6px 8px}.brand{font-size:15px}}
+@media (prefers-reduced-motion:reduce){.tile:active{transform:none}}

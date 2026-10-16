@@ -188,6 +188,7 @@ function renderChron(force){
   cxEl('chHead').innerHTML=`<span class="chbook" aria-hidden="true"></span><div><h3>The Chronicle</h3><p>Year ${year()} · ${logs.length} entries</p></div>
     <div class="cx-actions"><button class="insp-x" id="chClose" aria-label="Close chronicle">×</button></div>`;
   const slot=cxEl('chHead').querySelector('.chbook');if(slot)slot.replaceWith(iconCanvas(WICON.book(),40));
-  cxEl('chBody').innerHTML=logs.length?`<ol class="log">${logs.map(l=>`<li><span class="yr">Y${l.y}</span><span style="border-left:3px solid ${css(l.c)};padding-left:8px">${l.m}</span></li>`).join('')}</ol>`:'<p class="empty">Nothing has happened yet.</p>';
+  cxEl('chBody').innerHTML=logs.length?`<ol class="log">${logs.map(l=>`<li><span class="yr">Y${l.y}</span><span style="border-left:3px solid ${css(l.c)};padding-left:8px">${l.m}${l.x!=null?` <button class="btn sm ch-go" data-x="${l.x}" data-y="${l.wy}">Go there</button>`:''}</span></li>`).join('')}</ol>`:'<p class="empty">Nothing has happened yet.</p>';
 }
 cxEl('chHead').addEventListener('click',e=>{if(e.target.closest('#chClose'))closeChron()});
+cxEl('chBody').addEventListener('click',e=>{const b=e.target.closest('.ch-go');if(b){follow=false;flyTo(+b.dataset.x,+b.dataset.y,Math.max(cam.tpz,3*dpr))}});
