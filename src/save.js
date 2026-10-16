@@ -21,11 +21,17 @@ function fromB64(b,C,name){
   const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);
   return new C(u.buffer);
 }
-/* a unit as plain data: render caches (fields starting with _) are dropped, its target becomes an id */
+/* a unit as plain data: render caches (fields starting with _) are dropped, its target becomes an id. A target that
+   died this step stays a target until its hunter next acts (and drops its task), so it is kept as a ghost. */
 function plainUnit(u){
   const o={};
-  for(const k in u){if(k[0]==='_')continue;o[k]=k==='target'?(u.target&&!u.target.dead?u.target.id:null):u[k]}
+  for(const k in u){if(k[0]==='_')continue;o[k]=k==='target'?(u.target?u.target.id:null):u[k]}
   return o;
+}
+function ghostsOf(list){
+  const live=new Set(list),out=new Map();
+  for(const u of list){const t=u.target;if(t&&!live.has(t)&&!out.has(t.id))out.set(t.id,Object.assign(plainUnit(t),{target:null}))}
+  return [...out.values()];
 }
 function saveWorld(){
   const tribeOut=tribes.map(T=>{const o={};for(const k in T)if(k!=='members'&&k!=='jobs')o[k]=k==='rel'?T.rel.id:T[k];return o});
@@ -39,6 +45,7 @@ function saveWorld(){
   });
   const bombKey=o=>Object.keys(BOMBS).find(k=>BOMBS[k]===o);
   const [cx,cy]=viewCenter(),L=tileLayers(),arrays={};
+  const alive=units.filter(u=>!u.dead),liveBoats=boats.filter(b=>!b.dead);
   for(const k in SAVE_ARRAYS)arrays[k]=toB64(L[k]);
   return {
     format:SAVE_FORMAT,version:SAVE_VERSION,W,H,savedAt:new Date().toISOString(),year:year(),
@@ -48,8 +55,9 @@ function saveWorld(){
     races:RACE_KEYS.filter(k=>RACES[k].uplift).map(k=>({key:k,def:RACES[k]})),
     lang:Object.assign({},LANG),
     religions:relOut,tribes:tribeOut,
-    units:units.filter(u=>!u.dead).map(plainUnit),
-    boats:boats.filter(b=>!b.dead).map(b=>Object.assign({},b,{pass:b.pass.map(plainUnit)})),
+    units:alive.map(plainUnit),
+    boats:liveBoats.map(b=>Object.assign({},b,{pass:b.pass.map(plainUnit)})),
+    ghosts:ghostsOf(alive.concat(...liveBoats.map(b=>b.pass))),
     wars,alliances,logs,volcanoes,monoliths,
     wfx:wfx.map(f=>f.o?Object.assign({},f,{o:bombKey(f.o)}):f),
     cam:{x:cx,y:cy,pz:cam.tpz/dpr},
@@ -88,6 +96,8 @@ function buildWorld(o){
   const byId=new Map(),mk=s=>{const u=Object.assign(blankUnit(),s);byId.set(u.id,u);return u};
   const units=o.units.map(mk);
   const boats=o.boats.map(b=>Object.assign({},b,{pass:(b.pass||[]).map(mk)}));
+  /* ghosts are only looked up as targets; they never join the world */
+  for(const g of Array.isArray(o.ghosts)?o.ghosts:[])if(g&&g.id!=null&&!byId.has(g.id))mk(g);
   for(const u of byId.values())u.target=u.target!=null?byId.get(u.target)||null:null;
   let maxId=0;for(const u of byId.values())maxId=Math.max(maxId,u.id);for(const b of boats)maxId=Math.max(maxId,b.id);
   return {o,arr,races,religions,tribes,units,boats,uid:Math.max(o.uid|0,maxId+1)};
