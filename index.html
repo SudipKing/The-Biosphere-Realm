@@ -26,9 +26,26 @@
     </div>
     <button class="snd" id="musicBtn" aria-label="Music">🎵</button>
     <button class="snd" id="sfxBtn" aria-label="Sound effects">🔊</button>
-    <button class="btn" id="newWorld">New world</button>
-    <button class="btn only-narrow" id="openSide">Chronicle</button>
+    <button class="snd" id="chronBtn" aria-label="Chronicle (C)" title="Chronicle (C)">📜</button>
+    <button class="snd" id="helpBtn" aria-label="Help and shortcuts (?)" title="Help and shortcuts (?)">❔</button>
+    <button class="btn" id="worldBtn" aria-haspopup="dialog" aria-expanded="false">World</button>
+    <button class="btn only-narrow" id="openSide">Overview</button>
   </header>
+  <div class="pop" id="worldPop" hidden role="dialog" aria-label="World">
+    <p class="pop-seed">Seed of this world: <b id="seedNow"></b> <button class="btn sm" id="seedCopy">Copy</button></p>
+    <div class="row-btns">
+      <button class="btn" id="saveBtn">Save to a file</button>
+      <button class="btn" id="loadBtn">Load a saved world</button>
+      <input type="file" id="loadFile" accept=".biosphere,.gz,.json,application/json,application/gzip" hidden>
+    </div>
+    <hr>
+    <label class="pop-lab" for="seedIn">Seed for a new world</label>
+    <div class="row-btns">
+      <input class="rg-in" id="seedIn" placeholder="Any word or number" autocomplete="off" spellcheck="false">
+      <button class="btn danger" id="newWorld">Start a new world</button>
+    </div>
+    <p class="mnote">The same seed always gives the same map. This world is lost unless you save it first.</p>
+  </div>
 
 
   <main class="stage" id="stage">
@@ -57,6 +74,37 @@
       <button id="zfit" aria-label="Show whole world">◻</button>
     </div>
     <div class="tip" id="tip">Tap anywhere to turn on sound</div>
+    <div class="welcome" id="welcome" role="dialog" aria-labelledby="welcomeH">
+      <h2 id="welcomeH">A world is waking up</h2>
+      <ol>
+        <li><b>Pick a power</b> from the tray, then tap or drag on the map. Try placing a people, then blessing them.</li>
+        <li><b>Zoom</b> with the scroll wheel or a pinch. Move with the hand tool, a right-drag or W A S D.</li>
+        <li><b>Tap anyone</b>, from a shepherd to a great hall, to read their story. Big events pop up with a Go there button.</li>
+      </ol>
+      <div class="row-btns"><button class="btn primary" id="welcomeGo">Start playing</button><button class="btn" id="welcomeHelp">All shortcuts</button></div>
+    </div>
+    <div class="codex help" id="help" hidden role="dialog" aria-labelledby="helpH">
+      <div class="cx-head"><span></span><div><h3 id="helpH">How to play</h3><p>On a phone, tap, drag and pinch do the same.</p></div><button class="insp-x" id="helpClose" aria-label="Close help">×</button></div>
+      <div class="cx-body">
+        <h4>Keys</h4>
+        <dl class="keys">
+          <dt><kbd>Space</kbd></dt><dd>Pause or resume</dd>
+          <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Move the map (arrow keys too)</dd>
+          <dt><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></dt><dd>Zoom in, zoom out, show the whole world</dd>
+          <dt><kbd>1</kbd> to <kbd>6</kbd></dt><dd>Open a tab of powers</dd>
+          <dt><kbd>G</kbd></dt><dd>Go to the newest big event</dd>
+          <dt><kbd>C</kbd></dt><dd>Open the Chronicle, the whole history of the world</dd>
+          <dt><kbd>?</kbd></dt><dd>This help</dd>
+          <dt><kbd>Esc</kbd></dt><dd>Close panels and cancel a diplomacy pick</dd>
+        </dl>
+        <h4>Reading the map</h4>
+        <p>Each kingdom's land is tinted in its colour. Its banner shows its name, its people and, after the sword, its soldiers.</p>
+        <p>Red arrows point from an attacker to the kingdom it is at war with. Rings on the map mark the place of a big event.</p>
+        <p>Zoomed far out, the Inspect tool opens the codex of the kingdom you tap.</p>
+        <h4>Keeping a world</h4>
+        <p>The World button saves this world to a file you can load later, and shows its seed. Share a seed and others get the same map.</p>
+      </div>
+    </div>
   </main>
 
   <nav class="tray" id="tray" aria-label="Powers">
@@ -105,6 +153,7 @@
 <script src="src/render.js"></script>
 <script src="src/codex.js"></script>
 <script src="src/ui.js"></script>
+<script src="src/save.js"></script>
 <!--/SCRIPTS-->
 </body>
 </html>

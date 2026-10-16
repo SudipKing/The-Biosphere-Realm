@@ -55,6 +55,31 @@ function updateCamera(dt){
 new ResizeObserver(()=>{if(hgt)resize()}).observe(stage);
 
 const ipos=u=>[u.px+(u.x-u.px)*alpha,u.py+(u.y-u.py)*alpha];
+/* each unit keeps its two walk frames, so drawing never builds a cache key; the signature changes with colour, age or job.
+   Fields starting with _ are render caches and are never saved */
+function unitSprite(u,fr){
+  const job=u.k===0&&adult(u)?u.job:null;
+  /* the signature covers everything the sprite shows that can change: colour, job, age, looks, and species (Mutate) */
+  const sig=u.k===0?tribes[u.tribe].ci*32+(adult(u)?JOB_KEYS.indexOf(job)+2:0)+(u.genes.skin*16+u.genes.hair)*4096:u.sp==='horse'&&u.owner>=0?tribes[u.owner].ci:-1;
+  if(u._sg!==sig||u._ssp!==u.sp||!u._sp){u._sg=sig;u._ssp=u.sp;u._sp=[null,null]}
+  let s=u._sp[fr];
+  if(!s){
+    if(u.k===0){const T=tribes[u.tribe];s=spr(`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}|${job||''}`,()=>personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr,job))}
+    else s=animalSpr(u,fr);
+    u._sp[fr]=s;
+  }
+  return s;
+}
+/* draw list objects are pooled and reused every frame */
+const drawPool=[],items=[],vis=[],visB=[];
+function drawItem(y){let it=drawPool[items.length];if(!it){it={y:0,b:null,u:null,boat:null,mono:null,x:0,ry:0};drawPool.push(it)}it.y=y;it.b=it.u=it.boat=it.mono=null;items.push(it);return it}
+const byY=(a,b)=>a.y-b.y;
+/* bake the sprites a fresh world needs up front, so the first zoom-in doesn't stall */
+function warmSprites(){
+  for(const u of units){unitSprite(u,0);unitSprite(u,1)}
+  if(bDirty)rebuildBList();
+  for(const b of bList){const T=b.t>=0?tribes[b.t]:null;if(T)buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier,b.v)}
+}
 function rebuildBList(){
   bList=[];
   for(let i=0;i<N;i++)if(bld[i]!==-1)bList.push({i,x:i%W,y:(i/W)|0,t:bld[i],ty:bld[i]===-2?3:btype[i],tier:btier[i],v:(hash(i%W,(i/W|0)+77)*4)|0});
@@ -63,39 +88,76 @@ function rebuildBList(){
 
 /* domains: a colour layer per kingdom, one owner per tile. Each sub-pixel takes the owner with the most weight among
    the four nearest tile centres, so borders run smoothly along diagonals instead of in steps */
-const OVS=4;let ovC=null,ovX=null,ovOwn=null;
+const OVS=4;let ovC=null,ovX=null,ovOwn=null,ovImg=null,ovBuf=null;
 const packRGBA=(r,g,b,a)=>((a<<24)|(b<<16)|(g<<8)|r)>>>0;
-function buildOverlay(){
-  const ow=W*OVS,oh=H*OVS;
-  if(!ovC){ovC=document.createElement('canvas');ovC.width=ow;ovC.height=oh;ovX=ovC.getContext('2d');ovOwn=new Int16Array(ow*oh)}
-  const img=ovX.createImageData(ow,oh),buf=new Uint32Array(img.data.buffer);
-  const cand=[0,0,0,0],wt=[0,0,0,0];
-  for(let py=0;py<oh;py++){
-    const fy=(py+.5)/OVS-.5,y0=Math.floor(fy),ty=fy-y0,ya=y0<0?0:y0,yb=y0+1>=H?H-1:y0+1;
-    for(let px=0;px<ow;px++){
-      const fx=(px+.5)/OVS-.5,x0=Math.floor(fx),tx=fx-x0,xa=x0<0?0:x0,xb=x0+1>=W?W-1:x0+1;
-      cand[0]=own[ya*W+xa];cand[1]=own[ya*W+xb];cand[2]=own[yb*W+xa];cand[3]=own[yb*W+xb];
-      if(cand[0]===cand[1]&&cand[0]===cand[2]&&cand[0]===cand[3]){ovOwn[py*ow+px]=cand[0];continue}
-      wt[0]=(1-tx)*(1-ty);wt[1]=tx*(1-ty);wt[2]=(1-tx)*ty;wt[3]=tx*ty;
-      let best=cand[0],bw=-1;
-      for(let a=0;a<4;a++){let w=0;for(let b=0;b<4;b++)if(cand[b]===cand[a])w+=wt[b];if(w>bw){bw=w;best=cand[a]}}
-      ovOwn[py*ow+px]=best;
-    }
+const ovCand=[0,0,0,0],ovWt=[0,0,0,0],OV_MS=3;let ovJob=null;
+/* owner of each sub-pixel in one row */
+function ovOwnRow(py,px0,px1){
+  const ow=W*OVS,fy=(py+.5)/OVS-.5,y0=Math.floor(fy),ty=fy-y0,ya=y0<0?0:y0,yb=y0+1>=H?H-1:y0+1,cand=ovCand,wt=ovWt;
+  for(let px=px0;px<px1;px++){
+    const fx=(px+.5)/OVS-.5,x0=Math.floor(fx),tx=fx-x0,xa=x0<0?0:x0,xb=x0+1>=W?W-1:x0+1;
+    cand[0]=own[ya*W+xa];cand[1]=own[ya*W+xb];cand[2]=own[yb*W+xa];cand[3]=own[yb*W+xb];
+    if(cand[0]===cand[1]&&cand[0]===cand[2]&&cand[0]===cand[3]){ovOwn[py*ow+px]=cand[0];continue}
+    wt[0]=(1-tx)*(1-ty);wt[1]=tx*(1-ty);wt[2]=(1-tx)*ty;wt[3]=tx*ty;
+    let best=cand[0],bw=-1;
+    for(let a=0;a<4;a++){let w=0;for(let b=0;b<4;b++)if(cand[b]===cand[a])w+=wt[b];if(w>bw){bw=w;best=cand[a]}}
+    ovOwn[py*ow+px]=best;
   }
-  const cols=tribes.map(T=>[packRGBA(T.color[0],T.color[1],T.color[2],70),packRGBA(T.color[0]*.78|0,T.color[1]*.78|0,T.color[2]*.78|0,230)]);
-  for(let py=0;py<oh;py++)for(let px=0;px<ow;px++){
-    const k=py*ow+px,o=ovOwn[k];if(o<0)continue;
+}
+/* colour of each sub-pixel in one row, darker along borders */
+function ovColourRow(py,px0,px1,cols){
+  const ow=W*OVS,oh=H*OVS,buf=ovBuf;
+  for(let px=px0;px<px1;px++){
+    const k=py*ow+px,o=ovOwn[k];if(o<0){buf[k]=0;continue}
     const e=(px>0&&ovOwn[k-1]!==o)||(px<ow-1&&ovOwn[k+1]!==o)||(py>0&&ovOwn[k-ow]!==o)||(py<oh-1&&ovOwn[k+ow]!==o);
     buf[k]=cols[o][e?1:0];
   }
-  ovX.putImageData(img,0,0);ovDirty=false;
+}
+/* the layer is redrawn only around tiles whose owner changed, a few rows per frame within OV_MS, so it never stalls a frame.
+   Colours trail the owner rows by one, because a border pixel needs the row below it */
+function buildOverlay(){
+  const ow=W*OVS,oh=H*OVS;
+  if(!ovC){ovC=document.createElement('canvas');ovC.width=ow;ovC.height=oh;ovX=ovC.getContext('2d');ovOwn=new Int16Array(ow*oh);
+    ovImg=ovX.createImageData(ow,oh);ovBuf=new Uint32Array(ovImg.data.buffer);ovFull=true}
+  if(ovFull)ovJob=null;
+  if(!ovJob){
+    let tx0=0,ty0=0,tx1=W-1,ty1=H-1;
+    if(!ovFull){
+      if(ovBox[2]<0){ovDirty=false;return}
+      tx0=Math.max(0,ovBox[0]-2);ty0=Math.max(0,ovBox[1]-2);tx1=Math.min(W-1,ovBox[2]+2);ty1=Math.min(H-1,ovBox[3]+2);
+    }
+    ovBox[0]=W;ovBox[1]=H;ovBox[2]=ovBox[3]=-1;ovFull=false;
+    ovJob={px0:tx0*OVS,px1:(tx1+1)*OVS,py0:ty0*OVS,py1:(ty1+1)*OVS,y:ty0*OVS,
+      cols:tribes.map(T=>[packRGBA(T.color[0],T.color[1],T.color[2],70),packRGBA(T.color[0]*.78|0,T.color[1]*.78|0,T.color[2]*.78|0,230)])};
+  }
+  const J=ovJob,t0=performance.now();let first=-1,last=-1;
+  while(J.y<J.py1){
+    ovOwnRow(J.y,J.px0,J.px1);
+    if(J.y>J.py0){ovColourRow(J.y-1,J.px0,J.px1,J.cols);if(first<0)first=J.y-1;last=J.y-1}
+    J.y++;
+    if(performance.now()-t0>OV_MS)break;
+  }
+  if(J.y>=J.py1){
+    ovColourRow(J.py1-1,J.px0,J.px1,J.cols);if(first<0)first=J.py1-1;last=J.py1-1;
+    ovJob=null;ovDirty=ovFull||ovBox[2]>=0;
+  }
+  if(first>=0)ovX.putImageData(ovImg,0,0,J.px0,first,J.px1-J.px0,last-first+1);
+}
+
+/* the visible part of the domain colour layer, scaled onto the map */
+function drawDomains(ox,oy,tz){
+  const vx0=clamp(Math.floor(-ox/tz)-1,0,W),vx1=clamp(Math.ceil((cw-ox)/tz)+1,0,W),vy0=clamp(Math.floor(-oy/tz)-1,0,H),vy1=clamp(Math.ceil((ch-oy)/tz)+1,0,H);
+  if(vx1<=vx0||vy1<=vy0)return;
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(ovC,vx0*OVS,vy0*OVS,(vx1-vx0)*OVS,(vy1-vy0)*OVS,Math.round(ox+vx0*tz),Math.round(oy+vy0*tz),Math.round((vx1-vx0)*tz),Math.round((vy1-vy0)*tz));
+  ctx.imageSmoothingEnabled=false;
 }
 
 /* ambient life that isn't simulated: birds, fish, fireflies */
 const flocks=[];
 function initFlocks(){
   flocks.length=0;
-  for(let k=0;k<5;k++)flocks.push({x:R()*W,y:R()*H,a:R()*6.28,n:3+(R()*5|0),seed:R()*100});
+  for(let k=0;k<5;k++)flocks.push({x:RC()*W,y:RC()*H,a:RC()*6.28,n:3+(RC()*5|0),seed:RC()*100});
 }
 const GLOW_W=glowSprite(255,190,110),GLOW_C=glowSprite(170,230,255),GLOW_F=glowSprite(255,140,50);
 const CLOUD_D=cloudTexture(true),CLOUD_L=cloudTexture(false);
@@ -111,7 +173,7 @@ function draw(dt){
   ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=false;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
   ctx.fillStyle='#123068';ctx.fillRect(0,0,cw,ch);
   let sx=0,sy=0;
-  if(shake>0){sx=(R()-.5)*shake*dpr;sy=(R()-.5)*shake*dpr;shake*=Math.pow(.88,dt/16.7);if(shake<.4)shake=0}
+  if(shake>0){sx=(RC()-.5)*shake*dpr;sy=(RC()-.5)*shake*dpr;shake*=Math.pow(.88,dt/16.7);if(shake<.4)shake=0}
   const pz=cam.pz,ox=cam.ox+sx,oy=cam.oy+sy,tz=pz*TS;
   const SX=v=>Math.round(ox+v*pz),SY=v=>Math.round(oy+v*pz);
 
@@ -122,12 +184,7 @@ function draw(dt){
     ctx.drawImage(c.c,X0,Y0,X1-X0,Y1-Y0);
   }
   ctx.imageSmoothingEnabled=false;
-  if(showDomains){
-    if(ovDirty||!ovC)buildOverlay();
-    const vx0=clamp(Math.floor(-ox/tz)-1,0,W),vx1=clamp(Math.ceil((cw-ox)/tz)+1,0,W),vy0=clamp(Math.floor(-oy/tz)-1,0,H),vy1=clamp(Math.ceil((ch-oy)/tz)+1,0,H);
-    if(vx1>vx0&&vy1>vy0){ctx.imageSmoothingEnabled=true;
-      ctx.drawImage(ovC,vx0*OVS,vy0*OVS,(vx1-vx0)*OVS,(vy1-vy0)*OVS,SX(vx0*TS),SY(vy0*TS),Math.round((vx1-vx0)*tz),Math.round((vy1-vy0)*tz));ctx.imageSmoothingEnabled=false}
-  }
+  if(showDomains){if(ovDirty||!ovC)buildOverlay();drawDomains(ox,oy,tz)}
   const x0=Math.floor(-ox/tz)-3,x1=Math.ceil((cw-ox)/tz)+3,y0=Math.floor(-oy/tz)-2,y1=Math.ceil((ch-oy)/tz)+4;
   const inView=(x,y)=>x>=x0&&x<x1&&y>=y0&&y<y1;
   /* sunlight glinting on open water */
@@ -143,25 +200,27 @@ function draw(dt){
   }
   const blit=(img,w,h,X,Y,sc)=>{const a=SX(X),b=SY(Y);ctx.drawImage(img,a,b,Math.round(w*pz*sc),Math.round(h*pz*sc))};
 
-  const items=[],vis=[],visB=[];
-  for(const b of bList)if(inView(b.x,b.y)){items.push({y:b.y+.95,b});visB.push(b)}
-  for(const u of units){if(u.inside)continue;const [x,y]=ipos(u);if(inView(x,y)){items.push({y:u.fly?y+SPECIES[u.sp].alt*.1:y,u,x,ry:y});vis.push(u)}}
-  for(const b of boats){const [x,y]=ipos(b);if(inView(x,y))items.push({y:y+.3,boat:b,x})}
-  for(const m of monoliths)if(inView(m.x,m.y))items.push({y:m.y+.95,mono:m});
-  items.sort((a,b)=>a.y-b.y);
+  items.length=0;vis.length=0;visB.length=0;
+  for(const b of bList)if(inView(b.x,b.y)){drawItem(b.y+.95).b=b;visB.push(b)}
+  for(const u of units){
+    if(u.inside)continue;
+    const x=u.px+(u.x-u.px)*alpha,y=u.py+(u.y-u.py)*alpha;
+    if(inView(x,y)){const it=drawItem(u.fly?y+SPECIES[u.sp].alt*.1:y);it.u=u;it.x=x;it.ry=y;vis.push(u)}
+  }
+  for(const b of boats){const x=b.px+(b.x-b.px)*alpha,y=b.py+(b.y-b.py)*alpha;if(inView(x,y)){const it=drawItem(y+.3);it.boat=b;it.x=x}}
+  for(const m of monoliths)if(inView(m.x,m.y))drawItem(m.y+.95).mono=m;
+  items.sort(byY);
   const close=pz>=1.5;
   for(const it of items){
     if(it.b){
       const b=it.b,T=b.t>=0?tribes[b.t]:null;
       const s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier,b.v):buildingSprite('',3,0,'');
       blit(s.c,s.w,s.h,(b.x+.5)*TS-s.w/2,(b.y+1)*TS-s.h+1,1);
-      if(T&&close&&b.ty<2&&(T.race==='human'||T.race==='dwarf')&&R()<.006*(dt/16.7)&&effects.length<300)
+      if(T&&close&&b.ty<2&&(T.race==='human'||T.race==='dwarf')&&RC()<.006*(dt/16.7)&&effects.length<300)
         effects.push({type:'smoke',x:b.x+(T.race==='human'?.85:.95)-(b.ty===1?.4:0),y:b.y-1.2,t:0,dur:80});
     }else if(it.u){
-      const u=it.u,y=it.ry!=null?it.ry:it.y,moving=u.moving&&speed>0,fr=moving||u.fly&&speed>0?(((frameN>>(u.fly?2:3))+u.id)&1):0,alt=u.fly?SPECIES[u.sp].alt+Math.sin(frameN/14+u.id)*1.2:0;
-      let s,sc=1;
-      if(u.k===0){const T=tribes[u.tribe];s=spr(`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}|${adult(u)?u.job||'':''}`,()=>personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr,adult(u)?u.job:null));if(!adult(u))sc=.7}
-      else{s=animalSpr(u,fr);if(!adult(u))sc=.65}
+      const u=it.u,y=it.ry,moving=u.moving&&speed>0,fr=moving||u.fly&&speed>0?(((frameN>>(u.fly?2:3))+u.id)&1):0,alt=u.fly?SPECIES[u.sp].alt+Math.sin(frameN/14+u.id)*1.2:0;
+      const s=unitSprite(u,fr);let sc=adult(u)?1:u.k===0?.7:.65;
       if(u.scale)sc*=u.scale;
       const fx=it.x*TS,fy=(y+.35)*TS;
       if(close){ctx.fillStyle=u.fly?'rgba(0,0,0,.12)':'rgba(0,0,0,.18)';ctx.fillRect(SX(fx-s.w*sc*.35),SY(fy-1),Math.round(s.w*sc*.7*pz),Math.round(pz*1.5))}
@@ -234,7 +293,7 @@ function draw(dt){
     }
     for(const bo of boats){const [x,y]=ipos(bo);if(!inView(x,y))continue;const rad=1.2*tz;ctx.drawImage(GLOW_W,SX(x*TS)-rad,SY(y*TS)-rad,rad*2,rad*2)}
     for(const m of monoliths){if(!inView(m.x,m.y))continue;const rad=3*tz;ctx.drawImage(GLOW_C,SX((m.x+.5)*TS)-rad,SY((m.y-.5)*TS)-rad,rad*2,rad*2)}
-    if(dark>.5){
+    if(dark>.5&&!reduceMotion){
       ctx.globalAlpha=(dark-.5)*1.6;ctx.fillStyle='rgb(220,255,140)';
       for(let k=0;k<60;k++){
         const fx=x0+hash(k,7)*(x1-x0),fy=y0+hash(k,9)*(y1-y0),ti=(fy|0)*W+(fx|0);
@@ -246,9 +305,11 @@ function draw(dt){
   }
   ctx.globalAlpha=Math.min(1,.35+dark);
   let fl=0;
-  for(const i of fires){if(fl++>160)break;const x=i%W,y=(i/W)|0;if(!inView(x,y))continue;const rad=2.2*tz*(.9+R()*.2);ctx.drawImage(GLOW_F,SX((x+.5)*TS)-rad,SY((y+.5)*TS)-rad,rad*2,rad*2)}
+  for(const i of fires){if(fl++>160)break;const x=i%W,y=(i/W)|0;if(!inView(x,y))continue;const rad=2.2*tz*(.9+RC()*.2);ctx.drawImage(GLOW_F,SX((x+.5)*TS)-rad,SY((y+.5)*TS)-rad,rad*2,rad*2)}
   for(const i of lavas){const x=i%W,y=(i/W)|0;if(!inView(x,y))continue;const rad=1.8*tz;ctx.drawImage(GLOW_F,SX((x+.5)*TS)-rad,SY((y+.5)*TS)-rad,rad*2,rad*2)}
   ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  /* zoomed out at night the kingdoms would vanish into the dark, so their colours glow back through a little */
+  if(showDomains&&ovC&&dark>.3&&pz<1.6*dpr){ctx.globalAlpha=Math.min(.55,(dark-.3)*.8);drawDomains(ox,oy,tz);ctx.globalAlpha=1}
   /* fog & snow light */
   if(WX.fog>.03){
     const size=700*pz,bx=ox-cloudX*.6*pz,by=oy+cloudY*.4*pz;
@@ -271,7 +332,7 @@ function draw(dt){
     else if(sel.t!=null){px=sel.t%W+.5;py=((sel.t/W)|0)+.8}
     if(ok){
       const X=ox+px*tz,Y=oy+py*tz,rr=Math.max(6*dpr,tz*(sel.i!=null?1.1:.55));
-      ctx.strokeStyle=`rgba(255,236,150,${.6+.4*Math.sin(frameN/8)})`;ctx.lineWidth=Math.max(2,dpr*2);
+      ctx.strokeStyle=`rgba(255,236,150,${reduceMotion?.9:.6+.4*Math.sin(frameN/8)})`;ctx.lineWidth=Math.max(2,dpr*2);
       ctx.beginPath();ctx.ellipse(X,Y,rr,rr*.45,0,0,7);ctx.stroke();
     }
   }
@@ -285,24 +346,31 @@ function draw(dt){
   let water=0;for(let k=0;k<9;k++){const tx=clamp(x0+((k%3)+.5)*(x1-x0)/3|0,0,W-1),ty=clamp(y0+(((k/3)|0)+.5)*(y1-y0)/3|0,0,H-1);if(isWater(ty*W+tx))water++}
   viewInfo={water:water/9,close:clamp((pz/dpr-.4)/1.4,0,1)};
   processSound(ox,oy,pz,vis,fireVis,dt);
-  if(speed>0&&close&&(fishT+=dt)>1800){fishT=R()*900;for(let k=0;k<12;k++){const fx=x0+R()*(x1-x0),fy=y0+R()*(y1-y0);if(inb(fx|0,fy|0)&&isWater((fy|0)*W+(fx|0))&&(fx|0)>0){effects.push({type:'fish',x:fx,y:fy,t:0,dur:36});SFXQ.push({t:'fish',x:fx,y:fy});break}}}
+  if(speed>0&&close&&(fishT+=dt)>1800){fishT=RC()*900;for(let k=0;k<12;k++){const fx=x0+RC()*(x1-x0),fy=y0+RC()*(y1-y0);if(inb(fx|0,fy|0)&&isWater((fy|0)*W+(fx|0))&&(fx|0)>0){effects.push({type:'fish',x:fx,y:fy,t:0,dur:36});SFXQ.push({t:'fish',x:fx,y:fy});break}}}
 }
 function drawPrecip(dt,run){
+  if(reduceMotion){drops.length=0;return}
   const want=Math.round((cw*ch/(dpr*dpr))/2600*Math.max(WX.rain,WX.snow)),snow=WX.snow>WX.rain;
-  while(drops.length<want)drops.push({x:R()*cw,y:R()*ch,v:.6+R()*.5,s:R()});
+  while(drops.length<want)drops.push({x:RC()*cw,y:RC()*ch,v:.6+RC()*.5,s:RC()});
   if(drops.length>want)drops.length=want;
   if(!drops.length)return;
   const k=dt/16.7,wind=WX.wind*(snow?.6:2.2)*dpr;
   if(snow){
     ctx.fillStyle='rgba(250,252,255,.85)';
-    for(const d of drops){d.y+=d.v*1.6*dpr*k;d.x+=(wind+Math.sin(frameN/30+d.s*9))*k*.6;if(d.y>ch){d.y=-4;d.x=R()*cw}if(d.x<0)d.x+=cw;if(d.x>cw)d.x-=cw;
+    for(const d of drops){d.y+=d.v*1.6*dpr*k;d.x+=(wind+Math.sin(frameN/30+d.s*9))*k*.6;if(d.y>ch){d.y=-4;d.x=RC()*cw}if(d.x<0)d.x+=cw;if(d.x>cw)d.x-=cw;
       const z=(1+d.s*1.5)*dpr;ctx.fillRect(d.x,d.y,z,z)}
   }else{
     ctx.strokeStyle=`rgba(180,205,235,${.35+WX.storm*.2})`;ctx.lineWidth=Math.max(1,dpr*.8);ctx.beginPath();
-    for(const d of drops){d.y+=d.v*14*dpr*k;d.x+=wind*k;if(d.y>ch){d.y=-20;d.x=R()*cw}if(d.x<0)d.x+=cw;if(d.x>cw)d.x-=cw;
+    for(const d of drops){d.y+=d.v*14*dpr*k;d.x+=wind*k;if(d.y>ch){d.y=-20;d.x=RC()*cw}if(d.x<0)d.x+=cw;if(d.x>cw)d.x-=cw;
       ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-wind*1.5,d.y-12*dpr*d.v)}
     ctx.stroke();
   }
+}
+/* a 5x7 pixel sword, h pixels tall */
+const SWORD=['..#..','..#..','..#..','..#..','#####','..#..','..#..'];
+function drawSword(x,y,h){
+  const p=h/7;
+  for(let r=0;r<7;r++)for(let c=0;c<5;c++)if(SWORD[r][c]==='#'){ctx.fillStyle=r===4?'#f2c14e':r>4?'#c89a5a':'#e8eef8';ctx.fillRect(Math.round(x+c*p),Math.round(y+r*p),Math.ceil(p),Math.ceil(p))}
 }
 function drawLabels(ox,oy,pz,inView){
   const tz=pz*TS,fsz=Math.round(Math.max(11*dpr,Math.min(15*dpr,pz*5)));
@@ -311,10 +379,14 @@ function drawLabels(ox,oy,pz,inView){
     if(!T.alive||T.hall<0)continue;
     const x=T.hall%W,y=(T.hall/W)|0;if(!inView(x,y))continue;
     const X=ox+(x+.5)*tz,Y=oy+(y+1)*tz-30*pz-fsz*.9;
-    const label=`${RACES[T.race].icon} ${T.name}  ${T.pop}/${(T.jobs&&T.jobs.soldier)||0}\u2694`,w=ctx.measureText(label).width+fsz;
+    /* name and people, then a drawn sword and the soldiers: a font glyph for the sword looks different on every system */
+    const label=`${RACES[T.race].icon} ${T.name}  ${T.pop}`,sold=String((T.jobs&&T.jobs.soldier)||0);
+    const wl=ctx.measureText(label).width,ws=ctx.measureText(sold).width,sw=fsz*.75,w=wl+sw+ws+fsz*1.5,L=X-w/2;
     ctx.fillStyle=`rgba(${T.color[0]*.55|0},${T.color[1]*.55|0},${T.color[2]*.55|0},.88)`;
-    ctx.beginPath();if(ctx.roundRect)ctx.roundRect(X-w/2,Y-fsz*.7,w,fsz*1.4,fsz*.4);else ctx.rect(X-w/2,Y-fsz*.7,w,fsz*1.4);ctx.fill();
-    ctx.fillStyle='#fff';ctx.fillText(label,X,Y+1);
+    ctx.beginPath();if(ctx.roundRect)ctx.roundRect(L,Y-fsz*.7,w,fsz*1.4,fsz*.4);else ctx.rect(L,Y-fsz*.7,w,fsz*1.4);ctx.fill();
+    ctx.fillStyle='#fff';ctx.textAlign='left';ctx.fillText(label,L+fsz*.5,Y+1);
+    drawSword(L+fsz*.5+wl+fsz*.35,Y-fsz*.45,fsz*.9);
+    ctx.fillStyle='#fff';ctx.fillText(sold,L+fsz*.5+wl+fsz*.35+sw,Y+1);ctx.textAlign='center';
   }
   /* villages of a kingdom carry its colour, with a smaller banner */
   if(pz<.9*dpr)return;
@@ -451,15 +523,15 @@ function processSound(ox,oy,pz,vis,fireVis,dt){
     AU.tokens-=1;AU.cool[key]=now+(e.t==='clang'||e.t==='thud'?90:e.t==='chop'||e.t==='mine'?160:250);
   }
   SFXQ.length=0;
-  if(fireVis&&R()<.08*Math.min(3,fireVis/4))playAt('crackle',.3+closeF*.4,0);
-  if(closeF>.15&&vis.length&&AU.tokens>=1&&R()<.035*(dt/16.7)){
+  if(fireVis&&RC()<.08*Math.min(3,fireVis/4))playAt('crackle',.3+closeF*.4,0);
+  if(closeF>.15&&vis.length&&AU.tokens>=1&&RC()<.035*(dt/16.7)){
     const u=pick(vis),[x,y]=ipos(u),pl=place(x,y);
     if(pl&&(u.lastCall||0)<now){
       const night=light<.3;
       if(u.k===1){
-        const ok=night?(u.sp==='wolf'||u.sp==='fox'||u.sp==='bear'||R()<.15):(u.sp!=='wolf'||R()<.3);
+        const ok=night?(u.sp==='wolf'||u.sp==='fox'||u.sp==='bear'||RC()<.15):(u.sp!=='wolf'||RC()<.3);
         if(ok){playAt('call',pl.v*closeF,pl.p,u.sp);u.lastCall=now+6000;AU.tokens--}
-      }else if(!night||R()<.25){playAt('speak',pl.v*closeF*.8,pl.p,{race:u.race,child:!adult(u)});u.lastCall=now+5000;AU.tokens--}
+      }else if(!night||RC()<.25){playAt('speak',pl.v*closeF*.8,pl.p,{race:u.race,child:!adult(u)});u.lastCall=now+5000;AU.tokens--}
     }
   }
 }

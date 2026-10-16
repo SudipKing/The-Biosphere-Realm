@@ -1,7 +1,17 @@
 "use strict";
 /* ============ Constants, helpers, shared state ============ */
 const W=240,H=150,N=W*H,TS=8,OW=W*TS,OH=H*TS,YEAR=200,ADULT=16*YEAR,DAY=2400;
-const R=Math.random;
+/* R drives the world and is seeded (mulberry32), so a seed rebuilds the same map. RC is for looks and sound only */
+let rngS=1;
+const R=()=>{let t=rngS=(rngS+0x6D2B79F5)|0;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296};
+const RC=Math.random;
+let worldSeed='';
+const randomSeed=()=>String(100000+Math.floor(RC()*900000));
+/* a seed is any text: digits are used as a number, anything else is hashed (FNV-1a) */
+function seedValue(s){
+  s=String(s).trim();if(/^\d{1,9}$/.test(s))return +s|0;
+  let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h|0;
+}
 const reduceMotion=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
 const pick=a=>a[(R()*a.length)|0];
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
@@ -16,6 +26,9 @@ let ownDirty=true,ovDirty=true,showDomains=true,seasonLock=-1;
 let units,tribes,religions,boats,fires,lavas,burnSet,step,logs,wars,alliances,effects,bList,bDirty,uid=1;
 let cnt={people:0,race:{},sp:{}};
 let news=[];
+/* the storyteller: year a kingdom last rose or fell (sig fingerprints the kingdom count), earliest year it may act again, what it did */
+const newStory=()=>({last:0,next:0,sig:0,fired:[]});
+let story=newStory();
 let shake=0,logDirty=true,startFocus=[W/2,H/2];
 let tod=.3,sunH=0,light=1;
 const WX={type:'clear',until:0,cloud:0,rain:0,snow:0,fog:0,storm:0,wind:1};

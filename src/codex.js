@@ -4,7 +4,7 @@ let codexT=null,codexTab='overview';
 const cxEl=id=>document.getElementById(id);
 const CX_TABS=[['overview','Overview'],['faith','Faith'],['culture','Culture & Art'],['history','History']];
 const codexOpen=()=>!!codexT;
-function openCodex(T,tab){closeRegistry();closeChron();codexT=T;if(tab)codexTab=tab;cxEl('codex').hidden=false;renderCodex(true)}
+function openCodex(T,tab){closePanels(closeCodex);codexT=T;if(tab)codexTab=tab;cxEl('codex').hidden=false;renderCodex(true)}
 function closeCodex(){codexT=null;cxEl('codex').hidden=true}
 
 function glyphSVG(sym,size){
@@ -20,8 +20,9 @@ const fxKeys=fx=>Object.keys(fx).filter(k=>Math.abs(fx[k])>.004).sort((a,b)=>Mat
 function cxOverview(T,L){
   const foes=wars.filter(w=>w.a===T.id||w.b===T.id).map(w=>tribes[w.a===T.id?w.b:w.a]);
   const al=alliesOf(T),fx=T.fx,keys=fxKeys(fx);
-  const st=T.stab>=70?'Steady and orderly.':T.stab>=45?'Mostly calm.':T.stab>=28?'Restless. Whispers of discontent.':'On the brink of rebellion.';
-  return `${meter('Stability',T.stab,T.stab<28?'#d4533a':T.stab<45?'#e0a23a':'#5cb86a',st)}
+  const st=T.stab>=70?'Steady and orderly.':T.stab>=STAB_CALM?'Mostly calm.':T.stab>=REBEL_STAB?'Restless. Whispers of discontent.':'On the brink of rebellion.';
+  return `${T.golden>step?`<p>🌟 A golden age: more food, finer art and calmer streets for ${Math.ceil((T.golden-step)/YEAR)} more years.</p>`:''}
+  ${meter('Stability',T.stab,T.stab<REBEL_STAB?'#d4533a':T.stab<STAB_CALM?'#e0a23a':'#5cb86a',st)}
   ${meter('Devotion',T.devo,css(DOMAINS[T.rel.domain].c),T.temple?'The temple strengthens their blessings.':'No temple yet: blessings are only 65% effective.')}
   <dl><dt>People</dt><dd>${T.pop} ${T.pop===1?L.name.toLowerCase():L.plural.toLowerCase()}</dd>
     <dt>Buildings</dt><dd>${T.houses}${T.temple?', with a temple':''}${T.hall>=0?', great hall raised':''}</dd>
@@ -107,7 +108,7 @@ let regOpen=false,regTab='kingdoms',regFaiths=[],regSig='';
 /* the registry only redraws when kingdoms, villages or faiths actually change, so a name box never moves under the cursor */
 const regSignature=()=>regTab+tribes.filter(T=>T.alive).map(T=>T.id+':'+T.towns.length+':'+T.rel.id).join(',');
 const RG_TABS=[['kingdoms','🏰 Kingdoms'],['faiths','🛐 Religions'],['cultures','🎭 Cultures'],['langs','🗣️ Languages']];
-function openRegistry(tab){closeCodex();closeChron();regOpen=true;if(tab)regTab=tab;cxEl('registry').hidden=false;renderRegistry(true)}
+function openRegistry(tab){closePanels(closeRegistry);regOpen=true;if(tab)regTab=tab;cxEl('registry').hidden=false;renderRegistry(true)}
 function closeRegistry(){regOpen=false;cxEl('registry').hidden=true}
 const rgIn=(val,kind,attrs,label)=>`<input class="rg-in" value="${esc(val)}" data-kind="${kind}" ${attrs} aria-label="${esc(label)}" maxlength="40" spellcheck="false">`;
 function rgKingdoms(){
@@ -178,7 +179,7 @@ cxEl('rgHead').addEventListener('click',e=>{if(e.target.closest('#rgClose'))clos
 
 /* ============ The Chronicle: the great events of the world, newest first ============ */
 let chronOpen=false,chronTop=null;
-function openChron(){closeCodex();closeRegistry();chronOpen=true;cxEl('chron').hidden=false;renderChron(true)}
+function openChron(){closePanels(closeChron);chronOpen=true;cxEl('chron').hidden=false;renderChron(true)}
 function closeChron(){chronOpen=false;cxEl('chron').hidden=true}
 function renderChron(force){
   if(!chronOpen)return;

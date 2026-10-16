@@ -56,7 +56,7 @@ function addPerson(T,x,y,pa,pb,race){
   u.genes=pa&&pa.race===r&&pb.race===r?childGenes(pa.genes,pb.genes,r):randGenes(r);
   u.traits=pa?childTraits(pa.traits,pb.traits):(R()<.5?[pick(TRAIT_KEYS)]:[]);
   u.name=personName(r);u.gen=pa?Math.max(pa.gen,pb.gen)+1:1;
-  u.parents=pa?(pa===pb?pa.name:`${pa.name} and ${pb.name}`):null;
+  u.parents=pa?(pa===pb?pa.name:`${pa.name} and ${pb.name}`):null;u.pa=pa?pa.id:0;u.pb=pb?pb.id:0;
   u.born=year();u.kills=0;
   u.age=pa?0:(18*YEAR+((R()*10*YEAR)|0));
   const has=t=>u.traits.includes(t),g=u.genes;
@@ -191,7 +191,7 @@ function decide(u,T){
   u.task=null;wander(u,hx,hy,7);
 }
 const townOf=(u,T)=>T.towns[u.town|0]||T.towns[0];
-function nearestTown(T,x,y){let b=0,bd=1e9;T.towns.forEach((t,k)=>{const d=(t.x-x)**2+(t.y-y)**2;if(d<bd){bd=d;b=k}});return b}
+function nearestTown(T,x,y){let b=0,bd=1e9;for(let k=0;k<T.towns.length;k++){const t=T.towns[k],d=(t.x-x)**2+(t.y-y)**2;if(d<bd){bd=d;b=k}}return b}
 function nearBld(i){const x=i%W,y=(i/W)|0;for(const [dx,dy] of N8){const X=x+dx,Y=y+dy;if(inb(X,Y)&&bld[Y*W+X]!==-1)return true}return false}
 function getMat(u,T,mineFirst,woodFirst){
   const mine=()=>{const t=ringFind(u.x,u.y,16,i=>bio(hgt[i])===5);if(t>=0){setT(u,t);u.task='mine';return true}return false};
@@ -420,6 +420,10 @@ function updateUnits(){
     if(u.dead)dead=true;
   }
   if(dead)units=units.filter(u=>!u.dead);
+  census();
+}
+/* head counts per kingdom, village, people and species, rebuilt from the unit list */
+function census(){
   for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;T.jobs={};for(const t of T.towns)t.pop=0}
   const rc={},sp={};for(const r of RACE_KEYS)rc[r]=0;
   for(const u of units){
@@ -550,14 +554,16 @@ function makeBoat(kind,T,dock){
   const b={id:uid++,kind,tribe:T.id,race:T.race,ci:T.ci,x,y,px:x,py:y,tx:x,ty:y,hx:x,hy:y,dir:1,t:0,dead:false,path:null,pi:0,pass:[],land:-1};
   boats.push(b);return b;
 }
+/* breadth-first search over the sea for free land; the buffers are reused and each shore tile is judged once */
+const srPrev=new Int32Array(N),srDist=new Int32Array(N),srQ=new Int32Array(N),srSeen=new Uint8Array(N);
 function seaRoute(start){
-  const prev=new Int32Array(N).fill(-1),dist=new Int32Array(N),q=new Int32Array(N);
-  let h=0,t=0;q[t++]=start;prev[start]=start;
+  const prev=srPrev.fill(-1),dist=srDist,q=srQ;srSeen.fill(0);
+  let h=0,t=0;q[t++]=start;prev[start]=start;dist[start]=0;
   while(h<t){
     const i=q[h++],x=i%W,y=(i/W)|0;
-    for(const [dx,dy] of N4){
-      const X=x+dx,Y=y+dy;if(!inb(X,Y))continue;const j=Y*W+X;
-      if(dist[i]>=14&&fertile(j)&&own[j]<0&&farFrom(j,26)){
+    for(let k=0;k<4;k++){
+      const X=x+N4[k][0],Y=y+N4[k][1];if(!inb(X,Y))continue;const j=Y*W+X;
+      if(dist[i]>=14&&!srSeen[j]&&fertile(j)&&own[j]<0&&(srSeen[j]=1)&&farFrom(j,26)){
         const path=[];let c=i;while(c!==start){path.push(c);c=prev[c]}path.reverse();
         return {path,land:j};
       }
@@ -711,10 +717,13 @@ function setWeather(type){
   if(type==='storm')log('A storm is rolling in.',[120,140,200]);
   if(type==='snow')log('Snow begins to fall.',[200,210,240]);
 }
-function updateTimeWeather(){
+function updateLight(){
   tod=((step+DAY*.3)%DAY)/DAY;
   sunH=Math.sin((tod-.25)*Math.PI*2);
   light=smooth(-.28,.3,sunH);
+}
+function updateTimeWeather(){
+  updateLight();
   if(step>=WX.until){
     const sw=SEASON_WX[season()];let tot=0;for(const k of WT_KEYS)tot+=WTYPES[k].w*(sw[k]??1);
     let r=R()*tot,t='clear';for(const k of WT_KEYS){r-=WTYPES[k].w*(sw[k]??1);if(r<=0){t=k;break}}
@@ -747,6 +756,7 @@ function yearly(){
     log(`The ${tribes[w.a].title} and the ${tribes[w.b].title} made peace.`,[120,190,120],false,newsAt(tribes[w.b],'🕊️',1));
   }
   diplomacyYear();
+  storyYear();
   for(const T of tribes){
     if(!T.alive||!T.temple||T.templeAt<0)continue;
     const cx=T.templeAt%W,cy=(T.templeAt/W)|0;let n=0;
@@ -772,7 +782,8 @@ function simStep(){
   step++;
   updateTimeWeather();
   updateUnits();updateTribes();updateBoats();updateFire();growth();updateWorldFx();
-  if(ownDirty||step%40===0)computeDomains();
+  /* a burst of building only redraws borders every 10 steps */
+  if(ownDirty&&step-lastDomains>=10||step-lastDomains>=40)computeDomains();
   if(step%YEAR===0)yearly();
 }
 
@@ -808,13 +819,21 @@ function genOres(){
   oreVeins(ORE.COPPER,14,hi,2,30);oreVeins(ORE.IRON,12,hi,2,32);oreVeins(ORE.COAL,10,hi,2,30);
   oreVeins(ORE.SILVER,7,mt,1.5,26);oreVeins(ORE.GOLD,6,mt,1.4,24);
 }
-function genWorld(){
+/* what a new or loaded world starts without: derived layers, caches, transient effects and the storyteller's memory */
+function resetWorldState(){
+  own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;ovDirty=true;lastDomains=-99;ownSnap=null;
+  fires=new Set();lavas=new Set();burnSet=new Set();news=[];effects=[];story=newStory();
+  bList=[];bDirty=true;logDirty=true;volcanoes.length=0;wfx.length=0;monoliths.length=0;dipPending=null;
+}
+function genWorld(seedText){
+  worldSeed=seedText!=null&&String(seedText).trim()?String(seedText).trim().slice(0,40):randomSeed();
+  rngS=seedValue(worldSeed);
   seedNoise();
   hgt=new Float32Array(N);tree=new Uint8Array(N);fire=new Uint8Array(N);lava=new Uint16Array(N);
   bld=new Int16Array(N).fill(-1);btype=new Uint8Array(N);burnt=new Uint32Array(N);
-  bm=new Uint8Array(N);ore=new Uint8Array(N);oreAmt=new Uint8Array(N);btier=new Uint8Array(N);own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;
-  units=[];tribes=[];religions=[];news=[];boats=[];fires=new Set();lavas=new Set();burnSet=new Set();step=0;logs=[];wars=[];alliances=[];effects=[];
-  bList=[];bDirty=true;logDirty=true;volcanoes.length=0;wfx.length=0;monoliths.length=0;dipPending=null;
+  bm=new Uint8Array(N);ore=new Uint8Array(N);oreAmt=new Uint8Array(N);btier=new Uint8Array(N);
+  resetWorldState();
+  units=[];tribes=[];religions=[];boats=[];step=0;logs=[];wars=[];alliances=[];
   WX.type='clear';WX.until=900;WX.cloud=WX.rain=WX.snow=WX.fog=WX.storm=0;
   const ox=R()*100,oy=R()*100;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){

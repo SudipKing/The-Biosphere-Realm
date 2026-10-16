@@ -203,6 +203,7 @@ function computeFx(T){
   if(rel.second)addFx(fx,rel.second.buff,s*.5);
   if(T.race==='elf')addFx(fx,SEASON_BOON[season()],.5);
   for(const v of T.values)addFx(fx,v.buff,1);
+  if(T.golden>step){fx.food+=.15;fx.art+=.3;fx.stab+=.06;fx.mine+=.1}
   const ag=T.age||0;fx.def+=.03*ag;fx.mine+=.06*ag;fx.craft+=.03*ag;if(ag>=5){fx.stab+=.08;fx.dipl+=.1}
   if(T.res&&T.res.gems>=10)fx.ranged+=.1;
   const jb=T.jobs||{},edu=clamp((jb.teacher||0)/Math.max(6,T.pop)*3,0,.3);
@@ -320,6 +321,7 @@ function rebellion(T){
   wars.push({a:T.id,b:NT.id,until:year()+3+((R()*3)|0)});T.foes.push(NT.name);NT.foes.push(T.name);
   log(`Unrest tore through the ${T.title}: rebels led by ${movers[0].name} broke away to found the ${NT.title}, worshipping ${NT.rel.patron.name}.`,[210,110,60],false,newsAt(NT,'🔥',3));
 }
+const REBEL_STAB=40,STAB_CALM=55;
 function culturalYear(){
   const y=year();
   for(const T of tribes){
@@ -327,13 +329,72 @@ function culturalYear(){
     const warring=wars.some(w=>w.a===T.id||w.b===T.id);
     const target=36+(T.temple?14:0)+(T.rel.doc.zeal?6:0)+Math.min(10,T.renown*.3)-(warring&&T.race!=='orc'?8:0);
     T.devo=clamp(T.devo+(target-T.devo)*.15+(R()-.5)*3,0,100);
-    const crowd=Math.max(0,T.pop-30)*.5;
-    const st=clamp(40+T.fx.stab*100+(T.temple?6:0)+Math.min(14,T.renown*.5)-(warring?12:0)-crowd+(alliesOf(T).length?4:0),0,100);
+    /* big, sprawling realms are harder to hold together: crowding, a large share of the land and many villages */
+    const crowd=Math.max(0,T.pop-22)*.7+Math.max(0,T.area/landTiles-.12)*50+Math.max(0,T.towns.length-3)*2;
+    const st=clamp(38+T.fx.stab*100+(T.temple?5:0)+Math.min(10,T.renown*.4)-(warring?10:0)-crowd+(alliesOf(T).length?3:0),0,100);
     T.stab=clamp(T.stab+(st-T.stab)*.35+(R()-.5)*4,0,100);
     if(T.temple&&T.pop>=4&&y>=T.nextFest){festival(T);T.nextFest=y+4+((R()*3)|0)}
-    if(T.stab<36&&T.pop>=14&&R()<.2*(1-T.stab/36))rebellion(T);
+    if(T.stab<REBEL_STAB&&T.pop>=18&&R()<.035*(1-T.stab/REBEL_STAB))rebellion(T);
     if(T.devo<40&&R()<.08)convert(T);
   }
+}
+
+/* ---------- the storyteller: after a long quiet stretch, the world stirs ----------
+   Quiet means no kingdom has risen or fallen. Wars come and go without changing the map, so they don't count. */
+const STORY_QUIET=15,STORY_FROM=25,STORY_GAP=6;
+const STORY={
+  migration:{w:35,fire(){
+    if(tribes.filter(T=>T.alive).length>=24)return false;
+    const i=randomLand(j=>fertile(j)&&!tree[j]&&own[j]<0&&bld[j]===-1&&farFrom(j,14),400);if(i<0)return false;
+    const r=wpick(RACE_KEYS.filter(k=>!RACES[k].uplift).map(k=>[k,1/(1+(cnt.race[k]||0))]));
+    const x=i%W,y=(i/W)|0,NT=newTribe(r,x,y);NT.food=24;NT.mat=12;
+    for(let k=0;k<6;k++)addPerson(NT,x,y);
+    log(`Wanderers came over the horizon: a band of ${RACES[r].plural.toLowerCase()} settled the empty land and founded the ${NT.title}.`,NT.color,false,newsAt(NT,'🧭',2));
+    return true;
+  }},
+  pretender:{w:25,fire(){
+    const T=tribes.filter(t=>t.alive&&t.pop>=24).sort((a,b)=>b.pop-a.pop)[0];if(!T)return false;
+    const n=tribes.length,st=T.stab;T.stab=Math.min(T.stab,30);rebellion(T);
+    if(tribes.length>n)return true;
+    T.stab=st;return false;
+  }},
+  sickness:{w:15,fire(){
+    const pool=tribes.filter(t=>t.alive&&t.pop>=20);if(!pool.length)return false;
+    const T=pick(pool);let n=0;
+    for(const m of T.members)if(R()<.2){die(m);n++}
+    if(!n)return false;
+    T.stab=clamp(T.stab-8,0,100);
+    log(`A sickness year: fever spread through the ${T.title} and ${n} of their people died.`,[130,190,70],false,newsAt(T,'🤒',2));
+    return true;
+  }},
+  golden:{w:15,fire(){
+    const T=tribes.filter(t=>t.alive&&t.stab>=50&&!(t.golden>step)).sort((a,b)=>b.renown-a.renown)[0];if(!T)return false;
+    T.golden=step+8*YEAR;T.fx=computeFx(T);
+    log(`A golden age dawned for the ${T.title}: full granaries, bold art and peace at home.`,[246,204,70],false,newsAt(T,'🌟',2));
+    return true;
+  }},
+  border:{w:20,fire(){
+    const alive=tribes.filter(t=>t.alive&&t.pop>=6);let best=null,bd=60;
+    for(const a of alive)for(const b of alive){
+      if(a.id>=b.id||hostile(a.id,b.id)||allied(a.id,b.id))continue;
+      const d=Math.hypot(a.cx-b.cx,a.cy-b.cy)*(a.rel===b.rel?1.4:1);if(d<bd){bd=d;best=[a,b]}
+    }
+    if(!best)return false;
+    const [a,b]=R()<.5?best:[best[1],best[0]];
+    log(`A quarrel over the border between the ${a.title} and the ${b.title} turned to bloodshed.`,[194,65,45],true);
+    declareWar(a,b);return true;
+  }},
+};
+function storyYear(){
+  const y=year(),sig=tribes.length*1000+tribes.filter(T=>T.alive).length;
+  if(sig!==story.sig){story.sig=sig;story.last=y}
+  if(y<STORY_FROM||y<story.next||y-story.last<STORY_QUIET)return;
+  const left=Object.keys(STORY);
+  while(left.length){
+    const k=wpick(left.map(n=>[n,STORY[n].w]));left.splice(left.indexOf(k),1);
+    if(STORY[k].fire()){story.next=y+STORY_GAP;story.last=y;story.fired.push({y,k});if(story.fired.length>20)story.fired.shift();return}
+  }
+  story.next=y+2;
 }
 
 /* ---------- diplomacy ---------- */

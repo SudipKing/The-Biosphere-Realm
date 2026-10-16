@@ -13,7 +13,7 @@ A WorldBox-style god-simulation sandbox that runs entirely in the browser. Plain
 
 ## Architecture
 
-Scripts share one global scope and load in this order (see `index.html`): `data, core, sim, culture, world, terrain, sprites, audio, render, codex, ui`. Function declarations are hoisted across files. Top-level `const`/`let` tables must only be read at runtime, never at load time by an earlier file.
+Scripts share one global scope and load in this order (see `index.html`): `data, core, sim, culture, world, terrain, sprites, audio, render, codex, ui, save`. Function declarations are hoisted across files. Top-level `const`/`let` tables must only be read at runtime, never at load time by an earlier file.
 
 | File | Role |
 | --- | --- |
@@ -27,7 +27,8 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 | `audio.js` | Web Audio synthesis: generative music, a unique voice per species, babbling language per race, rites, ambience |
 | `render.js` | Camera with eased zoom and inertia, interpolated drawing, lighting, weather overlays, spatial sound mixing |
 | `codex.js` | Realm Codex panel (Overview, Faith, Culture and Art, History) |
-| `ui.js` | Power tray (`TABS`), inspector, side panel, input, main loop |
+| `ui.js` | Power tray (`TABS`), inspector, side panel, World panel, help and first-run card, input, main loop |
+| `save.js` | Save the world to a gzipped `.biosphere` file and load it back (`saveWorld`, `buildWorld`, `applyWorld`) |
 
 ## Key rules and gotchas
 
@@ -62,17 +63,28 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 - **Layout.** The dashboard (`.tray`) is the left grid column on desktop and the bottom row on phones.
 - The dev preview needs the page to be visible: `requestAnimationFrame` pauses in a background pane, so in headless checks call `draw(16)` in a loop.
 
+## Seeds, saves, the storyteller and frame budgets (added later)
+
+- **Randomness.** `R()` (core.js) is a seeded mulberry32 that drives the world; `genWorld(seedText)` seeds it from `worldSeed` (`seedValue` hashes any text). Visual and audio randomness must use `RC()` (Math.random), so effects never change the world. A seed reproduces the generated map, not the later history, and any change to the order of `R()` calls inside `genWorld` changes what a seed produces.
+- **Save and load.** `saveWorld()` returns plain data: typed arrays as base64, `T.rel` as an index into `religions`, faith gods as indices into `PANTHEON[race]`, unit `target` as an id, boat passengers in full (they are not in `units`), uplifted races in full. Unit fields starting with `_` are render caches and are never saved. `buildWorld` validates and builds everything before `applyWorld` swaps it in, then rebuilds derived state (`census`, `computeFx`, `computeDomains`, `initTerrain`, `syncRaceTiles`). **New world state must be added to both `saveWorld` and `buildWorld`/`applyWorld`.** Check with a round trip: two loads of the same save must stay identical for 400 steps.
+- **World panel.** The header World button opens `#worldPop`: seed, Save, Load, and the only way to start a new world (with a seed field). `afterWorld()` is the shared tail for a new or loaded world.
+- **Storyteller.** `storyYear()` (culture.js, called from `yearly`) acts only after `STORY_QUIET` years in which no kingdom rose or fell (`story.sig` counts kingdoms), never before `STORY_FROM`, at most every `STORY_GAP` years. Events are in `STORY` (migration, pretender, sickness, golden age, border war), each `fire()` returns whether it happened. `story` is plain data and is saved. A golden age is `T.golden` (a step number) read in `computeFx`.
+- **Open land.** `domainRadius` is capped at `DOM_RMAX`, and every domain shrinks once more than `DOM_FULL` of the land is held, so migrants and villages always find a frontier.
+- **Frame budgets.** The main loop gives the sim `SIM_BUDGET` ms per frame (it predicts from the average step cost), terrain repainting gets `TERRAIN_MS`, chunks upload only their dirty rectangle, and the domain colour layer redraws only the box of tiles whose owner changed (`ovBox`). `computeDomains` runs at most every 10 steps when buildings change. Units cache their two sprite frames in `u._sp`.
+- **Follow a life.** People store parent ids (`u.pa`, `u.pb`). When a followed person dies, the inspector offers their oldest living child (`heirOf`), or someone from the same kingdom.
+
 ## Balance knobs
 
 - Faith strength: `computeFx` (devotion, temple 65% factor, doctrine multiplier, caps).
 - Faith spread: schism chance in `newTribe` (0.4), reformation vs new patron in `newReligion` (0.25), conversion in `culturalYear` (0.08 when devotion is under 40).
-- Unrest: stability formula in `culturalYear`, rebellion threshold (under 36).
+- Unrest: stability formula in `culturalYear` (crowding, share of the land and number of villages lower it), rebellion below `REBEL_STAB` (40) with a yearly chance of 3.5% scaled by how far below.
+- Storyteller: `STORY_QUIET`, `STORY_FROM`, `STORY_GAP` and the weights in `STORY` (culture.js).
+- Open land: `DOM_RMAX` and `DOM_FULL` (world.js).
 - Art rate: `culturalTick`. Festival cadence: `T.nextFest` (every 4 to 6 years).
 - Wildlife caps and breeding: `SPECIES` in `data.js`. Predators migrate back in yearly if they die out.
 
 ## Known issues and ideas
 
-- Rebellions are rare. In tests there were often zero over 160 years. Tune stability or crowding.
 - One kingdom per race at world start, so faith diversity comes only from schisms and rebellions. Consider more starting kingdoms or a world-size option.
-- Ideas the player liked or asked about: trade and caravans, a way to follow a person's whole life story, race-specific music, mobile polish, save and load (needs serialisation of typed arrays and the `tribes` graph).
+- Ideas the player liked or asked about: trade and caravans, race-specific music, mobile polish, optional goals or feats, a shareable world postcard image, map presets and world size.
 - The player wants WorldBox-level detail: visible units, animals and homes, so keep sprites readable at every zoom.

@@ -29,7 +29,23 @@ function spriteCanvas(s){
 }
 const kingLine=T=>`<span class="sw2" style="background:${css(T.color)}"></span>${T.title}`;
 const yrs=u=>{const y=Math.floor(u.age/YEAR);return `${y} ${y===1?'year':'years'}`};
-function followBtn(u){return u.dead?'':`<button class="btn" id="followBtn" aria-pressed="${follow}">${follow?'Following':'Follow'}</button>`}
+function followBtn(u){
+  if(!u.dead)return `<button class="btn" id="followBtn" aria-pressed="${follow}">${follow?'Following':'Follow'}</button>`;
+  const h=u.k===0?heirOf(u):null;
+  return h?`<button class="btn primary" id="heirBtn">Follow ${h.kin?'':'their child, '}${esc(h.u.name)}${h.kin?` of the ${esc(tribes[h.u.tribe].title)}`:''}</button>`:'';
+}
+/* a life story goes on: the oldest living child, or else someone from the same kingdom */
+function heirOf(u){
+  let best=null;
+  for(const v of units)if(v.k===0&&!v.dead&&(v.pa===u.id||v.pb===u.id)&&(!best||v.age>best.age))best=v;
+  if(best)return{u:best,kin:false};
+  for(const v of units){
+    if(v.k!==0||v.dead||v.tribe!==u.tribe||!adult(v))continue;
+    if((v.town|0)===(u.town|0))return{u:v,kin:true};
+    best=best||v;
+  }
+  return best?{u:best,kin:true}:null;
+}
 function renderInspect(){
   if(!sel)return;
   let html='',sprite=null;
@@ -102,6 +118,8 @@ function renderInspect(){
   const cxb=$('codexBtn');if(cxb)cxb.addEventListener('click',()=>{const t=sel&&sel.i!=null&&bld[sel.i]>=0?tribes[bld[sel.i]]:sel&&sel.t!=null&&own[sel.t]>=0?tribes[own[sel.t]]:null;if(t)openCodex(t)});
   const fb=$('followBtn');
   if(fb)fb.addEventListener('click',()=>{follow=!follow;if(follow&&cam.tpz<2*dpr)zoomTo(cw/2,ch/2,3*dpr);renderInspect()});
+  const hr=$('heirBtn');
+  if(hr)hr.addEventListener('click',()=>{const h=sel&&sel.u&&heirOf(sel.u);if(!h)return;select({u:h.u});follow=true;renderInspect()});
   const hb=$('hearBtn');
   if(hb)hb.addEventListener('click',()=>{audioInit();const u=sel&&sel.u;if(!u)return;if(u.k===0)playAt('speak',.9,0,{race:u.race,child:!adult(u)});else playAt('call',.9,0,u.sp)});
 }
@@ -286,7 +304,7 @@ function toast(m){hintEl.textContent=m;hintEl.classList.add('toast');toastUntil=
 $('brush').addEventListener('input',e=>brushSize=+e.target.value);
 
 /* speed, time, weather, sound */
-let speed=1;const SPS=[0,20,60,180];
+let speed=1,stepMs=2;const SPS=[0,20,60,180],SIM_BUDGET=10;
 const segBtns=document.querySelectorAll('.seg button');
 function setSpeed(s){speed=s;segBtns.forEach(b=>b.setAttribute('aria-pressed',+b.dataset.speed===s))}
 segBtns.forEach(b=>b.addEventListener('click',()=>setSpeed(+b.dataset.speed)));
@@ -315,7 +333,8 @@ document.addEventListener('keydown',e=>{
   else if(k==='+'||k==='=')stepZoom(cw/2,ch/2,1);
   else if(k==='-')stepZoom(cw/2,ch/2,-1);
   else if(k==='0')fitView();
-  else if(k==='escape'){select(null);closeCodex();closeRegistry();closeChron();dipPending=null}
+  else if(k==='escape'){select(null);closePanels();closeWelcome();closeWorldPop();dipPending=null}
+  else if(e.key==='?'||(k==='/'&&e.shiftKey))helpEl.hidden?openHelp():closeHelp();
   else if(k==='c')chronOpen?closeChron():openChron();
   else if(k==='g'&&lastHerald)goHerald(lastHerald);
   else if(k>='1'&&k<='6')showTab(+k-1);
@@ -323,9 +342,50 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('pointerdown',()=>audioInit(),{capture:true});
 document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur',()=>keys.clear());
-$('newWorld').addEventListener('click',()=>{
-  genWorld();initFlocks();clearHeralds();select(null);closeCodex();cam.fit=fitPz();cam.pz=cam.tpz=Math.max(cam.fit,2*dpr);centerOn(startFocus[0],startFocus[1]);renderPanel(true);
+/* the world panel: seed, save, load, and a new world only from inside it, so one stray click can't erase a world */
+const worldPop=$('worldPop'),worldBtn=$('worldBtn');
+function openWorldPop(){
+  $('seedNow').textContent=worldSeed;worldPop.hidden=false;worldBtn.setAttribute('aria-expanded','true');
+  const r=worldBtn.getBoundingClientRect();
+  worldPop.style.top=`${Math.round(r.bottom+6)}px`;
+  worldPop.style.left=`${Math.round(clamp(r.right-worldPop.offsetWidth,8,window.innerWidth-worldPop.offsetWidth-8))}px`;
+  $('saveBtn').focus();
+}
+function closeWorldPop(){
+  if(worldPop.hidden)return;
+  const had=worldPop.contains(document.activeElement);
+  worldPop.hidden=true;worldBtn.setAttribute('aria-expanded','false');if(had)worldBtn.focus();
+}
+worldPop.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();closeWorldPop()}});
+worldBtn.addEventListener('click',()=>worldPop.hidden?openWorldPop():closeWorldPop());
+document.addEventListener('pointerdown',e=>{if(!worldPop.hidden&&!worldPop.contains(e.target)&&!worldBtn.contains(e.target))closeWorldPop()});
+$('seedCopy').addEventListener('click',()=>{
+  try{navigator.clipboard.writeText(worldSeed).then(()=>toast(`Seed ${worldSeed} copied.`),()=>toast(`The seed is ${worldSeed}.`))}catch(e){toast(`The seed is ${worldSeed}.`)}
 });
+$('seedIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('newWorld').click()});
+/* what every fresh or loaded world needs from the interface */
+function afterWorld(){
+  initFlocks();clearHeralds();select(null);closePanels();dipPending=null;follow=false;
+  cam.fit=fitPz();cam.vx=cam.vy=0;cam.flyTo=null;renderPanel(true);warmSprites();
+}
+$('newWorld').addEventListener('click',()=>{
+  genWorld($('seedIn').value);syncRaceTiles(new Set());afterWorld();
+  cam.pz=cam.tpz=Math.max(cam.fit,2*dpr);centerOn(startFocus[0],startFocus[1]);
+  $('seedIn').value='';closeWorldPop();toast(`A new world rises. Its seed is ${worldSeed}.`);
+});
+
+/* first-run card and help */
+const welcomeEl=$('welcome'),helpEl=$('help');
+function closeWelcome(){welcomeEl.hidden=true}
+$('welcomeGo').addEventListener('click',closeWelcome);
+$('welcomeHelp').addEventListener('click',()=>{closeWelcome();openHelp()});
+/* the codex, registry, chronicle and help share one spot on the map, so opening one closes the others */
+function closePanels(keep){for(const f of [closeCodex,closeRegistry,closeChron,closeHelp])if(f!==keep)f()}
+function openHelp(){closePanels(closeHelp);closeWelcome();helpEl.hidden=false;$('helpClose').focus()}
+function closeHelp(){if(helpEl.hidden)return;helpEl.hidden=true;if(helpEl.contains(document.activeElement))$('helpBtn').focus()}
+$('helpBtn').addEventListener('click',()=>helpEl.hidden?openHelp():closeHelp());
+$('helpClose').addEventListener('click',closeHelp);
+$('chronBtn').addEventListener('click',()=>chronOpen?closeChron():openChron());
 $('zin').addEventListener('click',()=>stepZoom(cw/2,ch/2,1));
 $('zout').addEventListener('click',()=>stepZoom(cw/2,ch/2,-1));
 $('zfit').addEventListener('click',fitView);
@@ -344,7 +404,7 @@ function pinchInfo(){
   return {d:Math.hypot(a.x-b.x,a.y-b.y),mx:((a.x+b.x)/2-r.left)*dpr,my:((a.y+b.y)/2-r.top)*dpr};
 }
 function press(p){
-  lastPress=performance.now();
+  lastPress=performance.now();closeWelcome();
   if(tool==='inspect'&&cam.pz<1.25*dpr){const T=tribeUnder(p);if(T){select(null);openCodex(T,'overview');return}}
   if(tool==='inspect'){const s=pickAt(p);select(s);if(s&&s.u&&AU.ready){if(s.u.k===0)playAt('speak',.7,0,{race:s.u.race,child:!adult(s.u)});else playAt('call',.7,0,s.u.sp)}}
   else if(SPAWNABLE.has(tool))spawnAt(p,tool);
@@ -494,8 +554,10 @@ let last=performance.now(),acc=0,panelT=0,inspT=0;
 function frame(t){
   const dt=Math.min(100,t-last);last=t;
   if(speed>0){
-    acc+=dt*SPS[speed]/1000;let n=0;
-    while(acc>=1&&n<12){simStep();acc--;n++}
+    /* the sim gets a time budget per frame: a busy world runs a little slower rather than dropping frames.
+       A step only starts if the average step still fits in what is left of the budget */
+    acc+=dt*SPS[speed]/1000;let n=0;const t0=performance.now();
+    while(acc>=1&&n<12&&(n===0||performance.now()-t0+stepMs<SIM_BUDGET)){const s=performance.now();simStep();stepMs+=(performance.now()-s-stepMs)*.1;acc--;n++}
     if(acc>=1)acc=.99;
     alpha=acc;
   }else alpha=1;
@@ -511,16 +573,26 @@ function frame(t){
   if(regOpen&&frameN%60===0)renderRegistry();
   requestAnimationFrame(frame);
 }
-genWorld();initFlocks();resize();setTool('inspect');renderPanel(true);
+genWorld();initFlocks();resize();setTool('inspect');renderPanel(true);warmSprites();
 requestAnimationFrame(frame);
 
 /* a people newly awakened by the monolith gets its own tile in the Creatures tab */
-function addRaceTile(key){
+/* after a load or a new world, the Creatures tab lists exactly the woken peoples that world knows */
+function syncRaceTiles(keep){
+  for(const k of RACE_KEYS.slice()){
+    if(!RACES[k].uplift||keep.has(k))continue;
+    RACE_KEYS.splice(RACE_KEYS.indexOf(k),1);delete RACES[k];delete LANG[k];SPAWNABLE.delete(k);REPEAT.delete(k);
+    const t=trayEl.querySelector(`.tile[data-tool="${k}"]`);if(t)t.remove();
+    if(tool===k)setTool('inspect');
+  }
+  for(const k of keep)addRaceTile(k,true);
+}
+function addRaceTile(key,quiet){
   if(SPAWNABLE.has(key))return;
   const t=[key,{race:key},RACES[key].plural,RACES[key].tip+' Tap inside another people\u2019s kingdom to send settlers to live among them.'];
   HINT[key]=t[3];NAMES[key]=t[2];SPAWNABLE.add(key);REPEAT.add(key);
   const pane=panes[1],tile=mkTile(t);
   const races=[...pane.querySelectorAll('.tile')].filter(b=>RACES[b.dataset.tool]);
   const last=races[races.length-1];if(last)last.after(tile);else pane.prepend(tile);
-  toast(`A new people has awoken: the ${RACES[key].plural}! You can now place them from the Creatures tab.`);
+  if(!quiet)toast(`A new people has awoken: the ${RACES[key].plural}! You can now place them from the Creatures tab.`);
 }

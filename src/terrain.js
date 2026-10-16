@@ -6,7 +6,8 @@ for(let cy=0;cy<CCH;cy++)for(let cx=0;cx<CCW;cx++){
   const tw=Math.min(CHT,W-cx*CHT),th=Math.min(CHT,H-cy*CHT),c=document.createElement('canvas');
   c.width=tw*TS;c.height=th*TS;
   const x=c.getContext('2d'),img=x.createImageData(tw*TS,th*TS);
-  chunks.push({c,x,img,buf:new Uint32Array(img.data.buffer),x0:cx*CHT,y0:cy*CHT,tw,th,pw:tw*TS,dirty:false});
+  /* dx0..dy1: the tiles changed since the last upload, so only that rectangle goes to the canvas */
+  chunks.push({c,x,img,buf:new Uint32Array(img.data.buffer),x0:cx*CHT,y0:cy*CHT,tw,th,pw:tw*TS,dirty:false,dx0:CHT,dy0:CHT,dx1:-1,dy1:-1});
 }
 const tileFlag=new Uint8Array(N);let tileQ=[];
 let pnoise=null,frameN=0,curSea=1;
@@ -194,6 +195,12 @@ function renderTile(i){
     for(let y=0;y<8;y++){const r=rows[y],Y=y+jy;if(Y<0||Y>7)continue;for(let x=0;x<8;x++){const c=r[fl?7-x:x],X=x+jx;if(X<0||X>7)continue;if(c!=='.'&&pal[c]!==undefined)buf[(ly+Y)*pw+lx+X]=pal[c]}}
   }
   ch.dirty=true;
+  const cx=tx-ch.x0,cy=ty-ch.y0;
+  if(cx<ch.dx0)ch.dx0=cx;if(cx>ch.dx1)ch.dx1=cx;if(cy<ch.dy0)ch.dy0=cy;if(cy>ch.dy1)ch.dy1=cy;
+}
+function uploadChunk(ch){
+  ch.x.putImageData(ch.img,0,0,ch.dx0*TS,ch.dy0*TS,(ch.dx1-ch.dx0+1)*TS,(ch.dy1-ch.dy0+1)*TS);
+  ch.dirty=false;ch.dx0=ch.dy0=CHT;ch.dx1=ch.dy1=-1;
 }
 function initTerrain(){
   pnoise=new Uint8Array(OW*OH);
@@ -201,21 +208,30 @@ function initTerrain(){
   tileFlag.fill(0);tileQ=[];
   curSea=season();
   for(let i=0;i<N;i++)renderTile(i);
-  for(const ch of chunks){ch.x.putImageData(ch.img,0,0);ch.dirty=false}
+  for(const ch of chunks)uploadChunk(ch);
 }
+/* terrain work per frame is held to a time budget: edits first, then the season dissolve, so 9x stays smooth */
+const TERRAIN_MS=4;
 function updateTerrain(){
   if(frameN%6===0)for(const i of lavas)markTile(i);
   /* paradox ground and trees shimmer through every colour */
   if(frameN%9===0)for(let i=0;i<N;i++)if(bm[i]===BM.PARA)markTile(i);
   curSea=season();
+  const t0=performance.now();
+  let n=0;
+  while(tileQ.length&&n<1100){
+    const i=tileQ.pop();tileFlag[i]=0;renderTile(i);n++;
+    if((n&31)===0&&performance.now()-t0>TERRAIN_MS)break;
+  }
   let scan=0,fresh=0;
   while(scan<3000&&fresh<420){
     const i=perm[permPtr];permPtr=permPtr+1===N?0:permPtr+1;scan++;
-    if(tq[i]!==curSea&&!tileFlag[i]){renderTile(i);fresh++}
+    if(tq[i]!==curSea&&!tileFlag[i]){renderTile(i);fresh++;if((fresh&31)===0&&performance.now()-t0>TERRAIN_MS)break}
   }
-  let n=0;const budget=1100;
-  while(tileQ.length&&n<budget){
-    const i=tileQ.pop();tileFlag[i]=0;renderTile(i);n++;
+  /* uploads are the costly part: at most CHUNK_UPLOADS a frame, taken in turn, so a season sweep never floods the GPU */
+  for(let k=0,up=0;k<chunks.length&&up<CHUNK_UPLOADS;k++){
+    const ch=chunks[upPtr];upPtr=(upPtr+1)%chunks.length;
+    if(ch.dirty){uploadChunk(ch);up++}
   }
-  for(const ch of chunks)if(ch.dirty){ch.x.putImageData(ch.img,0,0);ch.dirty=false}
 }
+const CHUNK_UPLOADS=6;let upPtr=0;

@@ -58,7 +58,7 @@ const CALLS={
   sheep:(o,t)=>vox(o,t,{f0:400,f1:350,d:.5,vib:7,vd:.06,ff:1100,q:2,p:.35}),
   cow:(o,t)=>{vox(o,t,{f0:118,f1:92,d:1.1,a:.18,vib:4,vd:.02,ft:'lowpass',ff:520,q:1.2,p:.55});vox(o,t+.05,{f0:236,f1:184,d:1,a:.2,ft:'bandpass',ff:700,q:2,p:.12})},
   pig:(o,t)=>{for(const k of [0,.15])vox(o,t+k,{type:'square',f0:210,f1:150,d:.09,ff:650,q:3,p:.3});noiseHit(o,'bandpass',500,500,2,t,.01,.12,.15)},
-  chicken:(o,t)=>{const n=3+(R()*3|0);for(let k=0;k<n;k++)vox(o,t+k*.09,{type:'square',f0:650+R()*150,f1:950,d:.04,ff:1500,q:2,p:.18})},
+  chicken:(o,t)=>{const n=3+(RC()*3|0);for(let k=0;k<n;k++)vox(o,t+k*.09,{type:'square',f0:650+RC()*150,f1:950,d:.04,ff:1500,q:2,p:.18})},
   horse:(o,t)=>vox(o,t,{f0:720,mid:820,f1:320,d:.95,a:.03,vib:17,vd:.12,ff:1300,q:2,p:.3}),
   deer:(o,t)=>vox(o,t,{type:'sine',f0:950,f1:640,d:.28,ft:'lowpass',ff:2400,p:.22}),
   rabbit:(o,t)=>{for(const k of [0,.12])noiseHit(o,'lowpass',220,120,1,t+k,.005,.06,.35)},
@@ -73,7 +73,7 @@ const CALLS={
   turtle:(o,t)=>noiseHit(o,'lowpass',900,300,1,t,.05,.45,.15),
   crow:(o,t)=>{for(const k of [0,.26])vox(o,t+k,{type:'square',f0:520,f1:340,d:.2,ff:1250,q:3,p:.3})},
   eagle:(o,t)=>vox(o,t,{type:'sawtooth',f0:2300,mid:2900,f1:1500,d:.6,a:.04,vib:26,vd:.05,ft:'bandpass',ff:2600,q:2,p:.22}),
-  skeleton:(o,t)=>{for(let k=0;k<6;k++)noiseHit(o,'bandpass',2600+R()*1600,2000,4,t+k*.045,.001,.03,.3);osc(o,'triangle',200,150,t,.002,.2,.1)},
+  skeleton:(o,t)=>{for(let k=0;k<6;k++)noiseHit(o,'bandpass',2600+RC()*1600,2000,4,t+k*.045,.001,.03,.3);osc(o,'triangle',200,150,t,.002,.2,.1)},
   zombie:(o,t)=>{vox(o,t,{type:'sawtooth',f0:118,f1:62,d:1.3,a:.2,vib:5,vd:.06,ft:'lowpass',ff:360,q:2,p:.5});noiseHit(o,'lowpass',500,200,1,t+.1,.2,.9,.12)},
   dragon:(o,t)=>{vox(o,t,{type:'sawtooth',f0:86,mid:150,f1:55,d:2,a:.12,vib:11,vd:.08,ft:'lowpass',ff:520,q:1.5,p:.7});noiseHit(o,'bandpass',900,300,1,t+.05,.15,1.7,.4);osc(o,'sine',48,34,t,.05,1.6,.5)},
   wraith:(o,t)=>vox(o,t,{type:'sine',f0:560,mid:920,f1:480,d:1.6,a:.3,vib:6,vd:.09,ft:'bandpass',ff:1300,q:3,p:.3}),
@@ -82,10 +82,10 @@ const CALLS={
 };
 const VOWELS=[[300,2300],[400,2000],[600,1200],[700,1100],[350,800],[500,1500]];
 function speak(o,t,race,child){
-  const V=RACES[race].voice,c=AU.ctx,n=2+(R()*3|0),f=V.f*(child?1.6:1)*(.9+R()*.2);
+  const V=RACES[race].voice,c=AU.ctx,n=2+(RC()*3|0),f=V.f*(child?1.6:1)*(.9+RC()*.2);
   for(let k=0;k<n;k++){
-    const st=t+k*.13,d=.08+R()*.05,s=c.createOscillator(),g=c.createGain(),[f1,f2]=pick(VOWELS);
-    s.type=V.type;s.frequency.setValueAtTime(f*(.92+R()*.2),st);s.frequency.linearRampToValueAtTime(f*(.85+R()*.25),st+d);
+    const st=t+k*.13,d=.08+RC()*.05,s=c.createOscillator(),g=c.createGain(),[f1,f2]=pick(VOWELS);
+    s.type=V.type;s.frequency.setValueAtTime(f*(.92+RC()*.2),st);s.frequency.linearRampToValueAtTime(f*(.85+RC()*.25),st+d);
     const b1=c.createBiquadFilter(),b2=c.createBiquadFilter();b1.type=b2.type='bandpass';b1.frequency.value=f1;b2.frequency.value=f2;b1.Q.value=b2.Q.value=4;
     env(g,st,.015,race==='elf'?.35:.5,d);
     let src=s;
@@ -109,9 +109,9 @@ const SFX={
   boom:(o,t)=>{noiseHit(o,'bandpass',300,2400,1,t-.6,.6,.3,.25);noiseHit(o,'lowpass',420,80,1,t,.01,2.2,1);osc(o,'sine',62,28,t,.01,1.5,.7)},
   horn:(o,t)=>{const c=AU.ctx,s=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain();s.type='sawtooth';s.frequency.setValueAtTime(196,t);s.frequency.linearRampToValueAtTime(220,t+.3);fl.type='lowpass';fl.frequency.value=900;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.18,t+.25);g.gain.setValueAtTime(.18,t+1);g.gain.linearRampToValueAtTime(0,t+1.5);s.connect(fl);fl.connect(g);g.connect(o);s.start(t);s.stop(t+1.6)},
   spawn:(o,t)=>{[880,1175,1568].forEach((f,k)=>osc(o,'sine',f,f,t+k*.07,.005,.4,.08))},
-  crackle:(o,t)=>{for(let k=0;k<4;k++)noiseHit(o,'bandpass',2000+R()*2000,1500,3,t+R()*.3,.001,.02,.25)},
+  crackle:(o,t)=>{for(let k=0;k<4;k++)noiseHit(o,'bandpass',2000+RC()*2000,1500,3,t+RC()*.3,.001,.02,.25)},
   rooster:(o,t)=>{[[520,620,.12],[620,760,.12],[760,900,.18],[900,700,.5]].forEach(([a,b,d],k)=>vox(o,t+k*.17,{f0:a,f1:b,d,vib:12,vd:.03,ff:1400,q:2,p:.25}))},
-  chirp:(o,t)=>{const n=2+(R()*3|0);for(let k=0;k<n;k++)osc(o,'sine',2800+R()*900,3800+R()*800,t+k*.08,.005,.05,.06)},
+  chirp:(o,t)=>{const n=2+(RC()*3|0);for(let k=0;k<n;k++)osc(o,'sine',2800+RC()*900,3800+RC()*800,t+k*.08,.005,.05,.06)},
   cricket:(o,t)=>{for(let k=0;k<3;k++)osc(o,'sine',4400,4450,t+k*.05,.003,.025,.025)},
   owl:(o,t)=>{for(const k of [0,.45])vox(o,t+k,{type:'sine',f0:420,f1:380,d:.35,a:.06,ft:'lowpass',ff:900,p:.18})},
   fish:(o,t)=>noiseHit(o,'lowpass',1400,500,1,t,.005,.18,.18),
@@ -154,11 +154,11 @@ function audioTick(){
     const t=AU.nextNote,b=AU.beat%16,ch=mood.chords[AU.bar%4];
     if(AU.music&&speed>0){
       if(b===0){pad(ch.map(n=>mood.root+n-12),t,e8*16);osc(AU.mg,'sine',mtof(mood.root+ch[0]-24),mtof(mood.root+ch[0]-24),t,.02,e8*6,.16)}
-      if(b===8)osc(AU.mg,'sine',mtof(mood.root+ch[0]-24+(R()<.5?7:0)),0,t,.02,e8*6,.12);
-      if((b%2===0&&R()<mood.dens)||R()<.05){
-        const deg=ch[(R()*3)|0]%12+(R()<.5?0:12);
+      if(b===8)osc(AU.mg,'sine',mtof(mood.root+ch[0]-24+(RC()<.5?7:0)),0,t,.02,e8*6,.12);
+      if((b%2===0&&RC()<mood.dens)||RC()<.05){
+        const deg=ch[(RC()*3)|0]%12+(RC()<.5?0:12);
         const sc=mood.scale,near=sc.reduce((a,s)=>Math.abs(s-deg)<Math.abs(a-deg)?s:a,sc[0]);
-        pluck(mood.root+(R()<.6?near:pick(sc)),t,soft);
+        pluck(mood.root+(RC()<.6?near:pick(sc)),t,soft);
       }
       if(wars.length&&(b===0||b===6||b===8)){osc(AU.mg,'sine',95,42,t,.002,.32,.32);noiseHit(AU.mg,'lowpass',900,300,1,t,.001,.06,.12)}
     }
@@ -173,8 +173,8 @@ function audioTick(){
   if(speed>0){
     const ph=phaseName();
     if(ph!==AU.lastPhase){if(ph==='Dawn'&&AU.lastPhase)playAt('rooster',.35,0);AU.lastPhase=ph}
-    if(light>.5&&WX.rain<.3&&R()<.12*viewF.close)playAt('chirp',.25+R()*.2,R()*1.6-.8);
-    if(light<.3&&R()<.25*Math.max(.3,viewF.close))playAt('cricket',.4,R()*1.6-.8);
-    if(light<.3&&R()<.01)playAt('owl',.3,R()*1.6-.8);
+    if(light>.5&&WX.rain<.3&&RC()<.12*viewF.close)playAt('chirp',.25+RC()*.2,RC()*1.6-.8);
+    if(light<.3&&RC()<.25*Math.max(.3,viewF.close))playAt('cricket',.4,RC()*1.6-.8);
+    if(light<.3&&RC()<.01)playAt('owl',.3,RC()*1.6-.8);
   }
 }
