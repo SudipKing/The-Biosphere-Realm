@@ -100,7 +100,7 @@ function hit(t,dmg,src){
   if(src.k===0||src.k===1){const sb=bm[tileOf(src)];if(sb===BM.CLOVER)dmg*=1.2}
   if(t.k===0&&t.traits.includes('Giant'))dmg*=.8
   if(src.k===0&&t.k===0){const sf=tribes[src.tribe].fx;
-    if(sf.raze&&R()<.12*sf.raze){const b=ringFind(t.x,t.y,3,i=>bld[i]===t.tribe&&btype[i]<4&&!fire[i]);if(b>=0)ignite(b,true)}}
+    if(sf.raze&&R()<.12*sf.raze){const b=ringFind(t.x,t.y,3,i=>bld[i]===t.tribe&&btype[i]!==4&&!fire[i]);if(b>=0)ignite(b,true)}}
   t.hp-=dmg;
   sfx(src.k===0&&t.k===0?'clang':'thud',t.x,t.y);
   if(t.hp<=0){
@@ -291,10 +291,36 @@ function getOre(u,T){
   if(t<0)return false;
   setT(u,t);u.task='mine';return true;
 }
-function bCost(T,type){const b=type===1?Math.max(4,RACES[T.race].cost):type===2?10:RACES[T.race].cost;return Math.max(2,Math.ceil(b*(1-clamp(T.fx.craft,0,.6))))}
+function bCost(T,type){if(type>=5)return Math.max(3,Math.ceil(RACES[T.race].cost*(type===5||type===7?1.6:1.2)*(1-clamp(T.fx.craft,0,.6))));const b=type===1?Math.max(4,RACES[T.race].cost):type===2?10:RACES[T.race].cost;return Math.max(2,Math.ceil(b*(1-clamp(T.fx.craft,0,.6))))}
+/* village works (btype 5 forge, 6 dock, 7 watchtower, 8 windmill): never counted as houses */
+function nearWater(i){const x=i%W,y=(i/W)|0;return(x>0&&isWater(i-1))||(x<W-1&&isWater(i+1))||(y>0&&isWater(i-W))||(y<H-1&&isWater(i+W))}
+function canBuildDock(i,tid){
+  if(fire[i]||lava[i]||tree[i]||bld[i]!==-1||burnt[i]>step||ore[i]||bm[i]===BM.WASTE)return false;
+  if(own[i]>=0&&own[i]!==tid&&!hostile(own[i],tid))return false;
+  const b=bio(hgt[i]);if(b<2||b>4||!nearWater(i))return false;
+  const x=i%W,y=(i/W)|0;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=x+dx,Y=y+dy;if(inb(X,Y)&&bld[Y*W+X]!==-1)return false}
+  return true;
+}
+function canBuildType(i,T,type){return type===6?canBuildDock(i,T.id):canBuild(i,T.race,T.id)}
+function pickWork(T,V){
+  const war=wars.some(w=>w.a===T.id||w.b===T.id),hs=V.houses;
+  if(hs<3||R()>.3)return 0;
+  if(T.age>=2&&hs>=4&&!V.forge)return 5;
+  if((T.jobs.farmer||0)>=2&&hs>=4&&!V.mill)return 8;
+  if(!V.dock&&hs>=3)return 6;
+  if((T.age>=1||war)&&(V.tower||0)<Math.min(3,1+((hs/6)|0)+(war?1:0)+(T.age>=3?1:0)))return 7;
+  return 0;
+}
 function tryBuild(u,T){
   const H=townOf(u,T),cap=H===T.towns[0];
   let type=0;
+  const wk=pickWork(T,H);
+  if(wk&&T.mat>=bCost(T,wk)){
+    const rad=Math.min(16,5+Math.sqrt(H.houses)*2.2),hx=H.x,hy=H.y;
+    const t=sampleNear(hx,hy,rad,i=>canBuildType(i,T,wk)&&(wk!==7||Math.hypot(i%W-hx,((i/W)|0)-hy)>rad*.55),wk===6?120:60);
+    if(t>=0){setT(u,t);u.task='build';u.btype=wk;return true}
+  }
   if(cap&&T.hall<0)type=1;
   else if(cap&&T.houses>=6&&!T.temple)type=2;
   else if(H.houses>=Math.ceil(H.pop/3)+1)return false;
@@ -336,10 +362,12 @@ function doTask(u,T){
     case'sleep':if(bld[i]===T.id&&isNight()){u.inside=true;u.home=i;u.px=u.x;u.py=u.y;return}break;
     case'build':{
       const type=u.btype||0,cost=bCost(T,type);
-      if(T.mat<cost||!canBuild(i,T.race,T.id))break;
+      if(T.mat<cost||!canBuildType(i,T,type))break;
       if(type===1&&T.hall>=0)break;
       if(type===2&&T.temple)break;
-      bld[i]=T.id;btype[i]=type;btier[i]=T.age;T.houses++;townOf(u,T).houses++;T.mat-=cost;bDirty=true;ownDirty=true;markDirty(i);sfx('build',u.x,u.y);
+      bld[i]=T.id;btype[i]=type;btier[i]=T.age;T.mat-=cost;
+      if(type<5){T.houses++;townOf(u,T).houses++}else{const Hb=townOf(u,T);if(type===5)Hb.forge=1;else if(type===6)Hb.dock=1;else if(type===7)Hb.tower=(Hb.tower||0)+1;else Hb.mill=1}
+      bDirty=true;ownDirty=true;markDirty(i);sfx('build',u.x,u.y);
       if(type===1){T.hall=i;if(!T.hadHall){T.hadHall=true;log(`The ${T.title} raised a great hall.`,T.color);sfx('fanfare',u.x,u.y)}}
       if(type===2){T.temple=true;T.templeAt=i;log(`The ${T.title} consecrated a temple to ${T.rel.patron.name}, ${T.rel.patron.title}.`,DOMAINS[T.rel.domain].c);sfx('bell',u.x,u.y);effects.push({type:'rite',x:i%W+.5,y:((i/W)|0)+.5,c:DOMAINS[T.rel.domain].c,t:0,dur:60})}
       break;
@@ -522,7 +550,7 @@ const farFromOthers=(j,d,T)=>{const x=j%W,y=(j/W)|0;return tribes.every(o=>o===T
 const farFrom=(j,d)=>farFromOthers(j,d,null);
 /* expansion: settlers found a new village that stays part of the same kingdom, under the same banner */
 function addTown(T,x,y){
-  const H={x,y,name:placeName(T.race),founded:year(),houses:0,pop:0};
+  const H={x,y,name:placeName(T.race),founded:year(),houses:0,pop:0,forge:0,dock:0,tower:0,mill:0};
   T.towns.push(H);T.colonies=T.towns.length-1;ownDirty=true;return H;
 }
 function settle(T){
@@ -648,7 +676,7 @@ function ignite(i,force){
 function destroyBld(i){
   if(bld[i]>=0){
     const T=tribes[bld[i]];
-    if(btype[i]===4){T.monuments=Math.max(0,T.monuments-1);const a=T.arts.find(x=>x.i===i);if(a)a.lost=year()}else T.houses=Math.max(0,T.houses-1);
+    if(btype[i]===4){T.monuments=Math.max(0,T.monuments-1);const a=T.arts.find(x=>x.i===i);if(a)a.lost=year()}else if(btype[i]<5)T.houses=Math.max(0,T.houses-1);
     if(btype[i]===1&&T.hall===i)T.hall=-1;
     if(btype[i]===2){T.temple=false;T.templeAt=-1}
   }

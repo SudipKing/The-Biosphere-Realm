@@ -101,13 +101,13 @@ function renderInspect(){
       const art=ty===4?T.arts.find(x=>x.i===i):null;
       const fol=units.filter(u=>u.k===0&&tribes[u.tribe].rel===T.rel).length;
       const sleepers=units.filter(u=>u.inside&&u.home===i).length;
-      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${art?art.name:names[ty]}</h3><p>${kingLine(T)}</p></div></div>
+      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${art?art.name:ty>=5?['Forge','Dock','Watchtower','Windmill'][ty-5]:names[ty]}</h3><p>${kingLine(T)}</p></div></div>
       ${art?`<p class="quote" style="font-style:normal">${art.form} by ${art.creator}, year ${art.year}. ${art.desc} ${stars(art.q)}</p>`:''}${ty===2?`<p class="quote" style="font-style:normal">Sacred to ${T.rel.patron.name}, ${T.rel.patron.title}. ${T.rel.patron.dom}.</p>`:''}<p class="quote">“${T.motto}” they say in greeting.</p>
       <dl><dt>People</dt><dd>${T.pop} ${T.pop===1?L.name.toLowerCase():L.plural.toLowerCase()}${sleepers?`, ${sleepers} asleep here`:''}</dd>
         <dt>Buildings</dt><dd>${T.houses}</dd><dt>Livestock</dt><dd>${T.stock}</dd>
         <dt>Stores</dt><dd>${T.food} food, ${T.mat} ${T.race==='dwarf'?'stone':'timber'}</dd>
         <dt>Faith</dt><dd>${T.rel.name} (${fol} followers)</dd>
-        <dt>Built of</dt><dd>${ty<3?TIER_MAT[btier[i]]:'stone'}</dd>
+        <dt>Built of</dt><dd>${ty<3?TIER_MAT[btier[i]]:ty===6?'timber':'stone'}</dd>
         <dt>Age</dt><dd>${AGE_NAME[T.age]}</dd><dt>Domain</dt><dd>${sharePct(T)}% of the land</dd>
         <dt>Founded</dt><dd>Year ${T.founded}${T.parent>=0?` by settlers of the ${tribes[T.parent].title}`:''}</dd></dl>
       <p class="quote" style="font-style:normal">${L.lore}</p><button class="btn" id="codexBtn">Open realm codex</button>`;
