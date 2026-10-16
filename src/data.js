@@ -1,7 +1,7 @@
 "use strict";
 /* ============ Races, languages, faiths, animals ============ */
 const RACES={
-  human:{name:'Human',plural:'Humans',icon:'🧑',spd:.11,hp:30,dmg:5,life:60,fert:1.1,aggr:.5,cost:6,range:1.2,
+  human:{name:'Human',plural:'Humans',icon:'🧑',tech:1.2,spd:.11,hp:30,dmg:5,life:60,fert:1.1,aggr:.5,cost:6,range:1.2,
     skins:[[242,204,164],[222,172,126],[176,122,82],[118,78,52]],hairs:[[96,62,36],[40,30,28],[222,186,96],[170,74,40]],
     hairNames:['brown','black','blond','red'],skinNames:['fair','tan','olive','deep brown'],
     pants:[86,64,46],title:'Kingdom of',stock:['cow','sheep','chicken','horse','dog','cat'],voice:{f:165,type:'sawtooth'},
@@ -12,7 +12,7 @@ const RACES={
     ph:["ha","we","lo","ar","en","ma","to","ri","der","wen","so","el"],
     faiths:['Sun','Sea','Ancestors','Sun','War'],
     lore:'Adaptable farmers and builders. They breed quickly, keep every kind of livestock, and settle anywhere green.'},
-  elf:{name:'Elf',plural:'Elves',icon:'🧝',spd:.12,hp:26,dmg:5,life:200,fert:.55,aggr:.3,cost:5,range:3.4,
+  elf:{name:'Elf',plural:'Elves',icon:'🧝',tech:0.75,spd:.12,hp:26,dmg:5,life:200,fert:.55,aggr:.3,cost:5,range:3.4,
     skins:[[252,228,206],[240,214,186],[226,206,178]],hairs:[[236,228,190],[214,176,92],[200,206,216],[150,70,44]],
     hairNames:['silver-gold','golden','moonsilver','copper'],skinNames:['pale','ivory','fawn'],
     pants:[62,96,66],title:'Realm of',stock:['horse','sheep','horse','cat','cat'],voice:{f:290,type:'triangle'},
@@ -23,7 +23,7 @@ const RACES={
     ph:["ae","li","thi","el","na","va","ri","ys","lo","mae","ith","sul"],
     faiths:['Moon','Forest','Moon','Sea'],
     lore:'Long-lived archers who live in the trees. They plant forests instead of cutting them, and breed fine horses.'},
-  dwarf:{name:'Dwarf',plural:'Dwarves',icon:'⛏️',spd:.09,hp:38,dmg:6,life:140,fert:.6,aggr:.45,cost:7,range:1.2,
+  dwarf:{name:'Dwarf',plural:'Dwarves',icon:'⛏️',tech:1.1,spd:.09,hp:38,dmg:6,life:140,fert:.6,aggr:.45,cost:7,range:1.2,
     skins:[[238,196,160],[214,160,120],[190,136,100]],hairs:[[188,84,40],[110,70,40],[46,36,32],[170,168,164]],
     hairNames:['ginger','chestnut','coal-black','iron-grey'],skinNames:['ruddy','weathered','bronze'],
     pants:[88,70,52],title:'Hold of',stock:['pig','chicken','cow','dog'],voice:{f:112,type:'sawtooth'},
@@ -34,7 +34,7 @@ const RACES={
     ph:["kha","dum","bar","ul","gor","az","rim","dok","zu","ha","kar","bin"],
     faiths:['Stone','Flame','Ancestors','Stone'],
     lore:'Stout miners of the highlands. They build in stone, dig ore from the mountains and keep pigs in the hold.'},
-  orc:{name:'Orc',plural:'Orcs',icon:'👹',spd:.12,hp:40,dmg:7,life:40,fert:1.25,aggr:.9,cost:4,range:1.2,
+  orc:{name:'Orc',plural:'Orcs',icon:'👹',tech:0.65,spd:.12,hp:40,dmg:7,life:40,fert:1.25,aggr:.9,cost:4,range:1.2,
     skins:[[110,154,74],[90,130,62],[128,142,72],[96,116,92]],hairs:[[34,30,28],[70,44,30],[60,60,56]],
     hairNames:['black','dark brown','ash'],skinNames:['moss green','deep green','olive','grey-green'],
     pants:[72,54,40],title:'Horde of',stock:['pig','pig','chicken','dog'],voice:{f:88,type:'sawtooth',growl:true},
@@ -46,7 +46,7 @@ const RACES={
     faiths:['War','Flame','War','Ancestors'],
     lore:'Fierce hunters and raiders. Short lives, big families, pig pens, and always ready for war.'},
   /* newer peoples borrow the faith, culture and building style of a 'base' people, but look, speak and name themselves their own way */
-  gnome:{name:'Gnome',plural:'Gnomes',icon:'🍄',base:'dwarf',spd:.1,hp:24,dmg:4,life:160,fert:.8,aggr:.2,cost:5,range:3,
+  gnome:{name:'Gnome',plural:'Gnomes',icon:'🍄',tech:1.5,base:'dwarf',spd:.1,hp:24,dmg:4,life:160,fert:.8,aggr:.2,cost:5,range:3,
     skins:[[246,212,182],[232,190,156],[214,168,132]],hairs:[[246,244,236],[214,210,200],[200,120,70]],
     hairNames:['snow-white','silver','auburn'],skinNames:['rosy','peach','tan'],
     pants:[70,90,140],title:'Burrow of',stock:['chicken','rabbit','cat'],voice:{f:330,type:'square'},
@@ -57,7 +57,7 @@ const RACES={
     ph:["bi","pip","ti","zo","wik","fen","ni","pa","tok","lo","bim","zu"],
     tip:'Tap land to found a gnome burrow. Clever tinkerers with throwing darts, tall red hats and long beards.',
     lore:'Small, curious tinkerers who dig cozy burrows, keep rabbits and hens, and invent things nobody asked for.'},
-  goblin:{name:'Goblin',plural:'Goblins',icon:'👺',base:'orc',spd:.13,hp:22,dmg:5,life:35,fert:1.5,aggr:.85,cost:4,range:1.2,
+  goblin:{name:'Goblin',plural:'Goblins',icon:'👺',tech:0.85,base:'orc',spd:.13,hp:22,dmg:5,life:35,fert:1.5,aggr:.85,cost:4,range:1.2,
     skins:[[140,170,70],[118,150,60],[160,160,80]],hairs:[[40,34,30],[90,60,40]],
     hairNames:['black','brown'],skinNames:['bright green','swamp green','sallow'],
     pants:[90,70,50],title:'Warren of',stock:['pig','rat','chicken'],voice:{f:220,type:'square',growl:true},
@@ -68,7 +68,7 @@ const RACES={
     ph:["gik","sna","rak","zit","nub","krik","ga","zz","ip","rot","ska","bub"],
     tip:'Tap land to found a goblin warren. Quick, sneaky, breed like rats and love a fight.',
     lore:'Small and wiry raiders who breed fast, live in warrens of scrap and squabble endlessly.'},
-  saurian:{name:'Saurian',plural:'Saurians',icon:'🦎',base:'human',spd:.11,hp:34,dmg:6,life:90,fert:.8,aggr:.55,cost:6,range:1.2,
+  saurian:{name:'Saurian',plural:'Saurians',icon:'🦎',tech:0.9,base:'human',spd:.11,hp:34,dmg:6,life:90,fert:.8,aggr:.55,cost:6,range:1.2,
     skins:[[96,160,110],[70,140,140],[150,150,80],[170,100,70]],hairs:[[220,80,60],[240,190,60],[90,180,220]],
     hairNames:['red crest','gold crest','blue crest'],skinNames:['jade','teal','olive','rust'],
     pants:[150,120,70],title:'Dominion of',stock:['turtle','crab','chicken'],voice:{f:140,type:'triangle'},
@@ -120,7 +120,7 @@ function makeUpliftRace(sp){
   const fierce=!!(S.pred||S.monster);
   RACES[key]={name:U.n,plural:U.n,icon:S.icon,base:U.base,beast:{ear:U.ear,sp},
     spd:clamp(.09+(S.spd||.05)*.4,.09,.14),hp:Math.round(clamp(S.hp*.5+18,20,60)),dmg:Math.round(clamp((S.dmg||3)*.6+4,4,14)),
-    life:fierce?50:80,fert:S.breed>.0015?1.3:1,aggr:fierce?.85:.35,cost:6,range:U.range||1.2,
+    life:fierce?50:80,tech:fierce?.6:.75+((sp.length*7)%4)*.1,fert:S.breed>.0015?1.3:1,aggr:fierce?.85:.35,cost:6,range:U.range||1.2,
     skins:U.fur,hairs:U.mane,hairNames:U.mane.map((_,k)=>['dark','light','bright'][k]||'mottled'),skinNames:U.fur.map((_,k)=>['common','pale','dark'][k]||'spotted'),
     pants:[90,72,52],title:U.title,stock:RACES[U.base].stock,voice:{f:fierce?120:220+((R()*120)|0),type:fierce?'sawtooth':'triangle',growl:fierce},
     p1:Array.from({length:10},()=>cap1(syl())),p2:Array.from({length:8},()=>syl()+pick(['','dun','mor','vale','den','holt'])),
@@ -314,9 +314,15 @@ const ORES=[
   {k:'gold',name:'Gold',icon:'🟡',c:[246,200,56],hi:[255,244,160],desc:'Heavy yellow wealth. Needed for the Golden Age.'},
   {k:'gems',name:'Gems',icon:'💠',c:[84,228,232],hi:[220,255,255],desc:'Cut stones that sharpen a kingdom’s magic.'},
 ];
-const AGE_NAME=['Wooden Age','Stone Age','Bronze Age','Iron Age','Steel Age','Golden Age'];
-const AGE_WHY=['Homes are timber and thatch.','Stone walls rise.','Bronze fittings and better tools.','Iron-bound halls and sharper blades.','Steel plate and towering walls.','Gilded halls, wealth and splendor.'];
-const TIER_MAT=['wooden','stone','bronze-fitted','iron-bound','steel','gilded'];
+/* eras of technology: T.age climbs 0..ERA_MAX through research (T.sci) and ore. Each people learns at its own pace (RACES.tech) */
+const ERA_MAX=7;
+const AGE_NAME=['Stone Age','Bronze Age','Iron Age','Medieval Age','Gunpowder Age','Industrial Age','Modern Age','Future Age'];
+const AGE_WHY=['Huts of hide and thatch, tools of flint and bone.','Bronze spears, round shields and the first sails.','Iron blades, stone walls and longships.','Castles, steel plate and knights.','Muskets, brick towns and galleons.','Factories, rifles, steamships and tractors.','Concrete towers, motor ships and machines in every field.','Glass spires, power armour, lasers and hovercraft.'];
+const TIER_MAT=['hide and thatch','mudbrick and bronze','stone and iron','stone and steel','brick and tile','brick and iron','concrete and glass','alloy and light'];
+/* research needed for each era, and ore that must be dug first (a kingdom with half as much research again can do without the ore) */
+const ERA_REQ=[null,{sci:200,ore:{copper:50}},{sci:700,ore:{iron:70}},{sci:1700,ore:{coal:40,iron:160}},{sci:3400,ore:{coal:80,silver:20}},
+  {sci:6000,ore:{coal:160,iron:300}},{sci:9500,ore:{gold:60}},{sci:14000,ore:{gems:30}}];
+const TECH_WORD=t=>t>=1.4?'very quickly':t>=1.1?'quickly':t>=.9?'steadily':t>=.7?'slowly':'very slowly';
 
 const WTYPES={
   clear:{w:.34,ic:'☀️',name:'Clear',t:{}},
@@ -345,6 +351,7 @@ const JOBS={
   soldier:{n:'Soldier',ic:'⚔️',d:'Patrols, trains and fights: +20% damage, +15% health. Many more in wartime.'},
   teacher:{n:'Teacher',ic:'📖',d:'Teaches at the hall: better crafting, art and mining for the whole kingdom.'},
   priest:{n:'Priest',ic:'🙏',d:'Prays at the temple, raising devotion and calm.'},
+  general:{n:'General',ic:'🎖️',d:'Leads the soldiers: they gather around and follow, and in war the general marches them on the enemy.'},
 };
 const JOB_KEYS=Object.keys(JOBS);
 /* each people speaks its own tongue; the names can be changed in the registry */

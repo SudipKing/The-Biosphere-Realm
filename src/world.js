@@ -368,10 +368,9 @@ const DIP={
   },
   enlighten:p=>{
     const T=tribeNear(p);if(!T){toast('Tap a kingdom or its land.');return}
-    if(T.age>=5){toast(`The ${T.title} has already reached the ${AGE_NAME[5]}.`);return}
-    const next=T.age+1,r=T.res;
-    r.stone=Math.max(r.stone,60);if(next>=2)r.copper=Math.max(r.copper,70);if(next>=3)r.iron=Math.max(r.iron,80);
-    if(next>=4){r.coal=Math.max(r.coal,60);r.iron=Math.max(r.iron,180)}if(next>=5){r.gold=Math.max(r.gold,60);r.silver=Math.max(r.silver,60)}
+    if(T.age>=ERA_MAX){toast(`The ${T.title} has already reached the ${AGE_NAME[ERA_MAX]}.`);return}
+    /* a flash of insight: the research and the ore for the next era, all at once */
+    const q=ERA_REQ[T.age+1];T.sci=Math.max(T.sci||0,q.sci);for(const k in q.ore)T.res[k]=Math.max(T.res[k]||0,q.ore[k]);
     checkAge(T);
   },
   bless:p=>{

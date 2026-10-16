@@ -205,7 +205,7 @@ function computeFx(T){
   for(const v of T.values)addFx(fx,v.buff,1);
   if(T.golden>step){fx.food+=.15;fx.art+=.3;fx.stab+=.06;fx.mine+=.1}
   let fg=0;for(const t of T.towns)if(t.forge)fg++;fx.mine+=Math.min(.12,.04*fg);
-  const ag=T.age||0;fx.def+=.03*ag;fx.mine+=.06*ag;fx.craft+=.03*ag;if(ag>=5){fx.stab+=.08;fx.dipl+=.1}
+  const ag=T.age||0;fx.def+=.025*ag;fx.mine+=.05*ag;fx.craft+=.025*ag;if(ag>=6){fx.stab+=.08;fx.dipl+=.1}
   if(T.res&&T.res.gems>=10)fx.ranged+=.1;
   const jb=T.jobs||{},edu=clamp((jb.teacher||0)/Math.max(6,T.pop)*3,0,.3);
   fx.craft+=edu*.5;fx.art+=edu;fx.mine+=edu*.5;fx.stab+=edu*.2+clamp((jb.priest||0)/Math.max(8,T.pop)*.6,0,.1);

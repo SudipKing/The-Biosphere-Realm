@@ -19,7 +19,9 @@ function newTribe(race,x,y,parent,opts){
     houses:0,hall:-1,temple:false,templeAt:-1,pop:0,members:[],alive:true,rel,motto:phrase(race),founded:year(),
     parent:parent?parent.id:-1,fish:0,stock:0,rebel,
     devo:50+((R()*20)|0),stab:55,values:rollValues(race),arts:[],renown:0,hist:[],foes:[],heroes:[],monuments:0,
-    nextFest:year()+3,bless:0,frenzy:0,legendIdx:(R()*2)|0,fx:zeroFx(),age:0,res:{stone:0,copper:0,iron:0,coal:0,silver:0,gold:0,gems:0},area:0,jobs:{},know:0,colonies:0,towns:[{x,y,name,founded:year(),houses:0,pop:0}]};
+    nextFest:year()+3,bless:0,frenzy:0,legendIdx:(R()*2)|0,fx:zeroFx(),age:0,res:{stone:0,copper:0,iron:0,coal:0,silver:0,gold:0,gems:0},area:0,jobs:{},know:0,sci:0,general:-1,colonies:0,towns:[{x,y,name,founded:year(),houses:0,pop:0}]};
+  /* rebels and schismatics keep the know-how of the kingdom they left */
+  if(parent){T.age=parent.age;T.sci=Math.floor((parent.sci||0)*.8)}
   tribes.push(T);
   T.fx=computeFx(T);
   if(schism)log(`A schism split the ${parent.title}: the ${T.title} turned to the ${rel.name}, in the name of ${rel.patron.name}.`,DOMAINS[rel.domain].c,false,newsAt(T,'⛪',2));
@@ -126,7 +128,11 @@ function chase(u,spd,dmg,range){
   if(d<range){
     if(--u.atk<=0){
       u.atk=10;u._atkAt=performance.now();
-      if(range>2){if(effects.length<300)effects.push({type:'arrow',x0:u.x,y0:u.y-.7,x1:t.x,y1:t.y-.5,t:0,dur:7,c:u.k===0?magicColor(u):null});sfx('arrow',u.x,u.y)}
+      if(range>2){
+        const T=u.k===0?tribes[u.tribe]:null,gun=T&&armed(u,T);
+        if(effects.length<300)effects.push({type:'arrow',x0:u.x,y0:u.y-.7,x1:t.x,y1:t.y-.5,t:0,dur:gun?4:7,c:gun?(T.age>=7?'#7ff6ff':'#ffe9a0'):u.k===0?magicColor(u):null,gun:gun?1:0});
+        sfx(gun?(T.age>=7?'laser':'shot'):'arrow',u.x,u.y);
+      }
       else{
         /* melee: face the foe and spread out a little so a brawl is a clump, not one stacked pixel */
         const ax=t.x-u.x,ay=t.y-u.y,ad=Math.hypot(ax,ay)||1;u._ax=ax/ad;u._ay=ay/ad;
@@ -146,6 +152,7 @@ function updPerson(u){
   const T=tribes[u.tribe],fx=T.fx;
   if(fx.regen&&u.hp<u.maxhp)u.hp=Math.min(u.maxhp,u.hp+fx.regen*.05);
   if(!u.job&&adult(u)&&(u.id+step)%9===0)setJob(u,pickJob(T,u));
+  if(u.job==='general'&&T.general!==u.id)setJob(u,'soldier');
   if(u.odd){
     if(u.traits.includes('Blessed')&&u.hp<u.maxhp)u.hp=Math.min(u.maxhp,u.hp+.06);
     if(u.traits.includes('Cursed')){u.hp-=.03;if(u.hp<=0){die(u);return}}
@@ -163,26 +170,39 @@ function updPerson(u){
     if(!u.target){
       if(u.odd&&u.traits.includes('Berserk')){const e=nearest(u,6,v=>v!==u&&!v.dead);if(e){u.target=e;u.task='fight'}}
       if(u.target){}
-      else if(u.task&&++u.busy<20){if(adult(u)){const e=enemyNear(u,4);if(e){u.target=e;u.task='fight'}}}
+      else if(u.task&&++u.busy<20){if(adult(u)){const e=enemyNear(u,u.task==='follow'?10:4);if(e){u.target=e;u.task='fight'}}}
       else{u.busy=0;decide(u,T)}
     }
   }
-  const sp=u.spd*(1+fx.spd);
+  let sp=u.spd*(1+fx.spd);
+  if(u.task==='follow'){
+    /* soldiers keep their place in the general's column: three abreast, in ranks behind */
+    const g=T._gen;
+    if(g&&!g.inside&&g!==u){const k=u.id%12,row=((k/3)|0)+1,col=k%3-1;u.tx=g.x-g.dir*row*.55;u.ty=g.y+col*.55;sp*=1.15}
+    else u.task=null;
+  }
   if(u.target){
     let dm=u.dmg*(1+fx.dmg);
     if(RACES[u.race].range>2)dm*=1+fx.ranged;
     if(fx.frenzy&&u.hp<u.maxhp*.5)dm*=1+fx.frenzy;
     if(T.frenzy>step)dm*=1.25;
-    dm*=1+.09*T.age+Math.min(.4,u.xp*.008);
+    dm*=1+.07*T.age+Math.min(.4,u.xp*.008);
     if(u.odd){if(u.traits.includes('Berserk'))dm*=1.5}
-    chase(u,sp*1.1,dm,u.task==='butcher'||u.task==='hunt'?Math.min(1.2,RACES[u.race].range):RACES[u.race].range);return;
+    chase(u,sp*1.1,dm,fightRange(u,T));return;
   }
   if(moveToward(u,sp)&&u.task)doTask(u,T);
+}
+/* from the Gunpowder Age soldiers, generals and hunters carry firearms and shoot from range */
+const armed=(u,T)=>T.age>=4&&(u.job==='soldier'||u.job==='general'||u.job==='hunter');
+function fightRange(u,T){
+  if(u.task==='butcher')return Math.min(1.2,RACES[u.race].range);
+  if(armed(u,T))return Math.max(RACES[u.race].range,T.age>=6?4:3.2);
+  return u.task==='hunt'?Math.min(1.2,RACES[u.race].range):RACES[u.race].range;
 }
 function decide(u,T){
   const kid=!adult(u),H=townOf(u,T),hx=H.x,hy=H.y;
   if(!kid){const e=enemyNear(u,u.traits.includes('Brave')?9:6);if(e){u.target=e;u.task='fight';return}}
-  if(isNight()&&R()<.85&&H.houses>0){
+  if(isNight()&&R()<.85&&H.houses>0&&!((u.job==='soldier'||u.job==='general')&&T._gen&&atWar(T))){
     const h=sampleNear(hx,hy,Math.min(18,4+Math.sqrt(H.houses)*2.2),i=>bld[i]===T.id&&btype[i]<2,40);
     if(h>=0){setT(u,h);u.task='sleep';return}
   }
@@ -228,7 +248,7 @@ function getMat(u,T,mineFirst,woodFirst){
 /* ---------- job classes ---------- */
 function jobTargets(T){
   const war=wars.some(w=>w.a===T.id||w.b===T.id);
-  return{farmer:.28,miner:T.age<5?.14:.1,woodcutter:.13,builder:.1,hunter:.07,soldier:war?.3:.14,teacher:T.hall>=0?.06:0,priest:T.temple?.05:0};
+  return{farmer:.28,miner:T.age<ERA_MAX?.14:.1,woodcutter:.13,builder:.1,hunter:.07,soldier:war?.3:.14,teacher:T.hall>=0?.06:0,priest:T.temple?.05:0};
 }
 function pickJob(T,u){
   const tg=jobTargets(T),n=Math.max(8,T.pop),have=T.jobs||{};
@@ -248,12 +268,16 @@ function pickJob(T,u){
 }
 function setJob(u,j){
   u.maxhp/=u.jhp;u.dmg/=u.jdmg;
-  u.jhp=j==='soldier'?1.15:j==='miner'?1.1:1;u.jdmg=j==='soldier'?1.2:1;
+  u.jhp=j==='general'?1.5:j==='soldier'?1.15:j==='miner'?1.1:1;u.jdmg=j==='general'?1.4:j==='soldier'?1.2:1;
   u.maxhp*=u.jhp;u.dmg*=u.jdmg;u.hp=Math.min(u.maxhp,u.hp*u.jhp);u.job=j;
 }
+const atWar=T=>wars.some(w=>w.a===T.id||w.b===T.id);
 function patrol(u,T){
   const e=enemyNear(u,12);if(e){u.target=e;u.task='fight';return true}
   const w=wars.find(x=>x.a===T.id||x.b===T.id);
+  /* with a general, soldiers gather on him and follow wherever he leads */
+  const g=T._gen;
+  if(g&&g!==u&&!g.inside&&(w||R()<.6)&&Math.abs(g.x-u.x)+Math.abs(g.y-u.y)<50){u.task='follow';u.tx=g.x;u.ty=g.y;return true}
   if(w&&R()<.5){
     const O=tribes[w.a===T.id?w.b:w.a];
     if(O.alive){const d=Math.hypot(O.cx-T.cx,O.cy-T.cy)||1,k=Math.min(d*.5,16);
@@ -276,6 +300,7 @@ function jobWork(u,T,forage){
     case'woodcutter':return getMat(u,T,false,true);
     case'builder':return tryBuild(u,T)||getMat(u,T);
     case'soldier':return patrol(u,T);
+    case'general':return lead(u,T);
     case'teacher':case'priest':{
       const at=u.job==='priest'?T.templeAt:(T.hall>=0?T.hall:T.templeAt);
       if(at<0)return false;
@@ -286,15 +311,49 @@ function jobWork(u,T,forage){
   }
   return false;
 }
+/* the general: in peace he walks the village with the troops in tow; in war he rallies them, marches on the nearest
+   enemy settlement and puts it to the torch once its defenders are gone */
+function lead(u,T){
+  const e=enemyNear(u,9);if(e){u.target=e;u.task='fight';return true}
+  const w=wars.find(x=>x.a===T.id||x.b===T.id),H=townOf(u,T);
+  if(w){
+    const O=tribes[w.a===T.id?w.b:w.a];
+    let best=null,bd=1e9;
+    if(O.alive)for(const t of O.towns){if(!t.houses&&!t.pop)continue;const d=(t.x-u.x)**2+(t.y-u.y)**2;if(d<bd){bd=d;best=t}}
+    if(best){
+      const d=Math.sqrt(bd);
+      if(d<4){
+        if(R()<.15){const b=ringFind(best.x,best.y,5,i=>bld[i]===O.id&&btype[i]!==4&&!fire[i]);if(b>=0){ignite(b,true);sfx('horn',u.x,u.y)}}
+        wander(u,best.x,best.y,3);u.task='march';return true;
+      }
+      let near=0,all=0;for(const m of T.members)if(m.job==='soldier'&&!m.inside){all++;if(Math.abs(m.x-u.x)+Math.abs(m.y-u.y)<7)near++}
+      if(near<Math.min(4,all*.5)){wander(u,u.x,u.y,2);u.task='rally';return true}
+      const k=Math.min(d,6),j=sampleNear(u.x+(best.x-u.x)/d*k,u.y+(best.y-u.y)/d*k,3,walk,12);
+      if(j>=0){setT(u,j);u.task='march';return true}
+    }
+  }
+  const j=sampleNear(H.x,H.y,Math.min(14,6+Math.sqrt(H.houses+1)*2),walk,12);
+  if(j>=0){setT(u,j);u.task='march';return true}
+  return false;
+}
+/* the most seasoned soldier is made general once the army is big enough; a fallen general is replaced */
+function tendGeneral(T){
+  if(T._gen)return;
+  if(T.general>=0){T.general=-1;log(`The general of the ${T.title} is gone; the soldiers will choose another.`,T.color,true)}
+  if((T.jobs.soldier||0)<(atWar(T)?2:3))return;
+  let best=null,bs=-1;
+  for(const m of T.members)if(m.job==='soldier'&&adult(m)&&!m.inside){const s=(m.xp||0)+(m.kills||0)*6+m.maxhp*.1;if(s>bs){bs=s;best=m}}
+  if(!best)return;
+  setJob(best,'general');T.general=best.id;T._gen=best;
+  log(`${best.name} was made general of the ${T.title}.`,T.color,true,{x:best.x,y:best.y});
+}
 /* which deposit a kingdom needs next to climb the ages */
 function wantOre(T){
   const r=T.res;
-  if(T.age===0)return ORE.STONE;
-  if(T.age===1)return ORE.COPPER;
-  if(T.age===2)return ORE.IRON;
-  if(T.age===3)return r.coal<10?ORE.COAL:ORE.IRON;
-  if(T.age===4)return r.gold<8?ORE.GOLD:ORE.SILVER;
-  return r.gems<20?ORE.GEMS:(R()<.5?ORE.GOLD:ORE.SILVER);
+  if(r.stone<30)return ORE.STONE;
+  const nx=T.age<ERA_MAX?ERA_REQ[T.age+1].ore:null;
+  if(nx)for(const k in nx)if(r[k]<nx[k])return ORE[k.toUpperCase()];
+  return R()<.5?ORE.IRON:ORE.COAL;
 }
 function getOre(u,T){
   const want=wantOre(T);
@@ -479,11 +538,11 @@ function updateUnits(){
 }
 /* head counts per kingdom, village, people and species, rebuilt from the unit list */
 function census(){
-  for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;const jb=T.jobs;for(const j in jb)jb[j]=0;for(const t of T.towns)t.pop=0}
+  for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;T._gen=null;const jb=T.jobs;for(const j in jb)jb[j]=0;for(const t of T.towns)t.pop=0}
   /* counters are reused and zeroed in place, so a step allocates nothing here */
   const rc=cnt.race,sp=cnt.sp;for(const r of RACE_KEYS)rc[r]=0;for(const k in sp)sp[k]=0;
   for(const u of units){
-    if(u.k===0){const T=tribes[u.tribe];T.pop++;T.members.push(u);(T.towns[u.town|0]||T.towns[0]).pop++;rc[u.race]++;if(u.job)T.jobs[u.job]=(T.jobs[u.job]||0)+1}
+    if(u.k===0){const T=tribes[u.tribe];T.pop++;if(u.id===T.general)T._gen=u;T.members.push(u);(T.towns[u.town|0]||T.towns[0]).pop++;rc[u.race]++;if(u.job)T.jobs[u.job]=(T.jobs[u.job]||0)+1}
     else{sp[u.sp]=(sp[u.sp]||0)+1;if(u.owner>=0)tribes[u.owner].stock++}
   }
   let np=0;for(const r in rc)np+=rc[r];cnt.people=np;
@@ -506,10 +565,12 @@ function updateTribes(){
     if(R()<T.houses*.0025)T.food++;
     if(T.temple&&R()<.004)T.food++;
     if(R()<T.stock*.0015)T.food++;
+    T.sci+=(.004*T.pop+.03*(T.jobs.teacher||0)+(T.hall>=0?.04:0)+.015*T.towns.length)*(RACES[T.race].tech||1)*(1+T.fx.craft*.5);
     if((step+T.id)%20===0){checkAge(T);T.fx=computeFx(T)}
     if((step+T.id*13)%(YEAR>>1)===0)rebalanceJobs(T);
+    if((step+T.id)%40===0)tendGeneral(T);
     if(T.age>0&&T.mat>=3&&R()<.012){
-      const H=pick(T.towns),b=sampleNear(H.x,H.y,Math.min(20,5+Math.sqrt(H.houses+1)*2.4),i=>bld[i]===T.id&&btype[i]<3&&btier[i]<T.age,30);
+      const H=pick(T.towns),b=sampleNear(H.x,H.y,Math.min(20,5+Math.sqrt(H.houses+1)*2.4),i=>bld[i]===T.id&&btype[i]!==3&&btype[i]!==4&&btier[i]<T.age,30);
       if(b>=0){btier[b]++;T.mat-=2;bDirty=true;sfx('build',b%W+.5,((b/W)|0)+.5)}
     }
     if(T.stab>70&&R()<.002*T.houses)T.food++;
@@ -546,13 +607,22 @@ function rebalanceJobs(T){
   }
   /* soldiers also stand down when the war is over, and the workshops fill up again */
 }
-const AGE_REQ=[null,T=>T.res.stone>=60,T=>T.res.copper>=70,T=>T.res.iron>=80,T=>T.res.coal>=60&&T.res.iron>=180,T=>T.res.gold>=60&&T.res.silver>=60];
-const AGE_COL=[[170,130,80],[170,170,176],[214,128,64],[130,140,160],[190,200,220],[246,204,70]];
+const AGE_COL=[[170,130,80],[214,128,64],[130,140,160],[190,200,220],[200,90,60],[150,110,90],[120,170,220],[110,240,255]];
+/* the next era needs its research, and its ore unless the research runs half as far again */
+function eraReady(T){
+  if(T.age>=ERA_MAX)return false;
+  const q=ERA_REQ[T.age+1],s=T.sci||0;if(s<q.sci)return false;
+  if(s>=q.sci*1.5)return true;
+  for(const k in q.ore)if((T.res[k]||0)<q.ore[k])return false;
+  return true;
+}
 function checkAge(T){
-  while(T.age<5&&AGE_REQ[T.age+1](T)){
+  while(eraReady(T)){
     T.age++;
     log(`The ${T.title} entered the ${AGE_NAME[T.age]}. ${AGE_WHY[T.age]}`,AGE_COL[T.age],false,newsAt(T,'⚒️',T.age>1?2:1));
     const at=T.hall>=0?T.hall:-1;if(at>=0){effects.push({type:'rite',x:at%W+.5,y:((at/W)|0)+.5,c:AGE_COL[T.age],t:0,dur:80,big:true});sfx('fanfare',at%W,(at/W)|0)}
+    /* the fields are farmed the new way at once; homes, works and boats follow as they are rebuilt */
+    for(let i=0;i<N;i++)if(fld[i]&&own[i]===T.id)markDirty(i);
     T.fx=computeFx(T);
   }
 }
@@ -576,7 +646,7 @@ function settle(T){
   const i=sampleNear(src.x,src.y,40,j=>fertile(j)&&(own[j]<0||own[j]===T.id)&&far(j)&&farFromOthers(j,22,T)&&lineOK(src.x,src.y,j%W,(j/W)|0,walk),200);
   if(i<0){seaSettle(T,si);return}
   const x=i%W,y=(i/W)|0,H=addTown(T,x,y),ti=T.towns.length-1;
-  const adults=T.members.filter(m=>adult(m)&&!m.inside&&(m.town|0)===si);
+  const adults=T.members.filter(m=>adult(m)&&!m.inside&&(m.town|0)===si&&m.job!=='general');
   const movers=adults.sort(()=>R()-.5).slice(0,Math.max(5,Math.min(9,(adults.length*.4)|0)));
   for(const m of movers){m.town=ti;m.target=null;m.task=null;setT(m,i);m.cd=60}
   log(`Settlers of the ${T.title} founded the village of ${H.name}.`,T.color);sfx('fanfare',x,y);

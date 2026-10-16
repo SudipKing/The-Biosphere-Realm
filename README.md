@@ -90,13 +90,13 @@ Eleven seedable biomes plus forest soil. Each has its own grass and trees, and s
 | Paradox | Colours shift, creatures are teleported, healed or wounded at random |
 | Corruption | Spawns skeletons and zombies, drains the living, creeps outward. Temples purify it |
 
-### Ores and metallurgy
+### Ores and the eras of technology
 
-Kingdoms dig stone, copper, iron, coal, silver, gold and gems. The metal they mine moves them through the ages: **Wooden, Stone, Bronze, Iron, Steel, Golden**. Each age upgrades their homes (stone walls, bronze banners, iron frames, steel plating, gilded crowns), and brings stronger weapons, tougher armor and faster mining.
+Kingdoms research (more people, teachers and a great hall make it faster) and dig stone, copper, iron, coal, silver, gold and gems. Together they carry a kingdom through eight eras: **Stone, Bronze, Iron, Medieval, Gunpowder, Industrial, Modern, Future**. Each people learns at its own pace: gnomes very quickly, humans and dwarves quickly, saurians and goblins steadily, elves and orcs slowly. Every era changes how a kingdom looks and fights: huts become brick towns, factories and glass spires; spears become swords, muskets, rifles and lasers; canoes become galleons, steamships and hovercraft; farmers trade hoes for tractors and hydroponic beds. From the Gunpowder Age soldiers shoot from range.
 
 ### People and jobs
 
-- **Job classes.** Every adult takes the work their kingdom needs: **farmers** (+50% food), **miners** (+40% ore, tougher), **woodcutters**, **builders**, **hunters**, **soldiers** (+20% damage, +15% health, they patrol, train and fight, and there are far more of them in wartime), **teachers** (better crafting, art and mining for the whole kingdom) and **priests** (raise devotion and calm). Each job has its own hat and tool on the sprite, and the inspector and codex show who does what.
+- **Job classes.** Every adult takes the work their kingdom needs: **farmers** (+50% food), **miners** (+40% ore, tougher), **woodcutters**, **builders**, **hunters**, **soldiers** (+20% damage, +15% health, they patrol, train and fight, and there are far more of them in wartime), a **general** (the most seasoned soldier: the army gathers around them and follows in ranks, and in war the general marches it on the nearest enemy settlement; generals ride a chariot, horse, jeep or hover bike as the eras pass), **teachers** (better crafting, art and mining for the whole kingdom) and **priests** (raise devotion and calm). Each job has its own hat and tool on the sprite, and the inspector and codex show who does what.
 - **Immigrants.** Tap inside another people's kingdom with a people tool to send settlers to live among them (an elf in an orc horde). They keep their race, work in the kingdom and can have mixed children.
 - **Villages.** Growing kingdoms send settlers overland or by ship to found new villages. A village is its own settlement with its own name, homes and people, but it stays part of the kingdom: same colour, same stores, same domain. Only the capital has the great hall and temple. Empty villages are abandoned, and the capital sends families to villages that are struggling.
 

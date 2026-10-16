@@ -17,6 +17,15 @@ const buffChips=(b,scale)=>Object.keys(b).map(k=>`<span class="bchip">${fmtBuff(
 const stars=q=>'\u2605'.repeat(q)+'\u2606'.repeat(5-q);
 const fxKeys=fx=>Object.keys(fx).filter(k=>Math.abs(fx[k])>.004).sort((a,b)=>Math.abs(fx[b])-Math.abs(fx[a]));
 
+/* how far the kingdom is from its next era: research (a bar) and the ore still to dig */
+function eraNote(T,L){
+  const pace=`${L.plural} learn ${TECH_WORD(L.tech||1)}.`;
+  if(T.age>=ERA_MAX)return `<p class="mnote">The height of technology. ${pace}</p>`;
+  const q=ERA_REQ[T.age+1],pct=Math.min(100,Math.round((T.sci||0)/q.sci*100));
+  const need=Object.keys(q.ore).filter(k=>(T.res[k]||0)<q.ore[k]).map(k=>`${ORES[ORE[k.toUpperCase()]].icon} ${q.ore[k]-(T.res[k]||0)} more ${k}`);
+  return `${meter('Research',pct,'#6fa8dc',`Toward the ${AGE_NAME[T.age+1]}: ${pct}%. ${pace}`)}
+  <p class="mnote">${need.length&&(T.sci||0)<q.sci*1.5?`Still to dig: ${need.join(', ')} (or research half as far again). `:''}Teachers, a great hall and more people speed research. Each era upgrades homes, tools, weapons, boats and farms.</p>`;
+}
 function cxOverview(T,L){
   const foes=wars.filter(w=>w.a===T.id||w.b===T.id).map(w=>tribes[w.a===T.id?w.b:w.a]);
   const al=alliesOf(T),fx=T.fx,keys=fxKeys(fx);
@@ -33,7 +42,7 @@ function cxOverview(T,L){
     <dt>Domain</dt><dd>${sharePct(T)}% of the land (${T.area} tiles)</dd>
     <dt>Ore mined</dt><dd>${Object.keys(T.res).filter(k=>T.res[k]>0).map(k=>`${ORES[ORE[k.toUpperCase()]].icon} ${T.res[k]}`).join(' &nbsp; ')||'none yet'}</dd>
     <dt>Founded</dt><dd>Year ${T.founded}${T.parent>=0?`, by ${T.rebel?'rebels of':'settlers of'} the ${tribes[T.parent].title}`:''}</dd></dl>
-  ${T.age<5?`<p class="mnote">Next: the ${AGE_NAME[T.age+1]} — ${[0,'needs stone','needs copper','needs iron','needs coal and iron','needs gold and silver'][T.age+1]}. Dig deposits to climb the ages and upgrade every home.</p>`:'<p class="mnote">The pinnacle of metallurgy: golden halls and steady hands.</p>'}
+  ${eraNote(T,L)}
   <h4>Settlements (${T.towns.length})</h4>
   ${T.towns.map((H,k)=>`<div class="town"><span><b>${esc(H.name)}</b>${k===0?' <span class="tag">capital</span>':''}<br><span class="gdom">${H.pop} people, ${H.houses} ${H.houses===1?'building':'buildings'}, founded year ${H.founded}</span></span><button class="btn sm cx-town" data-x="${H.x}" data-y="${H.y}">Show</button></div>`).join('')}
   <h4>Workforce</h4>
@@ -147,7 +156,7 @@ function rgLangs(){
 function renderRegistry(force){
   if(!regOpen)return;
   const body=cxEl('rgBody');
-  if(!force&&(body.contains(document.activeElement)||regSignature()===regSig))return;
+  if(!force&&(body.contains(document.activeElement)||body.querySelector(':active')||regSignature()===regSig))return;
   regSig=regSignature();
   const st=body.scrollTop;
   cxEl('rgHead').innerHTML=`<span class="sw3" style="background:var(--accent)"></span><div><h3>Registry of the World</h3><p>Every name here is yours to change. Type, then press Enter.</p></div>

@@ -34,7 +34,7 @@ function ghostsOf(list){
   return [...out.values()];
 }
 function saveWorld(){
-  const tribeOut=tribes.map(T=>{const o={};for(const k in T)if(k!=='members'&&k!=='jobs')o[k]=k==='rel'?T.rel.id:T[k];return o});
+  const tribeOut=tribes.map(T=>{const o={};for(const k in T)if(k!=='members'&&k!=='jobs'&&k[0]!=='_')o[k]=k==='rel'?T.rel.id:T[k];return o});
   const relOut=religions.map(r=>{
     const P=PANTHEON[r.race],o={};
     for(const k in r)if(k!=='patron'&&k!=='second'&&k!=='doc'&&k!=='tenets')o[k]=r[k];
@@ -92,7 +92,7 @@ function buildWorld(o){
     return Object.assign(rest,{patron:P[s.patron],second:s.second>=0?P[s.second]:null,doc,tenets:(s.tenets||[]).map(i=>TN[i]).filter(Boolean),
       names:[patronName,secondName]});
   });
-  const tribes=o.tribes.map(s=>Object.assign({},s,{rel:religions[s.rel],members:[],jobs:{},fx:s.fx&&typeof s.fx==='object'?Object.assign(zeroFx(),s.fx):null}));
+  const tribes=o.tribes.map(s=>Object.assign({},s,{sci:s.sci||0,general:s.general??-1,age:Math.min(ERA_MAX,s.age|0),rel:religions[s.rel],members:[],jobs:{},_gen:null,fx:s.fx&&typeof s.fx==='object'?Object.assign(zeroFx(),s.fx):null}));
   const byId=new Map(),mk=s=>{const u=Object.assign(blankUnit(),s);byId.set(u.id,u);return u};
   const units=o.units.map(mk);
   const boats=o.boats.map(b=>Object.assign({},b,{pass:(b.pass||[]).map(mk)}));

@@ -240,13 +240,18 @@ function updateTerrain(){
 }
 const CHUNK_UPLOADS=6;let upPtr=0;
 
-/* roads and fields are painted over the ground: roads have ragged edges where they meet grass, fields are furrowed rows that follow the seasons */
+/* roads and fields are painted over the ground: roads have ragged edges where they meet grass, fields are furrowed rows that follow the seasons.
+   Farming changes with the era of the kingdom that owns the field: patchy garden plots, ploughed rows, wide machine-sown
+   strips behind gravel tracks, then glowing hydroponic beds that stay green all winter */
 function paintVillage(buf,pw,lx,ly,tx,ty,i){
   if(fld[i]){
-    const v=fld[i],vert=v===2,sea=curSea;
+    const v=fld[i],vert=v===2,sea=curSea,ow=own[i],era=ow>=0&&tribes[ow]?tribes[ow].age:2;
     for(let sy=0;sy<TS;sy++)for(let sx=0;sx<TS;sx++){
-      const n=pnoise[(ty*TS+sy)*OW+tx*TS+sx]/255,q=vert?sx:sy,furrow=(q&1)===0;let c;
-      if(sx===0&&(tx===0||fld[i-1]!==v)||sy===0&&(ty===0||fld[i-W]!==v)||sx===TS-1&&(tx===W-1||fld[i+1]!==v)||sy===TS-1&&(ty===H-1||fld[i+W]!==v))c=P(112,78,48);
+      const n=pnoise[(ty*TS+sy)*OW+tx*TS+sx]/255,q=vert?sx:sy,furrow=era>=5&&era<7?q%3===0:(q&1)===0;let c;
+      const edge=sx===0&&(tx===0||fld[i-1]!==v)||sy===0&&(ty===0||fld[i-W]!==v)||sx===TS-1&&(tx===W-1||fld[i+1]!==v)||sy===TS-1&&(ty===H-1||fld[i+W]!==v);
+      if(edge)c=era>=7?P(206,214,226):era>=5?P(150,146,138):era<=1?(n<.5?P(96,150,60):P(112,78,48)):P(112,78,48);
+      else if(era>=7)c=furrow?(n<.5?P(80,200,236):P(120,226,250)):sea===3?P(150,210,150):n<.4?P(80,206,120):P(130,236,140);
+      else if(era<=1&&n<.22)c=P(96,150,60);
       else if(sea===3)c=furrow?P(170,150,138):(n<.3?P(226,232,242):P(240,244,250));
       else if(furrow)c=P(122,86,54);
       else if(sea===0)c=n<.4?P(110,186,64):P(150,214,92);

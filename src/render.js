@@ -57,14 +57,16 @@ new ResizeObserver(()=>{if(hgt)resize()}).observe(stage);
 const ipos=u=>[u.px+(u.x-u.px)*alpha,u.py+(u.y-u.py)*alpha];
 /* each unit keeps its two walk frames, so drawing never builds a cache key; the signature changes with colour, age or job.
    Fields starting with _ are render caches and are never saved */
+/* a general rides from the Bronze Age on (chariot, horse, jeep, hover bike); farmers drive tractors in the fields from the Industrial Age */
+const rides=(u,T)=>u.job==='general'?T.age>=1:u.job==='farmer'&&T.age>=5&&u.task==='forage';
 function unitSprite(u,fr){
-  const job=u.k===0&&adult(u)?u.job:null;
-  /* the signature covers everything the sprite shows that can change: colour, job, age, looks, and species (Mutate) */
-  const sig=u.k===0?tribes[u.tribe].ci*32+(adult(u)?JOB_KEYS.indexOf(job)+2:0)+(u.genes.skin*16+u.genes.hair)*4096:u.sp==='horse'&&u.owner>=0?tribes[u.owner].ci:-1;
+  const job=u.k===0&&adult(u)?u.job:null,T=u.k===0?tribes[u.tribe]:null,veh=T&&job?rides(u,T):false;
+  /* the signature covers everything the sprite shows that can change: colour, job, age, looks, era, mount and species (Mutate) */
+  const sig=u.k===0?T.ci*32+(adult(u)?JOB_KEYS.indexOf(job)+2:0)+(u.genes.skin*16+u.genes.hair)*4096+T.age*1e6+(veh?1e7:0):u.sp==='horse'&&u.owner>=0?tribes[u.owner].ci:-1;
   if(u._sg!==sig||u._ssp!==u.sp||!u._sp){u._sg=sig;u._ssp=u.sp;u._sp=[null,null]}
   let s=u._sp[fr];
   if(!s){
-    if(u.k===0){const T=tribes[u.tribe];s=spr(`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}|${job||''}`,()=>personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr,job))}
+    if(u.k===0)s=spr(`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}|${job||''}|${T.age}|${veh?1:0}`,()=>personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr,job,T.age,veh?{vehicle:true}:null));
     else s=animalSpr(u,fr);
     u._sp[fr]=s;
   }
@@ -278,9 +280,9 @@ function draw(dt){
       const b=it.b,T=b.t>=0?tribes[b.t]:null;
       const s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier,b.v):buildingSprite('',3,0,'');
       blit(s.c,s.w,s.h,(b.x+.5)*TS-s.w/2,(b.y+1)*TS-s.h+1,1);
-      if(b.ty===8){const hx=(b.x+.5)*TS-s.w/2+8,hy=(b.y+1)*TS-s.h+1+8,L=7,a=(reduceMotion?0:frameN*.045)+b.x;ctx.strokeStyle='#e8dcc0';ctx.lineWidth=Math.max(1,pz*1.1);ctx.beginPath();for(let q=0;q<4;q++){const an=a+q*1.5708;ctx.moveTo(SX(hx),SY(hy));ctx.lineTo(SX(hx+Math.cos(an)*L),SY(hy+Math.sin(an)*L))}ctx.stroke();ctx.strokeStyle='#8a6038';ctx.lineWidth=Math.max(1,pz*.5);ctx.beginPath();for(let q=0;q<4;q++){const an=a+q*1.5708+.08;ctx.moveTo(SX(hx),SY(hy));ctx.lineTo(SX(hx+Math.cos(an)*L),SY(hy+Math.sin(an)*L))}ctx.stroke()}
-      if(T&&close&&b.ty===5&&RC()<.012*(dt/16.7)&&effects.length<300)effects.push({type:'smoke',x:b.x+.85,y:b.y-.6,t:0,dur:80});
-      if(T&&close&&b.ty<2&&(T.race==='human'||T.race==='dwarf')&&RC()<.006*(dt/16.7)&&effects.length<300)
+      if(b.ty===8&&s.hub){const h=s.hub,hx=(b.x+.5)*TS-s.w/2+h.x,hy=(b.y+1)*TS-s.h+1+h.y,L=h.len,st=6.2832/h.n,a=(reduceMotion?0:frameN*.045)+b.x;ctx.strokeStyle=h.col;ctx.lineWidth=Math.max(1,pz*1.1);ctx.beginPath();for(let q=0;q<h.n;q++){const an=a+q*st;ctx.moveTo(SX(hx),SY(hy));ctx.lineTo(SX(hx+Math.cos(an)*L),SY(hy+Math.sin(an)*L))}ctx.stroke();ctx.strokeStyle='rgba(60,50,40,.55)';ctx.lineWidth=Math.max(1,pz*.5);ctx.beginPath();for(let q=0;q<h.n;q++){const an=a+q*st+.08;ctx.moveTo(SX(hx),SY(hy));ctx.lineTo(SX(hx+Math.cos(an)*L),SY(hy+Math.sin(an)*L))}ctx.stroke()}
+      if(T&&close&&b.ty===5&&b.tier<=5&&RC()<(b.tier===5?.03:.012)*(dt/16.7)&&effects.length<300)effects.push({type:'smoke',x:b.x+.85,y:b.y-.6,t:0,dur:80});
+      if(T&&close&&b.ty<2&&b.tier<6&&(T.race==='human'||T.race==='dwarf'||b.tier>=4)&&RC()<.006*(dt/16.7)&&effects.length<300)
         effects.push({type:'smoke',x:b.x+(T.race==='human'?.85:.95)-(b.ty===1?.4:0),y:b.y-1.2,t:0,dur:80});
     }else if(it.u){
       const u=it.u,y=it.ry,moving=u.moving&&speed>0,fr=moving||u.fly&&speed>0?(((frameN>>(u.fly?2:3))+u.id)&1):0,alt=u.fly?SPECIES[u.sp].alt+Math.sin(frameN/14+u.id)*1.2:0;
@@ -314,7 +316,7 @@ function draw(dt){
       const rad=1.6*tz;ctx.drawImage(GLOW_C,SX((m.x+.5)*TS)-rad,SY((m.y+.2)*TS)-rad,rad*2,rad*2);
       ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
     }else{
-      const b=it.boat,[bx,by]=ipos(b),s=boatSprite(b.kind,b.race,b.ci),bob=Math.sin(frameN/18+b.id)*.8;
+      const b=it.boat,[bx,by]=ipos(b),s=boatSprite(b.kind,b.race,b.ci,tribes[b.tribe].age),bob=Math.sin(frameN/18+b.id)*.8;
       blit(b.dir<0?flipped(s):s.c,s.w,s.h,bx*TS-s.w/2,(by+.5)*TS-s.h+2+bob,1);
       if(close&&speed>0&&frameN%10===0&&b.x!==b.px&&effects.length<300)effects.push({type:'wake',x:bx,y:by+.35,t:0,dur:40});
     }

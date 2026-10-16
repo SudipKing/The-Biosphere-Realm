@@ -3,6 +3,11 @@
 let sel=null,follow=false;
 const $=id=>document.getElementById(id);
 const inspEl=$('inspect'),inspBody=$('inspBody');
+/* the inspector refreshes itself twice a second; it never rebuilds while a button in it is held down, or when nothing
+   changed, so a click (Hear it, Follow) always lands on the button that was pressed */
+let inspHTML='',inspHeld=false;
+inspEl.addEventListener('pointerdown',()=>{inspHeld=true});
+for(const ev of ['pointerup','pointercancel','pointerleave'])inspEl.addEventListener(ev,()=>{setTimeout(()=>{inspHeld=false},0)});
 const TASKS={forage:'Gathering food',chop:'Cutting wood',gather:'Collecting fallen branches',mine:'Mining stone',plant:'Planting trees',
   build:'Building',hunt:'Hunting',butcher:'Slaughtering livestock',fight:'Fighting',sleep:'Heading home to sleep',
   train:'Training with weapons',teach:'Teaching the young',pray:'Praying at the temple',guard:'On guard duty'};
@@ -22,7 +27,7 @@ function tribeUnder(p){
   let T=null,bd=36;for(const t of tribes)if(t.alive)for(const H of t.towns){const d=(H.x-x)**2+(H.y-y)**2;if(d<bd){bd=d;T=t}}
   return T;
 }
-function select(s){sel=s;follow=false;inspEl.hidden=!s;if(s)renderInspect()}
+function select(s){sel=s;follow=false;inspEl.hidden=!s;inspHTML='';if(s)renderInspect()}
 function spriteCanvas(s){
   const c=document.createElement('canvas');c.width=64;c.height=64;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
   const sc=Math.floor(Math.min(60/s.w,60/s.h));x.drawImage(s.c,(64-s.w*sc)/2,(64-s.h*sc)/2,s.w*sc,s.h*sc);return c;
@@ -53,9 +58,9 @@ function renderInspect(){
     const u=sel.u;
     if(u.k===0){
       const T=tribes[u.tribe],L=RACES[u.race],g=u.genes,pct=v=>Math.round(v*100)+'%';
-      sprite=spr(`p|${u.race}|${g.skin}|${g.hair}|${T.ci}|0|${adult(u)?u.job||'':''}`,()=>personSprite(u.race,g.skin,g.hair,T.color,0,adult(u)?u.job:null));
+      sprite=unitSprite(u,0);
       const doing=u.dead?'Resting in peace':u.inside?'Asleep at home':!adult(u)?'Playing':u.target?(u.target.k===1?(u.task==='butcher'?TASKS.butcher:'Hunting'):'Fighting'):(TASKS[u.task]||'Wandering');
-      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${u.name}</h3><p>${u.dead?'Has died, ':''}${adult(u)?L.name:L.name+' child'} of the ${T.title}</p></div></div>
+      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${u.name}</h3><p>${u.dead?'Has died, ':''}${u.job==='general'&&T.general===u.id?'General':adult(u)?L.name:L.name+' child'} of the ${T.title}, ${AGE_NAME[T.age]}</p></div></div>
       <dl><dt>Age</dt><dd>${yrs(u)}</dd><dt>Job</dt><dd>${u.job&&adult(u)?`<span title="${JOBS[u.job].d}">${JOBS[u.job].ic} ${JOBS[u.job].n}</span>`:adult(u)?'Looking for work':'Child'}</dd><dt>Doing</dt><dd>${doing}</dd>
         <dt>Health</dt><dd>${Math.max(0,Math.round(u.hp))} of ${Math.round(u.maxhp)}</dd>
         <dt>Generation</dt><dd>${u.gen}${u.parents?`, child of ${u.parents}`:', founder'}</dd>
@@ -78,8 +83,8 @@ function renderInspect(){
     }
   }else if(sel.boat){
     const b=sel.boat,T=tribes[b.tribe];
-    sprite=boatSprite(b.kind,b.race,b.ci);
-    html=`<div class="insp-head"><span id="ispr"></span><div><h3>${b.kind==='fish'?'Fishing boat':'Settler ship'}</h3><p>${b.dead?'Gone':kingLine(T)}</p></div></div>
+    const era=T?T.age:0;sprite=boatSprite(b.kind,b.race,b.ci,era);
+    html=`<div class="insp-head"><span id="ispr"></span><div><h3>${b.kind==='fish'?['Fishing canoe','Fishing skiff','Fishing boat','Fishing cog','Fishing sloop','Steam trawler','Motor trawler','Hover trawler'][era]:['Dugout','Galley','Longship','Cog','Galleon','Steamship','Motor ship','Hovercraft'][era]+' of settlers'}</h3><p>${b.dead?'Gone':kingLine(T)}</p></div></div>
     <dl>${b.kind==='fish'?`<dt>Work</dt><dd>Brings fish home to the village</dd>`:`<dt>Aboard</dt><dd>${b.pass.map(p=>p.name).join(', ')}</dd><dt>Voyage</dt><dd>${Math.round(b.pi/b.path.length*100)}% of the way to new land</dd>`}</dl>`;
   }else if(sel.t!=null){
     const i=sel.t,b=bio(hgt[i]),BN=['Deep ocean','Shallow sea','Sand','Grassland','Highland','Mountain','Snow peak'][b];
@@ -101,19 +106,22 @@ function renderInspect(){
       const art=ty===4?T.arts.find(x=>x.i===i):null;
       const fol=units.filter(u=>u.k===0&&tribes[u.tribe].rel===T.rel).length;
       const sleepers=units.filter(u=>u.inside&&u.home===i).length;
-      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${art?art.name:ty>=5?['Forge','Dock','Watchtower','Windmill'][ty-5]:names[ty]}</h3><p>${kingLine(T)}</p></div></div>
+      const e=btier[i]|0,WN=[['Forge','Forge','Forge','Smithy','Workshop','Factory','Power plant','Fusion reactor'],['Dock','Dock','Dock','Wharf','Harbour','Harbour crane','Steel pier','Hover port'],['Watchtower','Watchtower','Watchtower','Castle tower','Bastion','Lookout','Radar tower','Shield pylon'],['Windmill','Windmill','Windmill','Windmill','Windmill','Steam mill','Wind turbine','Solar farm']],
+        EN=[null,null,null,null,['Townhouse','Town hall','Cathedral'],['Row house','Clock-tower hall','Cathedral'],['Apartment block','Office tower','Temple'],['Habitat spire','Council spire','Temple of light']][e];
+      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${art?art.name:ty>=5?WN[ty-5][e]:EN&&ty<3?EN[ty]:names[ty]}</h3><p>${kingLine(T)}</p></div></div>
       ${art?`<p class="quote" style="font-style:normal">${art.form} by ${art.creator}, year ${art.year}. ${art.desc} ${stars(art.q)}</p>`:''}${ty===2?`<p class="quote" style="font-style:normal">Sacred to ${T.rel.patron.name}, ${T.rel.patron.title}. ${T.rel.patron.dom}.</p>`:''}<p class="quote">“${T.motto}” they say in greeting.</p>
       <dl><dt>People</dt><dd>${T.pop} ${T.pop===1?L.name.toLowerCase():L.plural.toLowerCase()}${sleepers?`, ${sleepers} asleep here`:''}</dd>
         <dt>Buildings</dt><dd>${T.houses}</dd><dt>Livestock</dt><dd>${T.stock}</dd>
         <dt>Stores</dt><dd>${T.food} food, ${T.mat} ${T.race==='dwarf'?'stone':'timber'}</dd>
         <dt>Faith</dt><dd>${T.rel.name} (${fol} followers)</dd>
-        <dt>Built of</dt><dd>${ty<3?TIER_MAT[btier[i]]:ty===6?'timber':'stone'}</dd>
-        <dt>Age</dt><dd>${AGE_NAME[T.age]}</dd><dt>Domain</dt><dd>${sharePct(T)}% of the land</dd>
+        <dt>Built of</dt><dd>${ty===4?'stone':TIER_MAT[btier[i]|0]}</dd>
+        <dt>Era</dt><dd>${AGE_NAME[T.age]}</dd><dt>Domain</dt><dd>${sharePct(T)}% of the land</dd>
         <dt>Founded</dt><dd>Year ${T.founded}${T.parent>=0?` by settlers of the ${tribes[T.parent].title}`:''}</dd></dl>
       <p class="quote" style="font-style:normal">${L.lore}</p><button class="btn" id="codexBtn">Open realm codex</button>`;
     }
   }
-  inspBody.innerHTML=html;
+  if(html===inspHTML)return;
+  inspHTML=html;inspBody.innerHTML=html;
   const slot=$('ispr');if(slot&&sprite)slot.replaceWith(spriteCanvas(sprite));
   const cxb=$('codexBtn');if(cxb)cxb.addEventListener('click',()=>{const t=sel&&sel.i!=null&&bld[sel.i]>=0?tribes[bld[sel.i]]:sel&&sel.t!=null&&own[sel.t]>=0?tribes[own[sel.t]]:null;if(t)openCodex(t)});
   const fb=$('followBtn');
@@ -188,7 +196,7 @@ const TABS=[
     ['alliance','🤝','Alliance','Tap one kingdom, then another, to bind them in an alliance. Ends any war between them.'],
     ['breakpact','💔','Break pacts','Tap a kingdom to cancel all of its alliances.'],
     ['inspire','🎨','Inspire','Tap a kingdom: artists create a work of art at once, and devotion and calm rise.'],
-    ['enlighten','💡','Enlighten','Tap a kingdom to hand it the knowledge of the next age: stone, bronze, iron, steel, gold.'],
+    ['enlighten','💡','Enlighten','Tap a kingdom to hand it the knowledge of the next era: stone, bronze, iron, medieval, gunpowder, industrial, modern, future.'],
     ['dbless','🙏','Bless','Tap a kingdom: heals its people, lifts stability and devotion and feeds the hungry.'],
     ['dcurse','😈','Curse','Tap a kingdom: stability and devotion plummet and stores are spoiled.'],
     ['revolt','🔥','Spark revolt','Tap a restless kingdom and part of it breaks away to found a rival realm.'],
@@ -198,7 +206,7 @@ const TABS=[
   ]},
   {ic:'🌿',name:'Nature & Disasters',items:[
     ...Array.from({length:BM.CORRUPT-BM.SAV+1},(_,k)=>BM.SAV+k).map(b=>['seed_'+BIOMES[b].k,BIOMES[b].icon,BIOMES[b].name+' seeds','Paint '+BIOMES[b].name.toLowerCase()+' on grass and hills, with its own trees and grass. '+BIOMES[b].desc]),
-    ...[ORE.STONE,ORE.COPPER,ORE.IRON,ORE.COAL,ORE.SILVER,ORE.GOLD,ORE.GEMS].map(o=>['ore_'+ORES[o].k,ORES[o].icon,ORES[o].name+' ore','Paint '+ORES[o].name.toLowerCase()+' deposits on land. '+ORES[o].desc+' Kingdoms mine them to advance their metallurgy.']),
+    ...[ORE.STONE,ORE.COPPER,ORE.IRON,ORE.COAL,ORE.SILVER,ORE.GOLD,ORE.GEMS].map(o=>['ore_'+ORES[o].k,ORES[o].icon,ORES[o].name+' ore','Paint '+ORES[o].name.toLowerCase()+' deposits on land. '+ORES[o].desc+' Kingdoms mine them to advance through the eras.']),
     ['rain','🌧️','Rain','Drag to put out fires, cool lava and help forests grow back.'],
     ['lightning','⚡','Lightning','Tap to strike. Kills whatever it hits and sets the ground alight.'],
     ['fire','🔥','Fire','Drag to start fires. Forests and houses burn fast.'],
@@ -532,7 +540,7 @@ function frame(t){
   draw(dt);
   panelT+=dt;inspT+=dt;
   if(panelT>700){panelT=0;renderPanel(false)}
-  if(inspT>450){inspT=0;if(sel&&!inspEl.hidden)renderInspect()}
+  if(inspT>450){inspT=0;if(sel&&!inspEl.hidden&&!inspHeld)renderInspect()}
   if(codexOpen()&&frameN%70===0)renderCodex();
   if(chronOpen&&frameN%40===0)renderChron();
   if(regOpen&&frameN%60===0)renderRegistry();
