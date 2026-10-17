@@ -625,14 +625,19 @@ function tick(t,dt){
   else if(speed>0){
     /* the sim gets a time budget per frame: a busy world runs a little slower rather than dropping frames.
        A step only starts if the average step still fits in what is left of the budget */
+    /* the budget grows with the speed button: with one flat budget a big world (a step costs 5 to 10 ms from about
+       year 50) could afford only one step a frame, so 3x and 9x ran no faster than 1x and the buttons looked dead.
+       Fast-forward may now trade some frame rate for speed; the 1x budget is unchanged */
+    const budget=SIM_BUDGET*(speed===1?1:speed===2?1.8:3);
     acc+=dt*SPS[speed]/1000;let n=0;const t0=performance.now();
-    while(acc>=1&&n<12&&(n===0||performance.now()-t0+stepMs<SIM_BUDGET)){const s=performance.now();simStep();stepMs+=(performance.now()-s-stepMs)*.1;acc--;n++}
+    while(acc>=1&&n<12&&(n===0||performance.now()-t0+stepMs<budget)){const s=performance.now();simStep();stepMs+=(performance.now()-s-stepMs)*.1;acc--;n++}
     if(acc>=1)acc=.99;
     alpha=acc;
   }else alpha=1;
   if(painting&&hover&&BRUSH.has(tool))applyBrush(hover,dt);
   updEffects(dt);
-  draw(dt);
+  /* a drawing error must not take the panels, the chronicle or the sim loop down with it */
+  try{draw(dt)}catch(e){reportErr(e,'draw')}
   panelT+=dt;inspT+=dt;
   if(panelT>700){panelT=0;renderPanel(false)}
   if(inspT>450){inspT=0;if(sel&&!inspEl.hidden&&!inspHeld)renderInspect()}

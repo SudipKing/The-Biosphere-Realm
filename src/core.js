@@ -60,6 +60,8 @@ const year=()=>Math.floor(step/YEAR);
 const adult=u=>u.k===0?u.age>=ADULT:u.age>=YEAR*1.5;
 const isNight=()=>light<.32;
 const tileOf=u=>{const x=Math.min(W-1,Math.max(0,u.x|0)),y=Math.min(H-1,Math.max(0,u.y|0));return y*W+x};
+/* Math.hypot is several times slower than this in the engine and sits in the per-step hot paths */
+const hyp=(a,b)=>Math.sqrt(a*a+b*b);
 const N4=[[1,0],[-1,0],[0,1],[0,-1]];
 const N8=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 

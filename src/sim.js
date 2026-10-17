@@ -93,7 +93,7 @@ function setT(u,i){u.tx=(i%W)+.5;u.ty=((i/W)|0)+.5}
 const canStand=(u,i)=>{if(u.fly)return true;const b=bio(hgt[i]);if(u.amph)return b>=1&&b<=3&&!lava[i];return walk(i)};
 function wander(u,cx,cy,r){const i=sampleNear(cx,cy,r,j=>canStand(u,j),15);if(i>=0)setT(u,i)}
 function moveToward(u,spd){
-  const dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);
+  const dx=u.tx-u.x,dy=u.ty-u.y,d=hyp(dx,dy);
   if(u.haste>step)spd*=1.6;
   const bi=bm[tileOf(u)];if(bi){const f=BIOMES[bi].spd;if(f)spd*=f;if(bi===BM.PARA&&u.boost>step)spd*=1.6}
   if(Math.abs(dx)>.05)u.dir=dx>0?1:-1;
@@ -124,7 +124,7 @@ function hit(t,dmg,src,melee){
   else if(!t.target&&adult(t))t.target=src;
 }
 function chase(u,spd,dmg,range){
-  const t=u.target,d=Math.hypot(t.x-u.x,t.y-u.y);
+  const t=u.target,d=hyp(t.x-u.x,t.y-u.y);
   if(Math.abs(t.x-u.x)>.05)u.dir=t.x>u.x?1:-1;
   if(d>15){u.target=null;u.task=null;return}
   if(d<range){
@@ -137,7 +137,7 @@ function chase(u,spd,dmg,range){
       }
       else{
         /* melee: face the foe and spread out a little so a brawl is a clump, not one stacked pixel */
-        const ax=t.x-u.x,ay=t.y-u.y,ad=Math.hypot(ax,ay)||1;u._ax=ax/ad;u._ay=ay/ad;
+        const ax=t.x-u.x,ay=t.y-u.y,ad=hyp(ax,ay)||1;u._ax=ax/ad;u._ay=ay/ad;
         const m=nearest(u,.45,v=>v.k===0&&v.target&&!v.frozen);
         if(m){const sx=u.x-m.x,sy=u.y-m.y,sd=Math.hypot(sx,sy)||1,nx=u.x+sx/sd*.18,ny=u.y+sy/sd*.18;
           if(inb(nx|0,ny|0)&&canStand(u,(ny|0)*W+(nx|0))){u.x=nx;u.y=ny}}
@@ -487,13 +487,13 @@ function updAnimal(u){
     }else{
       const thr=nearest(u,5,v=>(v.k===1&&SPECIES[v.sp].pred&&SPECIES[v.sp].prey.includes(u.sp))||(S.wild&&v.k===0&&adult(v)&&R()<.4));
       if(thr){u.tx=u.x+(u.x-thr.x)*2.5;u.ty=u.y+(u.y-thr.y)*2.5;u.mode=1;u.cd=12}
-      else if(u.owner>=0){const T=tribes[u.owner],H=T.towns[u.town|0]||T.towns[0];const r=Math.min(16,8+Math.sqrt(H.houses+1)*1.5);if(Math.hypot(u.x-H.x,u.y-H.y)>r)wander(u,H.x,H.y,r*.7);else wander(u,u.x,u.y,4)}
+      else if(u.owner>=0){const T=tribes[u.owner],H=T.towns[u.town|0]||T.towns[0];const r=Math.min(16,8+Math.sqrt(H.houses+1)*1.5);if(hyp(u.x-H.x,u.y-H.y)>r)wander(u,H.x,H.y,r*.7);else wander(u,u.x,u.y,4)}
       else wander(u,u.x,u.y,6);
     }
   }
   if(adult(u)&&u.hunger<400&&(cnt.sp[u.sp]||0)<S.cap&&R()<S.breed*(bm[i]===BM.FLOWER?1.6:1)){addAnimal(u.sp,u.x|0,u.y|0,u.owner,true);cnt.sp[u.sp]=(cnt.sp[u.sp]||0)+1}
   if(u.sp==='dragon'&&u.target&&--u.fcd<=0){
-    const t=u.target,d=Math.hypot(t.x-u.x,t.y-u.y);
+    const t=u.target,d=hyp(t.x-u.x,t.y-u.y);
     if(d<7){u.fcd=34+((R()*30)|0);breathe(u,t)}else u.fcd=0;
   }
   if(u.target){chase(u,S.chase||S.flee,(u.dmg||S.dmg||2)*(u.odd&&u.traits&&u.traits.includes('Berserk')?1.5:1),u.sp==='dragon'?1.6:(S.range||1.2));return}
@@ -713,7 +713,7 @@ function seaSettle(T,si){
   log(`Settlers of the ${T.title} set sail across the sea.`,T.color);sfx('horn',b.x,b.y);
 }
 function moveBoat(b,spd){
-  const dx=b.tx-b.x,dy=b.ty-b.y,d=Math.hypot(dx,dy);
+  const dx=b.tx-b.x,dy=b.ty-b.y,d=hyp(dx,dy);
   if(Math.abs(dx)>.05)b.dir=dx>0?1:-1;
   if(d<=spd){b.x=b.tx;b.y=b.ty;return true}
   const nx=b.x+dx/d*spd,ny=b.y+dy/d*spd;

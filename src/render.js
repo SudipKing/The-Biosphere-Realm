@@ -119,7 +119,7 @@ function ovColourRow(py,px0,px1,cols){
   for(let px=px0;px<px1;px++){
     const k=py*ow+px,o=ovOwn[k];if(o<0){buf[k]=0;continue}
     const e=(px>0&&ovOwn[k-1]!==o)||(px<ow-1&&ovOwn[k+1]!==o)||(py>0&&ovOwn[k-ow]!==o)||(py<oh-1&&ovOwn[k+ow]!==o);
-    buf[k]=cols[o][e?1:0];
+    const c=cols[o];buf[k]=c?c[e?1:0]:0;
   }
 }
 /* the layer is redrawn only around tiles whose owner changed, a few rows per frame within OV_MS, so it never stalls a frame.
@@ -136,10 +136,12 @@ function buildOverlay(){
       tx0=Math.max(0,ovBox[0]-2);ty0=Math.max(0,ovBox[1]-2);tx1=Math.min(W-1,ovBox[2]+2);ty1=Math.min(H-1,ovBox[3]+2);
     }
     ovBox[0]=W;ovBox[1]=H;ovBox[2]=ovBox[3]=-1;ovFull=false;
-    ovJob={px0:tx0*OVS,px1:(tx1+1)*OVS,py0:ty0*OVS,py1:(ty1+1)*OVS,y:ty0*OVS,
-      cols:tribes.map(T=>[packRGBA(T.color[0],T.color[1],T.color[2],150),packRGBA(T.color[0]*.78|0,T.color[1]*.78|0,T.color[2]*.78|0,250)])};
+    ovJob={px0:tx0*OVS,px1:(tx1+1)*OVS,py0:ty0*OVS,py1:(ty1+1)*OVS,y:ty0*OVS,cols:[]};
   }
   const J=ovJob,t0=performance.now();let first=-1,last=-1;
+  /* a job spans several frames and a kingdom can be founded meanwhile (rebellion, a new village), so the colours
+     are extended to every kingdom that exists now; a missing entry used to throw on every frame and freeze the whole picture */
+  for(let k=J.cols.length;k<tribes.length;k++){const c=tribes[k].color;J.cols.push([packRGBA(c[0],c[1],c[2],150),packRGBA(c[0]*.78|0,c[1]*.78|0,c[2]*.78|0,250)])}
   while(J.y<J.py1){
     ovOwnRow(J.y,J.px0,J.px1);
     if(J.y>J.py0){ovColourRow(J.y-1,J.px0,J.px1,J.cols);if(first<0)first=J.y-1;last=J.y-1}
