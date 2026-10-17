@@ -480,6 +480,7 @@ function doTask(u,T){
 /* ---------- animals ---------- */
 function updAnimal(u){
   const S=SPECIES[u.sp];
+  if(u.owner<0&&!S.monster&&(u.id+step)%240===0&&strayed(u.sp,tileOf(u))){u.hp-=u.maxhp*.12;if(u.hp<=0){die(u);return}}
   if(u.odd&&u.traits){
     if(u.traits.includes('Blessed')&&u.hp<u.maxhp)u.hp=Math.min(u.maxhp,u.hp+.06);
     if(u.traits.includes('Cursed')){u.hp-=.03;if(u.hp<=0){die(u);return}}
@@ -518,7 +519,7 @@ function updAnimal(u){
       else wander(u,u.x,u.y,6);
     }
   }
-  if(adult(u)&&u.hunger<400&&(cnt.sp[u.sp]||0)<S.cap&&R()<S.breed*(bm[i]===BM.FLOWER?1.6:1)){addAnimal(u.sp,u.x|0,u.y|0,u.owner,true);cnt.sp[u.sp]=(cnt.sp[u.sp]||0)+1}
+  if(adult(u)&&u.hunger<400&&(cnt.sp[u.sp]||0)<S.cap&&R()<S.breed*(bm[i]===BM.FLOWER?1.6:1)&&(u.owner>=0?tribes[u.owner].stock<stockCap(tribes[u.owner]):cnt.wild<wildMax()||(cnt.sp[u.sp]||0)<S.cap*.25)&&habOK(u.sp,i)){if(u.owner>=0)tribes[u.owner].stock++;else cnt.wild++;addAnimal(u.sp,u.x|0,u.y|0,u.owner,true);cnt.sp[u.sp]=(cnt.sp[u.sp]||0)+1}
   if(u.target){chase(u,S.chase||S.flee,(u.dmg||S.dmg||2)*(u.odd&&u.traits&&u.traits.includes('Berserk')?1.5:1)*(u.rage>step?1.25:1),S.reach||S.range||1.2);return}
   moveToward(u,u.mode?S.flee:S.spd);
 }
@@ -561,10 +562,10 @@ function updateUnits(){
 function census(){
   for(const T of tribes){T.pop=0;T.members.length=0;T.stock=0;T._gen=null;const jb=T.jobs;for(const j in jb)jb[j]=0;for(const t of T.towns)t.pop=0}
   /* counters are reused and zeroed in place, so a step allocates nothing here */
-  const rc=cnt.race,sp=cnt.sp;for(const r of RACE_KEYS)rc[r]=0;for(const k in sp)sp[k]=0;
+  const rc=cnt.race,sp=cnt.sp;for(const r of RACE_KEYS)rc[r]=0;for(const k in sp)sp[k]=0;cnt.wild=0;
   for(const u of units){
     if(u.k===0){const T=tribes[u.tribe];T.pop++;if(u.id===T.general)T._gen=u;T.members.push(u);(T.towns[u.town|0]||T.towns[0]).pop++;rc[u.race]++;if(u.job)T.jobs[u.job]=(T.jobs[u.job]||0)+1}
-    else{sp[u.sp]=(sp[u.sp]||0)+1;if(u.owner>=0)tribes[u.owner].stock++}
+    else{sp[u.sp]=(sp[u.sp]||0)+1;if(u.owner>=0)tribes[u.owner].stock++;else if(!SPECIES[u.sp].monster)cnt.wild++}
   }
   let np=0;for(const r in rc)np+=rc[r];cnt.people=np;
 }
@@ -608,7 +609,7 @@ function updateTribes(){
     if(T.houses>=3&&T.stock<Math.min(24,T.houses*1.2)&&R()<.004){
       const ti=(R()*T.towns.length)|0,H=T.towns[ti];
       if(H.houses>0){const i=sampleNear(H.x,H.y,10,j=>walk(j)&&bld[j]===-1,20);
-      if(i>=0){const a=addAnimal(pick(RACES[T.race].stock),i%W,(i/W)|0,T.id,true);a.town=ti}}
+      if(i>=0){const ok=RACES[T.race].stock.filter(s=>habOK(s,i)),sp=ok.length?pick(ok):pick(['chicken','pig','dog']);const a=addAnimal(sp,i%W,(i/W)|0,T.id,true);a.town=ti}}
     }
     if(T.houses>=3&&T.fish<Math.min(3,1+((T.houses/6)|0))&&T.mat>=8&&R()<.004){
       const dock=findDock(T,pick(T.towns));
@@ -833,7 +834,7 @@ function growth(){
 /* biomes creep outward and some of them give birth to creatures */
 const AGGR_BM=new Set([BM.CORRUPT,BM.WASTE,BM.PARA]);
 const WILD_PICK=SPECIES_KEYS.filter(k=>!SPECIES[k].monster&&!SPECIES[k].dom&&!(SPECIES[k].pred&&!SPECIES[k].minor)&&k!=='eagle');
-function spawnMon(sp,i){if(units.length<1500&&(cnt.sp[sp]||0)<SPECIES[sp].cap){addAnimal(sp,i%W,(i/W)|0);cnt.sp[sp]=(cnt.sp[sp]||0)+1}}
+function spawnMon(sp,i){if(units.length<1500&&(cnt.sp[sp]||0)<SPECIES[sp].cap&&(SPECIES[sp].monster||cnt.wild<wildMax()&&habOK(sp,i))){if(!SPECIES[sp].monster)cnt.wild++;addAnimal(sp,i%W,(i/W)|0);cnt.sp[sp]=(cnt.sp[sp]||0)+1}}
 function biomeLife(i){
   const b=bm[i],B=BIOMES[b];
   if(B.spread&&R()<B.spread){
@@ -848,7 +849,7 @@ function biomeLife(i){
   if(b===BM.CORRUPT){
     if(R()<.006)spawnMon('skeleton',i);else if(R()<.0015)spawnMon('zombie',i);
   }else if(b===BM.JUNGLE){if(R()<.0004)spawnMon('spider',i)}
-  else if(b===BM.PARA){if(R()<.0015&&units.length<1500){const sp=pick(WILD_PICK);addAnimal(sp,i%W,(i/W)|0)}}
+  else if(b===BM.PARA){if(R()<.0015&&units.length<1500&&cnt.wild<wildMax()){const sp=pick(WILD_PICK);addAnimal(sp,i%W,(i/W)|0)}}
   faunaBiome(i,b);
 }
 function setBiome(i,b,treeP){
@@ -896,10 +897,10 @@ function yearly(){
   prospect();
   faunaYear();
   /* wild animals wander in from beyond the map edge when numbers run low */
-  for(const sp of ['wolf','bear','fox','deer','rabbit']){
+  for(const sp of ['wolf','bear','fox','deer','rabbit','rat','crab','turtle','crow','eagle']){
     const S=SPECIES[sp];
     if((cnt.sp[sp]||0)<S.cap*.2&&R()<.35){
-      const i=randomLand(j=>fertile(j)&&farFrom(j,30)&&(sp!=='bear'||bio(hgt[j])===4),200);
+      const i=randomLand(j=>(S.amph?bio(hgt[j])===2:S.fly?!isWater(j):fertile(j))&&farFrom(j,30)&&habOK(sp,j)&&(sp!=='bear'||bio(hgt[j])===4),200);
       if(i>=0)for(let m=0;m<(sp==='bear'?1:3);m++)addAnimal(sp,i%W,(i/W)|0);
     }
   }
@@ -962,7 +963,7 @@ function oreVeins(type,count,pred,rad,amt){
     for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
       const X=cx+dx,Y=cy+dy;if(!inb(X,Y)||Math.hypot(dx,dy)>r*(.55+R()*.5))continue;
       const j=Y*W+X,b=bio(hgt[j]);
-      if(b>=3&&b<=5&&!ore[j]&&bld[j]===-1&&!lava[j]){ore[j]=type;oreAmt[j]=amt+((R()*22)|0);tree[j]=0}
+      if(b>=3&&b<=5&&!ore[j]&&bld[j]===-1&&!lava[j]){ore[j]=type;oreAmt[j]=Math.max(5,(amt*(1.75-1.25*Math.hypot(dx,dy)/Math.max(1,r))*(.55+R()*.9))|0);tree[j]=0}
     }
   }
 }
@@ -1032,7 +1033,7 @@ function genWorld(seedText){
     if(r==='human')startFocus=[x+.5,y+.5];
   };
   RACE_KEYS.filter(r=>!RACES[r].uplift).forEach(placeRace);
-  const herd=(sp,groups,size,pred)=>{for(let k=0;k<groups;k++){const i=randomLand(j=>(pred?pred(j):fertile(j))&&farFrom(j,sp==='wolf'||sp==='bear'?35:8));if(i>=0)for(let m=0;m<size;m++)addAnimal(sp,i%W,(i/W)|0)}};
+  const herd=(sp,groups,size,pred)=>{for(let k=0;k<groups;k++){const i=randomLand(j=>(pred?pred(j):fertile(j))&&habOK(sp,j)&&farFrom(j,sp==='wolf'||sp==='bear'?35:8));if(i>=0)for(let m=0;m<size;m++)addAnimal(sp,i%W,(i/W)|0)}};
   herd('sheep',8,3);herd('deer',7,3,j=>fertile(j)&&ringFind(j%W,(j/W)|0,3,k=>tree[k])>=0);herd('rabbit',10,3);
   herd('wolf',3,3);herd('bear',3,1,j=>bio(hgt[j])===4);herd('fox',4,1);herd('horse',3,3);
   herd('buffalo',3,3,j=>bm[j]===BM.SAV||fertile(j));herd('crow',5,3,j=>!isWater(j));herd('eagle',2,1,j=>!isWater(j));herd('rat',3,2);

@@ -298,7 +298,7 @@ Object.assign(CALLS,{
 const FHAB={
   goat:[3,3,j=>bio(hgt[j])===4],
   llama:[2,3,j=>bio(hgt[j])===4||bm[j]===BM.SAV],
-  penguin:[3,2,j=>bio(hgt[j])===2],
+  penguin:[3,3,j=>bio(hgt[j])===2],
   frog:[4,2,j=>bio(hgt[j])===1||bio(hgt[j])===2],
   flamingo:[2,2,j=>bio(hgt[j])===2],
   crocodile:[2,1,j=>bio(hgt[j])===2],
@@ -328,13 +328,44 @@ const FHAB={
   parrot:[2,3,j=>bm[j]===BM.JUNGLE||(fertile(j)&&tree[j]>0)],
 /*FHAB-END*/
 };
-function genFauna(herd){for(const sp in FHAB){const h=FHAB[sp];herd(sp,h[0],h[1],h[2])}}
+/* where each creature can live. Wild animals breed only at home, and one that strays too far from its land slowly dies out;
+   a village picks herds that suit its ground (no cows in the jungle, no camels in the snow). Unlisted species live anywhere. */
+const HOT_BM=new Set([BM.JUNGLE,BM.SAV,BM.WASTE]);
+function coldAt(j){const x=j%W,y=(j/W)|0;return y<H*.1||y>=H*.9||bio(hgt[j])>=5||ringFind(x,y,5,k=>bio(hgt[k])===5)>=0}
+const mild=j=>!HOT_BM.has(bm[j])&&bio(hgt[j])<5,warm=j=>!coldAt(j);
+const HAB={
+  sheep:mild,cow:mild,horse:j=>mild(j)||bm[j]===BM.SAV,deer:mild,rabbit:j=>bm[j]!==BM.JUNGLE&&bm[j]!==BM.WASTE,
+  wolf:mild,bear:j=>!HOT_BM.has(bm[j]),fox:mild,buffalo:j=>bm[j]===BM.SAV||mild(j),rat:j=>bm[j]!==BM.WASTE,
+  crab:warm,turtle:warm,penguin:j=>{const y=(j/W)|0;return bio(hgt[j])<=2&&(coldAt(j)||y<H*.24||y>=H*.76)},
+  camel:j=>(bm[j]===BM.WASTE||bm[j]===BM.SAV||bio(hgt[j])===2)&&!coldAt(j),
+  yak:j=>!HOT_BM.has(bm[j])&&(bio(hgt[j])>=4||coldAt(j)),reindeer:j=>!HOT_BM.has(bm[j])&&(bio(hgt[j])>=4||coldAt(j)),
+  goat:j=>bm[j]!==BM.JUNGLE&&bm[j]!==BM.WASTE,llama:j=>bio(hgt[j])>=4||bm[j]===BM.SAV||bm[j]===BM.ROCK,
+  monkey:j=>bm[j]===BM.JUNGLE||bm[j]===BM.FOREST,parrot:j=>bm[j]===BM.JUNGLE||bm[j]===BM.FOREST,tiger:j=>bm[j]===BM.JUNGLE||bm[j]===BM.FOREST,
+  lion:j=>bm[j]===BM.SAV||(bm[j]===BM.TEMP&&warm(j)),hyena:j=>bm[j]===BM.SAV||bm[j]===BM.WASTE||(bm[j]===BM.TEMP&&warm(j)),
+  gazelle:j=>bm[j]===BM.SAV||(bm[j]===BM.TEMP&&warm(j)),rhino:j=>bm[j]===BM.SAV||(bm[j]===BM.TEMP&&warm(j)),
+  hippo:j=>warm(j)&&bm[j]!==BM.WASTE,crocodile:j=>warm(j)&&bm[j]!==BM.WASTE,flamingo:j=>warm(j)&&bm[j]!==BM.WASTE,capybara:j=>warm(j)&&bm[j]!==BM.WASTE,
+  frog:j=>warm(j)&&bm[j]!==BM.WASTE,snake:warm,armadillo:j=>warm(j)&&bm[j]!==BM.JUNGLE,scorpion:j=>bm[j]===BM.WASTE||bm[j]===BM.SAV,
+  mongoose:j=>warm(j)&&bm[j]!==BM.JUNGLE,duck:j=>bm[j]!==BM.WASTE,lynx:j=>!HOT_BM.has(bm[j]),raccoon:mild,
+  bee:warm,butterfly:warm,
+};
+function habOK(sp,j){const f=HAB[sp];return !f||f(j)}
+/* lost: not at home here, nor anywhere a few tiles around */
+function strayed(sp,j){
+  if(habOK(sp,j))return false;const x=j%W,y=(j/W)|0;
+  for(const [dx,dy] of [[5,0],[-5,0],[0,5],[0,-5]]){const X=x+dx,Y=y+dy;if(inb(X,Y)&&habOK(sp,Y*W+X))return false}
+  return true;
+}
+/* the wild (unowned, not monsters) is held to a budget that grows with the number of people, so beasts never swamp the world.
+   A rare species (under a quarter of its cap) may still breed and wander back in, so none dies out */
+function wildMax(){return Math.round(Math.min(480,160+cnt.people*1.1))}
+function stockCap(T){return Math.min(18,2+T.houses*.8)}
+function genFauna(herd){for(const sp in FHAB){const h=FHAB[sp];herd(sp,h[0],h[1],j=>h[2](j)&&habOK(sp,j))}}
 function faunaYear(){
   for(const sp in FHAB){
     const S=SPECIES[sp],h=FHAB[sp];
     if((cnt.sp[sp]||0)<S.cap*.15&&R()<.3&&units.length<1300){
       for(let k=0;k<20;k++){
-        const i=randomLand(j=>h[2](j)&&farFrom(j,16),150);
+        const i=randomLand(j=>h[2](j)&&habOK(sp,j)&&farFrom(j,16),150);
         if(i>=0){for(let m=0;m<h[1];m++)addAnimal(sp,i%W,(i/W)|0);break}
       }
     }

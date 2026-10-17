@@ -114,7 +114,7 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 - Storyteller: `STORY_QUIET`, `STORY_FROM`, `STORY_GAP` and the weights in `STORY` (culture.js).
 - Open land: `DOM_RMAX` and `DOM_FULL` (world.js).
 - Art rate: `culturalTick`. Festival cadence: `T.nextFest` (every 4 to 6 years).
-- Wildlife caps and breeding: `SPECIES` in `data.js`. Predators migrate back in yearly if they die out.
+- Wildlife caps and breeding: `SPECIES` in `data.js`. Predators migrate back in yearly if they die out. Where each species may live is `HAB` (`habOK`, fauna.js): wild animals breed only at home, strays (`strayed`) slowly die, and village herds are picked to suit the land. All wild animals share a budget `wildMax()` that grows with `cnt.people` (`cnt.wild` from `census`), a species under a quarter of its cap is exempt, and each kingdom keeps at most `stockCap(T)` livestock. Ore rocks are drawn in four sizes by `oreAmt`, and veins are richest at their heart (`oreVeins`).
 
 ## Known issues and ideas
 

@@ -268,10 +268,10 @@ function drawPropRow(ty,xa,xb,ox,oy,pz){
       jx=((hash(x+3,ty+11)*5)|0)-2;jy=((hash(x+5,ty+3)*3)|0)-1;mir=hash(x+3,ty)<.5;
     }else if(ore[i]){
       if(lava[i])continue;
-      const o=ore[i],a=oreAmt[i],sz=a<10?0:a<24?1:2,vi=(hash(x+1,ty+2)*4)|0,key=(o*3+sz)*4+vi;
+      const o=ore[i],a=oreAmt[i],sz=a<12?0:a<26?1:a<42?2:3,vi=(hash(x+1,ty+2)*4)|0,key=(o*4+sz)*4+vi;
       s=ORSPR[key];if(!s){if(propBakes>=PROP_BAKES)continue;propBakes++;s=ORSPR[key]=propSprite(rockSprite(o,sz,vi))}mir=hash(x+7,ty)<.5;
     }else if(deco[i]){
-      const sz=hash(x+2,ty)<.6?0:1,vi=(hash(x,ty+2)*4)|0,key=1000+sz*4+vi;
+      const sz=hash(x+2,ty)<.6?1:2,vi=(hash(x,ty+2)*4)|0,key=1000+sz*4+vi;
       s=ORSPR[key];if(!s){if(propBakes>=PROP_BAKES)continue;propBakes++;s=ORSPR[key]=propSprite(rockSprite(0,sz,vi))}mir=hash(x+7,ty)<.5;jx=((hash(x+1,ty+4)*3)|0)-1;
     }else continue;
     const ax=mir?s.w-1-s.ax:s.ax,dx=Math.round(ox+(x*TS+4+jx-ax)*pz),dy=Math.round(oy+(ty*TS+6+jy-s.ay)*pz),dw=Math.round(s.w*pz),dh=Math.round(s.h*pz),at=s.at;
@@ -298,8 +298,8 @@ function buildFarLayer(){
     const i=y*W+x;let c;
     if(tree[i]&&!lava[i]){const kind=treeKind(i),sea=tq[i];c=farCol('t'+kind+'_'+sea,()=>treeSprite(kind,1,0,sea,-1));
       const o=(y*FL)*lw+x*FL;flBuf[o+1]=c[1];flBuf[o+lw]=c[0];flBuf[o+lw+1]=c[0];flBuf[o+lw+2]=c[0];flBuf[o+2*lw+1]=c[2];if(hash(x,y)<.5)flBuf[o]=c[0];else flBuf[o+2]=c[0]}
-    else if(ore[i]&&!lava[i]){const o0=ore[i];c=farCol('o'+o0,()=>rockSprite(o0,1,0));const o=(y*FL+1)*lw+x*FL;flBuf[o]=c[1];flBuf[o+1]=c[0];flBuf[o+lw]=c[0];flBuf[o+lw+1]=c[2]}
-    else if(deco[i]){c=farCol('o0',()=>rockSprite(0,1,0));const o=(y*FL+1)*lw+x*FL+1;flBuf[o]=c[1];flBuf[o+lw]=c[2]}
+    else if(ore[i]&&!lava[i]){const o0=ore[i];c=farCol('o'+o0,()=>rockSprite(o0,2,0));const o=(y*FL+1)*lw+x*FL;flBuf[o]=c[1];flBuf[o+1]=c[0];flBuf[o+lw]=c[0];flBuf[o+lw+1]=c[2]}
+    else if(deco[i]){c=farCol('o0',()=>rockSprite(0,2,0));const o=(y*FL+1)*lw+x*FL+1;flBuf[o]=c[1];flBuf[o+lw]=c[2]}
   }
   flX.putImageData(flImg,0,0);flAt=frameN;
 }

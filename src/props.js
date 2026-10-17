@@ -146,7 +146,7 @@ function treeSprite(kind,sz,vi,sea,ph){
 }
 /* a lump of rock: stone gray, or flecked and veined with an ore's colours (o=0 is a plain boulder) */
 function rockSprite(o,sz,vi){
-  const ore=o>0?ORES[o]:null,W=[11,14,18][sz],Hh=[8,11,14][sz],gw=W+6,gh=Hh+4,cx=gw>>1,base=Hh+1,salt=o*11+sz*3+vi+500,p=PM(G(gw,gh));
+  const ore=o>0?ORES[o]:null,W=[5,7,9,12][sz],Hh=[4,5,7,9][sz],gw=W+6,gh=Hh+4,cx=gw>>1,base=Hh+1,salt=o*11+sz*3+vi+500,p=PM(G(gw,gh));
   const bc=o===ORE.COAL?[52,50,60]:!o||o===ORE.GEMS||o===ORE.STONE?[148,144,138]:[128,124,118],k=.9+vi*.07;
   const tn=[sh(bc,.5*k),sh(bc,.76*k),sh(bc,k),sh(bc,1.25*k)];
   pshadow(p,cx+2,base+.2,W*.5,1.9);
@@ -157,7 +157,7 @@ function rockSprite(o,sz,vi){
     if(p.m[y*gw+x]&&p.m[(y+2)*gw+x+1]){p.g.d[(y+1)*gw+x]=tn[0];p.g.d[(y+2)*gw+x+1]=tn[0]}
   }
   if(ore&&o!==ORE.STONE){
-    const c=ore.c,hi=ore.hi,dc=sh(c,.62),n=o===ORE.GEMS?4:3+sz;
+    const c=ore.c,hi=ore.hi,dc=sh(c,.62),n=o===ORE.GEMS?2+sz:1+sz;
     for(let q=0;q<n;q++){
       const x=Math.round(cx-W*.34+h2(q,1,salt)*W*.68),y=Math.round(base-Hh*.85+h2(q,2,salt)*Hh*.6);
       if(!p.m[y*gw+x])continue;
