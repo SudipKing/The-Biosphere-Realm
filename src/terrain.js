@@ -224,8 +224,9 @@ function updateTerrain(){
     const i=tileQ.pop();tileFlag[i]=0;renderTile(i);n++;
     if((n&31)===0&&performance.now()-t0>TERRAIN_MS)break;
   }
+  /* a season now lasts a quarter year, so the sweep must be able to cover the whole map in a few seconds even at speed */
   let scan=0,fresh=0;
-  while(scan<3000&&fresh<420){
+  while(scan<9000&&fresh<1500){
     const i=perm[permPtr];permPtr=permPtr+1===N?0:permPtr+1;scan++;
     if(tq[i]!==curSea&&!tileFlag[i]){renderTile(i);fresh++;if((fresh&31)===0&&performance.now()-t0>TERRAIN_MS)break}
   }

@@ -370,7 +370,9 @@ function faunaYear(){
       }
     }
   }
-  /* snowmen are made by winter: they stand about in the cold and melt away with the thaw */
+}
+/* snowmen are made by winter: they stand about in the cold and melt away with the thaw. Called every season length */
+function snowmenOfWinter(){
   if(season()===3&&(cnt.sp.snowman||0)<SPECIES.snowman.cap&&units.length<1300){
     for(let n=0;n<3;n++){const i=randomLand(j=>fertile(j),150);if(i>=0)addAnimal('snowman',i%W,(i/W)|0)}
   }
@@ -395,7 +397,7 @@ const FAUNA={
   },
   snowman(u){
     const i=tileOf(u),warm=season()!==3&&!isNight()&&WX.snow<.3;
-    if(warm){if((u.hp-=.014)<=0){effects.push({type:'rite',x:u.x,y:u.y,c:[170,210,255],t:0,dur:24});die(u);return true}}
+    if(warm){if((u.hp-=.05)<=0){effects.push({type:'rite',x:u.x,y:u.y,c:[170,210,255],t:0,dur:24});die(u);return true}}
     else if(season()===3&&u.hp<u.maxhp)u.hp+=.02;
     if(fire[i]||lava[i])u.hp-=.5;
     return false;
