@@ -239,6 +239,10 @@ function decide(u,T){
 }
 const townOf=(u,T)=>T.towns[u.town|0]||T.towns[0];
 function nearestTown(T,x,y){let b=0,bd=1e9;for(let k=0;k<T.towns.length;k++){const t=T.towns[k],d=(t.x-x)**2+(t.y-y)**2;if(d<bd){bd=d;b=k}}return b}
+/* trees crowd into clumps, never carpets: a seed only takes where fewer than 3 of its 8 neighbours already stand */
+function treeNb(i){const x=i%W,y=(i/W)|0;let n=0;for(let k=0;k<8;k++){const X=x+N8[k][0],Y=y+N8[k][1];if(X>=0&&Y>=0&&X<W&&Y<H&&tree[Y*W+X])n++}return n}
+/* a new building fells the trees in the 3x3 around it (the wood goes to the builders), so homes never stand in the forest */
+function clearAround(i,T){const x=i%W,y=(i/W)|0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=x+dx,Y=y+dy;if(!inb(X,Y))continue;const j=Y*W+X;if(tree[j]){tree[j]=0;if(T)T.mat+=2;markTile(j)}}}
 function nearBld(i){const x=i%W,y=(i/W)|0;for(let k=0;k<8;k++){const X=x+N8[k][0],Y=y+N8[k][1];if(inb(X,Y)&&bld[Y*W+X]!==-1)return true}return false}
 function getMat(u,T,mineFirst,woodFirst){
   const mine=()=>{const t=ringFind(u.x,u.y,16,i=>bio(hgt[i])===5);if(t>=0){setT(u,t);u.task='mine';return true}return false};
@@ -408,7 +412,7 @@ function tryBuild(u,T){
 function canBuild(i,race,tid){
   if(fire[i]||lava[i]||tree[i]||bld[i]!==-1||burnt[i]>step||bm[i]===BM.WASTE)return false;
   if(tid!=null&&own[i]>=0&&own[i]!==tid&&!hostile(own[i],tid))return false;
-  if(ore[i]&&ore[i]!==ORE.STONE)return false;
+  if(ore[i])return false;
   const b=bio(hgt[i]);if(!(b===3||b===4||(race==='dwarf'&&b===5)))return false;
   const x=i%W,y=(i/W)|0;
   for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const X=x+dx,Y=y+dy;if(inb(X,Y)&&bld[Y*W+X]!==-1)return false}
@@ -433,7 +437,7 @@ function doTask(u,T){
         if(oreAmt[i]<=0){ore[i]=0;markTile(i)}
       }else if(bio(hgt[i])===5){T.mat+=gain(3*(1+T.fx.mine)*(bm[i]===BM.ROCK?1.5:1));sfx('mine',u.x,u.y)}
       break;
-    case'plant':if(fertile(i)&&!tree[i]&&bld[i]===-1){tree[i]=1;markTile(i)}break;
+    case'plant':if(fertile(i)&&!tree[i]&&bld[i]===-1&&!nearBld(i)&&!ore[i]){tree[i]=1;markTile(i)}break;
     case'sleep':if(bld[i]===T.id&&isNight()){u.inside=true;u.home=i;u.px=u.x;u.py=u.y;return}break;
     case'build':{
       const type=u.btype||0,cost=bCost(T,type);
@@ -442,7 +446,7 @@ function doTask(u,T){
       if(type===2&&T.temple)break;
       bld[i]=T.id;btype[i]=type;btier[i]=T.age;T.mat-=cost;
       if(type<5){T.houses++;townOf(u,T).houses++}else{const Hb=townOf(u,T);if(type===5)Hb.forge=1;else if(type===6)Hb.dock=1;else if(type===7)Hb.tower=(Hb.tower||0)+1;else Hb.mill=1}
-      bDirty=true;ownDirty=true;markDirty(i);sfx('build',u.x,u.y);
+      bDirty=true;ownDirty=true;clearAround(i,T);markDirty(i);sfx('build',u.x,u.y);
       if(type===1){T.hall=i;if(!T.hadHall){T.hadHall=true;log(`The ${T.title} raised a great hall.`,T.color);sfx('fanfare',u.x,u.y)}}
       if(type===2){T.temple=true;T.templeAt=i;log(`The ${T.title} consecrated a temple to ${T.rel.patron.name}, ${T.rel.patron.title}.`,DOMAINS[T.rel.domain].c);sfx('bell',u.x,u.y);effects.push({type:'rite',x:i%W+.5,y:((i/W)|0)+.5,c:DOMAINS[T.rel.domain].c,t:0,dur:60})}
       break;
@@ -800,7 +804,7 @@ function growth(){
     const i=(R()*N)|0;
     if(tree[i]&&R()<.03){
       const [dx,dy]=N8[(R()*8)|0],x=i%W+dx,y=((i/W)|0)+dy;
-      if(inb(x,y)){const j=y*W+x;if(fertile(j)&&!tree[j]&&bld[j]===-1&&!fire[j]&&burnt[j]<=step&&!nearBld(j)&&!(bm[j]===BM.ROCK&&R()<.85)){tree[j]=1;markTile(j)}}
+      if(inb(x,y)){const j=y*W+x;if(fertile(j)&&!tree[j]&&bld[j]===-1&&!fire[j]&&burnt[j]<=step&&!nearBld(j)&&treeNb(j)<3&&!(bm[j]===BM.ROCK&&R()<.85)){tree[j]=1;markTile(j)}}
     }else if(!tree[i]&&R()<.0006*(bm[i]===BM.FOREST?6:bm[i]===BM.ROCK?.15:bm[i]?BIOMES[bm[i]].trees*1.5+.3:1)&&fertile(i)&&bld[i]===-1&&burnt[i]<=step&&!fire[i]&&!nearBld(i)){tree[i]=1;markTile(i)}
     if(bld[i]===-2&&R()<.01){bld[i]=-1;btype[i]=0;bDirty=true;markDirty(i)}
     if(bm[i])biomeLife(i);
@@ -931,7 +935,9 @@ function genBiomes(){
     for(const c of cs){const d=Math.hypot(c.x-x,c.y-y)/(c.r*(.65+nz*.7));if(d<bs){bs=d;best=c}}
     if(!best||(best.b===BM.ROCK&&b0!==4))continue;
     bm[i]=best.b;const B=BIOMES[best.b];
-    tree[i]=R()<B.trees?1:(R()<.2?tree[i]:0);
+    /* forests clump: dense groves with clearings between them, never a uniform carpet */
+    const cn=fbm(x/4.2+300,y/4.2+300,2),dens=cn>.52?1.1:cn>.43?.45:.06;
+    tree[i]=R()<B.trees*dens?1:(R()<.12?tree[i]:0);
   }
 }
 function oreVeins(type,count,pred,rad,amt){
@@ -988,7 +994,7 @@ function genWorld(seedText){
   }
   for(let i=0;i<N;i++){
     const x=i%W,y=(i/W)|0;
-    if(fertile(i)&&((fbm(x/12+500,y/12+500,3)>.53&&R()<.7)||R()<.03))tree[i]=1;
+    if(fertile(i)&&((fbm(x/12+500,y/12+500,3)>.56&&R()<.42)||R()<.012))tree[i]=1;
   }
   genBiomes();genOres();
   const spots=[];
@@ -1004,6 +1010,7 @@ function genWorld(seedText){
     if(i<0)i=randomLand(j=>fertile(j)&&!tree[j]);
     if(i<0)return;
     const x=i%W,y=(i/W)|0;spots.push([x,y]);
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)if(inb(x+dx,y+dy))tree[(y+dy)*W+x+dx]=0;
     const T=newTribe(r,x,y);
     for(let k=0;k<6;k++)addPerson(T,x,y);
     log(`The ${T.title} awoke in the world.`,T.color);

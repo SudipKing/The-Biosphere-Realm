@@ -734,9 +734,10 @@ function wMill(era,k,S){
   return{g,hub};
 }
 function buildingSprite(race,type,ci,dom,tier,v){
-  if(type===3)return spr('ruin',ruinSprite);
+  if(type===3)return spr('ruin',()=>shade3d(ruinSprite()));
   tier=Math.max(0,Math.min(7,tier|0));v=type===0?(v||0):0;
-  return spr(`b|${race}|${type}|${ci}|${dom}|${tier}|${v}`,()=>{
+  /* every building gets the shared 3D edge pass (shade3d, props.js) once, when it is first baked */
+  return spr(`b|${race}|${type}|${ci}|${dom}|${tier}|${v}`,()=>shade3d((()=>{
     const k=KCOL[ci%KCOL.length],S=rst(race),key=rkey(race);
     if(type===4)return bake(monumentGrid(RB(race),k,dom));
     if(type>=5){
@@ -750,7 +751,7 @@ function buildingSprite(race,type,ci,dom,tier,v){
       g=tierGrid(f(type,k,dom),t);
     }else g=bMod(race,type,tier,k,dom);
     return bake(withProp(g,v,key));
-  });
+  })()));
 }
 
 /* ---------- boats: a hull and rig for every age, dressed by each people ---------- */
