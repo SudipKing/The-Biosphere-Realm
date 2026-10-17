@@ -141,7 +141,7 @@ function earthquake(p){
     if(f<.7&&tree[i]&&R()<.1)tree[i]=0;
     afterH(i);
   }
-  for(const u of units)if(!u.dead&&Math.hypot(u.x-p.x,u.y-p.y)<r){u.hp-=u.maxhp*(.1+R()*.4);if(u.hp<=0)die(u)}
+  for(const u of units)if(!u.dead&&Math.hypot(u.x-p.x,u.y-p.y)<r){u.hp-=u.maxhp*(.1+R()*.4)*harmFrac(u);if(u.hp<=0)die(u)}
   shake=reduceMotion?0:36;sfx('boom',x,y);bDirty=true;ownDirty=true;
   effects.push({type:'blast',x:x+.5,y:y+.5,r:r,t:0,dur:50,c:[170,140,100],dark:false,big:false});
   log(`The earth shook ${nearTribeText(x,y)}.`,[190,150,100]);

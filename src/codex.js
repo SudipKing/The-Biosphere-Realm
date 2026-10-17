@@ -55,7 +55,8 @@ function cxOverview(T,L){
   ${T.bless>step?`<p class="mnote">Blessed: the recent rite is boosting the patron\u2019s gift.</p>`:''}${T.frenzy>step?`<p class="mnote">The horde is in a war-frenzy: +25% damage.</p>`:''}
   <h4>Relations</h4>
   <p>${foes.length?`<span class="warc">At war with ${foes.map(f=>'the '+f.title).join(' and ')}.</span>`:'At peace.'}${al.length?` <span class="allyc">Allied with ${al.map(f=>'the '+f.title).join(' and ')}.</span>`:''}</p>
-  ${T.heroes.length?`<h4>Heroes</h4><ul class="plain">${T.heroes.slice(-5).reverse().map(h=>`<li><b>${h.name}</b>, ${h.kills} victories, fell in year ${h.y}</li>`).join('')}</ul>`:''}`;
+  ${T.heroes.length?`<h4>Heroes</h4><ul class="plain">${T.heroes.slice(-5).reverse().map(h=>`<li><b>${h.name}</b>, ${h.kills} victories, fell in year ${h.y}</li>`).join('')}</ul>`:''}
+  ${(T.slain||[]).length?`<h4>Beasts slain</h4><ul class="plain">${T.slain.slice(-5).reverse().map(s=>`<li><b>${esc(s.n)}</b>${s.by?`, struck down by ${esc(s.by)}`:''}, year ${s.y}</li>`).join('')}</ul>`:''}`;
 }
 function cxFaith(T,L){
   const rel=T.rel,d=rel.patron,sec=rel.second,fol=units.filter(u=>u.k===0&&tribes[u.tribe].rel===rel).length;

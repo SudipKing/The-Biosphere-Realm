@@ -34,7 +34,12 @@ function ghostsOf(list){
   return [...out.values()];
 }
 function saveWorld(){
-  const tribeOut=tribes.map(T=>{const o={};for(const k in T)if(k!=='members'&&k!=='jobs'&&k[0]!=='_')o[k]=k==='rel'?T.rel.id:T[k];return o});
+  const tribeOut=tribes.map(T=>{const o={};for(const k in T)if(k!=='members'&&k!=='jobs'&&k[0]!=='_')o[k]=k==='rel'?T.rel.id:T[k];
+    /* a hunt in progress, the pause after one and the last beast that raided it: runtime references, saved as ids */
+    if(T._hunt)o.hunt=Object.assign({},T._hunt,{m:T._hunt.m.id});
+    if(T._huntCd>0)o.huntCd=T._huntCd;
+    if(T._raid&&T._raid.m&&!T._raid.m.dead)o.raid={m:T._raid.m.id,at:T._raid.at};
+    return o});
   const relOut=religions.map(r=>{
     const P=PANTHEON[r.race],o={};
     for(const k in r)if(k!=='patron'&&k!=='second'&&k!=='doc'&&k!=='tenets')o[k]=r[k];
@@ -101,6 +106,11 @@ function buildWorld(o){
   /* ghosts are only looked up as targets; they never join the world */
   for(const g of Array.isArray(o.ghosts)?o.ghosts:[])if(g&&g.id!=null&&!byId.has(g.id))mk(g);
   for(const u of byId.values())u.target=u.target!=null?byId.get(u.target)||null:null;
+  for(const T of tribes){
+    if(T.hunt){const m=byId.get(T.hunt.m);if(m&&!m.dead)T._hunt=Object.assign({},T.hunt,{m})}
+    if(T.raid){const m=byId.get(T.raid.m);if(m&&!m.dead)T._raid={m,at:T.raid.at}}
+    T._huntCd=T.huntCd|0;delete T.hunt;delete T.raid;delete T.huntCd;
+  }
   let maxId=0;for(const u of byId.values())maxId=Math.max(maxId,u.id);for(const b of boats)maxId=Math.max(maxId,b.id);
   return {o,arr,races,religions,tribes,units,boats,uid:Math.max(o.uid|0,maxId+1)};
 }

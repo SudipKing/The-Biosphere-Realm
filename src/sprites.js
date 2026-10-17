@@ -44,6 +44,7 @@ function spr(key,make){let s=SPR.get(key);if(!s){s=make();SPR.set(key,s)}return 
 function legs2(g,fr,xs,y,h,c){xs.forEach((x,k)=>{const off=fr&&(k%2)?1:0;gr(g,x+(fr?(k%2?1:-0):0),y,1,h,c)})}
 function animalSprite(sp,fr,v,male,saddle){
   let g;
+  if(sp==='spiderling')sp='spider';else if(sp==='imp')sp='demon';
   switch(sp){
     case'sheep':{g=G(10,7);const L=CL.sheepH;
       if(fr===0){gr(g,2,5,1,2,L);gr(g,6,5,1,2,L)}else{gr(g,3,5,1,2,L);gr(g,5,5,1,2,L)}

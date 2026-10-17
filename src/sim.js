@@ -40,6 +40,7 @@ function blankUnit(){
     traits:undefined,name:undefined,gen:undefined,parents:undefined,pa:undefined,pb:undefined,born:undefined,kills:undefined,
     home:undefined,odd:undefined,frozen:undefined,shield:undefined,haste:undefined,charm:undefined,boost:undefined,
     btype:undefined,cmd:undefined,nick:undefined,_sp:undefined,_sg:undefined,_ssp:undefined,
+    dig:0,dtile:-1,bcd:0,venom:0,burn:0,lastBy:-1,
     _atkAt:0,_ax:0,_ay:0,_hitAt:0,_kx:0,_ky:0};
 }
 function mkUnit(k,x,y){
@@ -51,6 +52,9 @@ function addAnimal(sp,x,y,owner=-1,baby=false){
   const S=SPECIES[sp],u=mkUnit(1,x,y);
   u.sp=sp;u.owner=owner;u.maxhp=u.hp=S.hp;u.dmg=S.dmg||0;u.life=S.life*YEAR*(.7+R()*.6);
   u.age=baby?0:(YEAR*2+R()*u.life*.3)|0;u.spd=S.spd;u.v=(R()*4)|0;u.male=R()<.5;u.amph=!!S.amph;u.fly=!!S.fly;u.fcd=0;
+  if(S.big)u.scale=S.big;
+  if(S.boss)u.nick=bossNick(sp);
+  if(S.boss){let em=0;for(const T of tribes)if(T.alive&&T.age>em)em=T.age;u.maxhp=u.hp=Math.round(S.hp*(1+.1*em));u.dmg=S.dmg*(1+.03*em);u.bcd=step+120+((R()*200)|0)}
   return u;
 }
 function randGenes(r){const L=RACES[r];return{skin:(R()*L.skins.length)|0,hair:(R()*L.hairs.length)|0,str:.85+R()*.3,vit:.85+R()*.3,agi:.9+R()*.2}}
@@ -87,6 +91,7 @@ function die(u){
   if(u.dead)return;u.dead=true;
   fallen.push(u);if(fallen.length>150)fallen.shift();
   if(!u.inside&&DEATHQ.length<200)DEATHQ.push(u);
+  if(u.k===1&&SPECIES[u.sp].boss)bossSlain(u);
   if(u.k===0&&u.kills>=5){const T=tribes[u.tribe];log(`${u.name}, hero of the ${T.title}, has fallen after ${u.kills} victories.`,T.color,false,{x:u.x,y:u.y,ic:'🎖️',p:1});T.heroes.push({name:u.name,kills:u.kills,y:year()});T.renown+=1}
 }
 function setT(u,i){u.tx=(i%W)+.5;u.ty=((i/W)|0)+.5}
@@ -103,7 +108,12 @@ function moveToward(u,spd){
   u.x=nx;u.y=ny;u.moving=true;return false;
 }
 function hit(t,dmg,src,melee){
-  if(t.shield>step)return;
+  if(t.shield>step||t.dig>step)return;
+  if(t.k===1){const A=SPECIES[t.sp].armor;if(A){const era=src.k===0?tribes[src.tribe].age:0;dmg*=1-A*Math.max(.1,1-.13*era)}}
+  if(src.k===1){const ss=src.sp;if(ss==='spider'||ss==='spiderling'){if(t.k===0||t.k===1&&!isMon(t))t.venom=step+(ss==='spider'?120:60)}
+    else if(ss==='dragon'||ss==='demon'||ss==='fireelem'||ss==='mage'||ss==='imp')t.burn=step+120}
+  if(src.k===0&&t.k===1)t.lastBy=src.tribe;
+  if(src.k===1&&t.k===0&&SPECIES[src.sp].boss){const T=tribes[t.tribe],r=T._raid;if(r){r.m=src;r.at=step}else T._raid={m:src,at:step}}
   if(t.k===0){const df=tribes[t.tribe].fx;if(df.def)dmg/=1+df.def}
   if(src.k===0||src.k===1){const sb=bm[tileOf(src)];if(sb===BM.CLOVER)dmg*=1.2}
   if(t.k===0&&t.traits.includes('Giant'))dmg*=.8
@@ -121,15 +131,18 @@ function hit(t,dmg,src,melee){
     else{if(src.k===1)src.hunger=0;else{src.kills=(src.kills||0)+1;const f=tribes[src.tribe].fx;if(f.lifesteal)src.hp=Math.min(src.maxhp,src.hp+src.maxhp*f.lifesteal)}}
     src.target=null;src.task=null;src.cd=0;
   }else if(t.k===1&&!SPECIES[t.sp].pred){t.tx=t.x+(t.x-src.x)*3;t.ty=t.y+(t.y-src.y)*3;t.mode=1;t.cd=20;sfx('cry',t.x,t.y,t.sp)}
+  else if(isMon(t)){if(!src.dead&&!isMon(src)&&!(t.charm>=0&&t.charm===src.tribe)){if(!t.target||t.target.dead||(t.target!==src&&Math.hypot(t.target.x-t.x,t.target.y-t.y)>2.6))t.target=src}}
   else if(!t.target&&adult(t))t.target=src;
 }
 function chase(u,spd,dmg,range){
-  const t=u.target,d=Math.hypot(t.x-u.x,t.y-u.y);
+  const t=u.target;
+  if(t.dig>step){u.target=null;u.task=null;u.cd=0;return}
+  const d=Math.hypot(t.x-u.x,t.y-u.y);
   if(Math.abs(t.x-u.x)>.05)u.dir=t.x>u.x?1:-1;
-  if(d>15){u.target=null;u.task=null;return}
+  if(d>(u.k===1&&SPECIES[u.sp].boss?30:15)){u.target=null;u.task=null;return}
   if(d<range){
     if(--u.atk<=0){
-      u.atk=10;u._atkAt=performance.now();
+      u.atk=u.k===1?(SPECIES[u.sp].acd||10)*(u.rage>step?.7:1):10;u._atkAt=performance.now();
       if(range>2){
         const T=u.k===0?tribes[u.tribe]:null,gun=T&&armed(u,T);
         if(effects.length<300)effects.push({type:'arrow',x0:u.x,y0:u.y-.7,x1:t.x,y1:t.y-.5,t:0,dur:gun?4:7,c:gun?(T.age>=7?'#7ff6ff':'#ffe9a0'):u.k===0?magicColor(u):null,gun:gun?1:0});
@@ -143,8 +156,15 @@ function chase(u,spd,dmg,range){
           if(inb(nx|0,ny|0)&&canStand(u,(ny|0)*W+(nx|0))){u.x=nx;u.y=ny}}
       }
       hit(t,dmg,u,range<=2);
+      if(u.k===1&&range<=2.2){const cl=SPECIES[u.sp].cleave;if(cl)cleave(u,t,dmg*.6,cl)}
     }
-  }else{if(u.atk<5)u.atk=5;u.tx=t.x;u.ty=t.y;moveToward(u,spd)}
+  }else{if(u.atk<(u.k===1?2:5))u.atk=u.k===1?2:5;u.tx=t.x;u.ty=t.y;moveToward(u,spd)}
+}
+/* a great beast's swing catches everyone crowded around its victim */
+function cleave(u,t,dmg,r){
+  const c=u.charm,ok=c==null?v=>!isMon(v):v=>(isMon(v)&&v.charm!==c)||(v.k===0&&v.tribe!==c&&hostile(v.tribe,c));
+  let n=0;const seen=[t];
+  while(n++<4){const v=nearest(t,r,w=>!seen.includes(w)&&ok(w));if(!v)break;seen.push(v);hit(v,dmg,u,true)}
 }
 const isThreat=v=>v.k===1&&SPECIES[v.sp].pred&&!SPECIES[v.sp].minor;
 function enemyNear(u,r){return nearest(u,r,v=>(isThreat(v)&&v.charm!==u.tribe)||(v.k===0&&v.tribe!==u.tribe&&hostile(v.tribe,u.tribe)))}
@@ -160,7 +180,7 @@ function updPerson(u){
     if(u.traits.includes('Cursed')){u.hp-=.03;if(u.hp<=0){die(u);return}}
   }
   if(u.inside){
-    if(bld[u.home]!==u.tribe||!isNight()){u.inside=false;u.cd=(R()*30)|0;u.task=null}
+    if(bld[u.home]!==u.tribe||!isNight()||(T._hunt&&(u.job==='soldier'||u.job==='general'))){u.inside=false;u.cd=(R()*30)|0;u.task=null}
     else return;
   }
   u.hunger++;
@@ -172,7 +192,7 @@ function updPerson(u){
     if(!u.target){
       if(u.odd&&u.traits.includes('Berserk')){const e=nearest(u,6,v=>v!==u&&!v.dead);if(e){u.target=e;u.task='fight'}}
       if(u.target){}
-      else if(u.task&&++u.busy<20){if(adult(u)){const e=enemyNear(u,u.task==='follow'?10:4);if(e){u.target=e;u.task='fight'}}}
+      else if(u.task&&++u.busy<20){if(adult(u)){const e=enemyNear(u,u.task==='follow'?10:4);if(e)engage(u,T,e)}}
       else{u.busy=0;decide(u,T)}
     }
   }
@@ -203,8 +223,8 @@ function fightRange(u,T){
 }
 function decide(u,T){
   const kid=!adult(u),H=townOf(u,T),hx=H.x,hy=H.y;
-  if(!kid){const e=enemyNear(u,u.traits.includes('Brave')?9:6);if(e){u.target=e;u.task='fight';return}}
-  if(isNight()&&R()<.85&&H.houses>0&&!((u.job==='soldier'||u.job==='general')&&T._gen&&atWar(T))){
+  if(!kid){const e=enemyNear(u,u.traits.includes('Brave')?9:6);if(e&&engage(u,T,e))return}else{const e=nearest(u,7,isBoss);if(e&&fleeFrom(u,e))return}
+  if(isNight()&&R()<.85&&H.houses>0&&!((u.job==='soldier'||u.job==='general')&&(T._gen&&atWar(T)||T._hunt))){
     const h=sampleNear(hx,hy,Math.min(18,4+Math.sqrt(H.houses)*2.2),i=>bld[i]===T.id&&btype[i]<2,40);
     if(h>=0){setT(u,h);u.task='sleep';return}
   }
@@ -250,7 +270,7 @@ function getMat(u,T,mineFirst,woodFirst){
 /* ---------- job classes ---------- */
 function jobTargets(T){
   const war=wars.some(w=>w.a===T.id||w.b===T.id);
-  return{farmer:.28,miner:T.age<ERA_MAX?.14:.1,woodcutter:.13,builder:.1,hunter:.07,soldier:war?.3:.14,teacher:T.hall>=0?.06:0,priest:T.temple?.05:0};
+  return{farmer:.28,miner:T.age<ERA_MAX?.14:.1,woodcutter:.13,builder:.1,hunter:.07,soldier:war||T._hunt?.3:.14,teacher:T.hall>=0?.06:0,priest:T.temple?.05:0};
 }
 function pickJob(T,u){
   const tg=jobTargets(T),n=Math.max(8,T.pop),have=T.jobs||{};
@@ -275,7 +295,8 @@ function setJob(u,j){
 }
 const atWar=T=>wars.some(w=>w.a===T.id||w.b===T.id);
 function patrol(u,T){
-  const e=enemyNear(u,12);if(e){u.target=e;u.task='fight';return true}
+  if(T._hunt&&huntDuty(u,T))return true;
+  const e=enemyNear(u,12);if(e&&engage(u,T,e))return true
   const w=wars.find(x=>x.a===T.id||x.b===T.id);
   /* with a general, soldiers gather on him and follow wherever he leads */
   const g=T._gen;
@@ -316,7 +337,8 @@ function jobWork(u,T,forage){
 /* the general: in peace he walks the village with the troops in tow; in war he rallies them, marches on the nearest
    enemy settlement and puts it to the torch once its defenders are gone */
 function lead(u,T){
-  const e=enemyNear(u,9);if(e){u.target=e;u.task='fight';return true}
+  if(T._hunt&&huntLead(u,T))return true;
+  const e=enemyNear(u,9);if(e&&engage(u,T,e))return true
   const w=wars.find(x=>x.a===T.id||x.b===T.id),H=townOf(u,T);
   if(w){
     const O=tribes[w.a===T.id?w.b:w.a];
@@ -467,9 +489,10 @@ function updAnimal(u){
   if(u.hunger>(S.pred?2400:1800)){die(u);return}
   if(u.owner>=0&&!tribes[u.owner].alive)u.owner=-1;
   if(u.target&&u.target.dead)u.target=null;
+  if(S.boss&&u.hp<u.maxhp*.35)u.rage=step+40;
   if(S.act&&FAUNA[S.act](u,S))return;
   if(--u.cd<=0){
-    u.cd=15+((R()*25)|0);u.mode=0;
+    u.cd=(S.boss?6:15)+((R()*(S.boss?10:25))|0);u.mode=0;
     if(S.monster){
       if(!u.target){const c=u.charm,p=nearest(u,S.sight||9,c==null?v=>!isMon(v):v=>(isMon(v)&&v.charm!==c)||(v.k===0&&v.tribe!==c&&hostile(v.tribe,c)));if(p)u.target=p}
       if(!u.target)wander(u,u.x,u.y,8);
@@ -492,20 +515,10 @@ function updAnimal(u){
     }
   }
   if(adult(u)&&u.hunger<400&&(cnt.sp[u.sp]||0)<S.cap&&R()<S.breed*(bm[i]===BM.FLOWER?1.6:1)){addAnimal(u.sp,u.x|0,u.y|0,u.owner,true);cnt.sp[u.sp]=(cnt.sp[u.sp]||0)+1}
-  if(u.sp==='dragon'&&u.target&&--u.fcd<=0){
-    const t=u.target,d=Math.hypot(t.x-u.x,t.y-u.y);
-    if(d<7){u.fcd=34+((R()*30)|0);breathe(u,t)}else u.fcd=0;
-  }
-  if(u.target){chase(u,S.chase||S.flee,(u.dmg||S.dmg||2)*(u.odd&&u.traits&&u.traits.includes('Berserk')?1.5:1),u.sp==='dragon'?1.6:(S.range||1.2));return}
+  if(u.target){chase(u,S.chase||S.flee,(u.dmg||S.dmg||2)*(u.odd&&u.traits&&u.traits.includes('Berserk')?1.5:1)*(u.rage>step?1.25:1),S.reach||S.range||1.2);return}
   moveToward(u,u.mode?S.flee:S.spd);
 }
 
-function breathe(u,t){
-  effects.push({type:'flame',x0:u.x,y0:u.y-.9,x1:t.x,y1:t.y-.3,t:0,dur:16});
-  const tx=t.x|0,ty=t.y|0;
-  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=tx+dx,Y=ty+dy;if(inb(X,Y)&&R()<.8)ignite(Y*W+X,true)}
-  hit(t,u.dmg*.5,u);sfx('cry',u.x,u.y,'dragon');
-}
 function paradox(u){
   const r=R();
   if(r<.55){const j=sampleNear(u.x,u.y,9,k=>canStand(u,k),12);if(j>=0){u.x=u.px=j%W+.5;u.y=u.py=((j/W)|0)+.5;u.tx=u.x;u.ty=u.y;u.target=null;u.task=null;u.cd=0;effects.push({type:'rite',x:u.x,y:u.y,c:[200,140,255],t:0,dur:30})}}
@@ -527,10 +540,11 @@ function updateUnits(){
     u.age++;u.moving=false;
     if(!u.inside){
       const i=tileOf(u);
-      if(!u.fly&&(lava[i]||!canStand(u,i)||(fire[i]&&R()<.15))){die(u);dead=true;continue}
+      if(!u.fly&&(lava[i]||!canStand(u,i)||(fire[i]&&R()<.15&&!(u.k===1&&SPECIES[u.sp].boss&&fireHurt(u))))){die(u);dead=true;continue}
       const b=bm[i];if(b){biomeTick(u,b);if(u.dead){dead=true;continue}}
     }
     if(u.age>u.life&&!(u.odd&&u.traits.includes('Immortal'))){die(u);dead=true;continue}
+    if(u.venom>step&&(step&3)===0){u.hp-=.5+(u.maxhp>60?u.maxhp*.004:0);if(u.hp<=0){die(u);dead=true;continue}}
     if(u.frozen>step){u.moving=false;continue}
     if(u.cmd>step){const ox=u.tx,oy=u.ty;u.inside=false;if(moveToward(u,u.spd*1.3)||u.tx!==ox||u.ty!==oy){u.cmd=0;u.task=null;u.cd=0}if(u.k===0)u.hunger++;continue}
     if(u.k===0)updPerson(u);else updAnimal(u);
@@ -572,6 +586,7 @@ function updateTribes(){
     if((step+T.id)%20===0){checkAge(T);T.fx=computeFx(T)}
     if((step+T.id*13)%(YEAR>>1)===0)rebalanceJobs(T);
     if((step+T.id)%40===0)tendGeneral(T);
+    if((step+T.id)%20===0)threatWatch(T);
     if(T.age>0&&T.mat>=3&&R()<.012){
       const H=pick(T.towns),b=sampleNear(H.x,H.y,Math.min(20,5+Math.sqrt(H.houses+1)*2.4),i=>bld[i]===T.id&&btype[i]!==3&&btype[i]!==4&&btier[i]<T.age,30);
       if(b>=0){btier[b]++;T.mat-=2;bDirty=true;sfx('build',b%W+.5,((b/W)|0)+.5)}
@@ -828,7 +843,7 @@ function biomeLife(i){
   }
   if(b===BM.CORRUPT){
     if(R()<.006)spawnMon('skeleton',i);else if(R()<.0015)spawnMon('zombie',i);
-  }else if(b===BM.JUNGLE){if(R()<.002)spawnMon('spider',i)}
+  }else if(b===BM.JUNGLE){if(R()<.0004)spawnMon('spider',i)}
   else if(b===BM.PARA){if(R()<.0015&&units.length<1500){const sp=pick(WILD_PICK);addAnimal(sp,i%W,(i/W)|0)}}
   faunaBiome(i,b);
 }
@@ -1048,7 +1063,7 @@ function spawnAt(p,kind){
   }else{
     const S=SPECIES[kind];let owner=-1;
     if(S.dom){let bd=14*14;for(const t of tribes){if(!t.alive)continue;const d=(t.cx-tx)**2+(t.cy-ty)**2;if(d<bd){bd=d;owner=t.id}}}
-    const n=['bear','dragon','ogre','eagle','rhino','crocodile','treant','golem','demon','sandworm','mage','fireelem','unicorn'].includes(kind)?1:kind==='horse'||kind==='cow'||kind==='wolf'||kind==='buffalo'||kind==='hyena'||kind==='llama'?2:3;
+    const n=['bear','dragon','ogre','eagle','rhino','crocodile','treant','golem','demon','sandworm','mage','fireelem','unicorn','troll','spider','basilisk','thunderbird'].includes(kind)?1:kind==='horse'||kind==='cow'||kind==='wolf'||kind==='buffalo'||kind==='hyena'||kind==='llama'?2:3;
     for(let k=0;k<n;k++)addAnimal(kind,tx,ty,owner);
     sfx('cry',tx+.5,ty+.5,kind);
   }
