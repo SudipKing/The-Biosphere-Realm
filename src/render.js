@@ -231,12 +231,17 @@ function drawCorpses(SX,SY,pz,now){
    Sprites are cached by a numeric key (kind, size, shade, season, paradox phase), so a frame allocates nothing */
 /* every prop sprite (and its mirror) is copied once into one shared atlas, so a forest of hundreds of trees is drawn from a single
    source canvas and the GPU can batch the lot. If the atlas ever fills, a sprite just keeps drawing from its own canvas */
-const AT_W=2048,AT_H=1024,ATLAS=document.createElement('canvas'),ATX=(ATLAS.width=AT_W,ATLAS.height=AT_H,ATLAS.getContext('2d'));
+const AT_W=2048,AT_H=2048,ATLAS=document.createElement('canvas'),ATX=(ATLAS.width=AT_W,ATLAS.height=AT_H,ATLAS.getContext('2d'));
 let atX=0,atY=0,atRow=0;
 function atlasPut(c,w,h){
   if(atX+w>AT_W){atX=0;atY+=atRow;atRow=0}
   if(atY+h>AT_H)return null;
   ATX.drawImage(c,atX,atY);const r=[atX,atY];atX+=w+1;if(h+1>atRow)atRow=h+1;return r;
+}
+/* people, animals and boats join the same atlas on first use (both facings), so a crowd draws from one source canvas */
+function unitAtlas(s){
+  if(s.at===undefined){const a=atlasPut(s.c,s.w,s.h),b=a&&atlasPut(flipped(s),s.w,s.h);s.at=a&&b?[a[0],a[1],b[0],b[1]]:null}
+  return s.at;
 }
 function propSprite(s){
   const a=atlasPut(s.c,s.w,s.h),b=a&&atlasPut(flipped(s),s.w,s.h);
@@ -302,6 +307,111 @@ function buildFarLayer(){
     else if(deco[i]){c=farCol('o0',()=>rockSprite(0,2,0));const o=(y*FL+1)*lw+x*FL+1;flBuf[o]=c[1];flBuf[o+lw]=c[2]}
   }
   flX.putImageData(flImg,0,0);flAt=frameN;
+}
+/* ---------- far zoom: one WebGL batch for every building, person, animal and boat ----------
+   Below FAR_TZ each of the ~1000 tiny sprites costs the 2D canvas its own draw call. Here they are packed into one texture and
+   drawn as quads in a single call into an offscreen GL canvas, which is then blitted once into the 2D canvas, so the night
+   lighting, clouds and weather still go on top. Items stay y-sorted (the batch is filled in draw order). Nothing moves here:
+   positions are read from the same interpolated values as the 2D path. Falls back to 2D if WebGL is missing (or with ?nogl). */
+const GLQ=4096,GLT=2048;let glc=null,gl=null,glBuf=null,glVB=null,glLoc=null,glTex=null,glX=0,glY=0,glRow=0,glOK=null;
+const glData=new Float32Array(GLQ*20);
+function glInit(){
+  glOK=false;
+  try{
+    if(/[?&]nogl/.test(location.search))return;
+    glc=document.createElement('canvas');
+    gl=glc.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false});
+    if(!gl)return;
+    const sh=(t,src)=>{const o=gl.createShader(t);gl.shaderSource(o,src);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
+    const pr=gl.createProgram();
+    gl.attachShader(pr,sh(gl.VERTEX_SHADER,'attribute vec2 p;attribute vec2 t;attribute float a;uniform vec2 r;varying vec2 vt;varying float va;void main(){vt=t;va=a;gl_Position=vec4(p.x/r.x*2.-1.,1.-p.y/r.y*2.,0.,1.);}'));
+    gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,'precision mediump float;uniform sampler2D s;varying vec2 vt;varying float va;void main(){gl_FragColor=texture2D(s,vt)*va;}'));
+    gl.linkProgram(pr);if(!gl.getProgramParameter(pr,gl.LINK_STATUS))throw new Error('link');
+    gl.useProgram(pr);
+    const idx=new Uint16Array(GLQ*6);for(let q=0;q<GLQ;q++){const v=q*4,i=q*6;idx[i]=v;idx[i+1]=v+1;idx[i+2]=v+2;idx[i+3]=v;idx[i+4]=v+2;idx[i+5]=v+3}
+    glBuf=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,glBuf);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,idx,gl.STATIC_DRAW);
+    glVB=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,glVB);gl.bufferData(gl.ARRAY_BUFFER,glData.byteLength,gl.DYNAMIC_DRAW);
+    const at=(n,sz,off)=>{const l=gl.getAttribLocation(pr,n);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,sz,gl.FLOAT,false,20,off)};
+    at('p',2,0);at('t',2,8);at('a',1,16);
+    glLoc=gl.getUniformLocation(pr,'r');
+    glTex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,glTex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,GLT,GLT,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
+    gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.clearColor(0,0,0,0);
+    glc.addEventListener('webglcontextlost',e=>{e.preventDefault();glOK=false});
+    glOK=true;
+  }catch(e){glOK=false;gl=null}
+}
+/* a sprite is uploaded once, both facings, as [u0,v0,u1,v1] and the same for its mirror; null when the texture is full */
+function glPut(c,w,h){
+  if(glX+w>GLT){glX=0;glY+=glRow;glRow=0}
+  if(glY+h>GLT)return null;
+  gl.texSubImage2D(gl.TEXTURE_2D,0,glX,glY,gl.RGBA,gl.UNSIGNED_BYTE,c);
+  const r=[glX/GLT,glY/GLT,(glX+w)/GLT,(glY+h)/GLT];glX+=w+1;if(h+1>glRow)glRow=h+1;return r;
+}
+function glSprite(s){
+  if(s.gt===undefined){const a=glPut(s.c,s.w,s.h),b=a&&glPut(flipped(s),s.w,s.h);s.gt=a&&b?a.concat(b):null}
+  return s.gt;
+}
+let glN=0;
+function glQuad(s,flip,X,Y,w,h,a){
+  const t=glSprite(s);if(!t||glN>=GLQ)return;
+  const o=glN++*20,k=flip?4:0,u0=t[k],v0=t[k+1],u1=t[k+2],v1=t[k+3];
+  glData[o]=X;glData[o+1]=Y;glData[o+2]=u0;glData[o+3]=v0;glData[o+4]=a;
+  glData[o+5]=X+w;glData[o+6]=Y;glData[o+7]=u1;glData[o+8]=v0;glData[o+9]=a;
+  glData[o+10]=X+w;glData[o+11]=Y+h;glData[o+12]=u1;glData[o+13]=v1;glData[o+14]=a;
+  glData[o+15]=X;glData[o+16]=Y+h;glData[o+17]=u0;glData[o+18]=v1;glData[o+19]=a;
+}
+/* returns false if the GL path is unavailable this frame (the caller then draws in 2D) */
+function glItems(SX,SY,pz){
+  if(glOK===null)glInit();
+  if(!glOK)return false;
+  if(glc.width!==cw||glc.height!==ch){glc.width=cw;glc.height=ch}
+  gl.viewport(0,0,cw,ch);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform2f(glLoc,cw,ch);
+  glN=0;
+  for(let i=0;i<items.length;i++){
+    const it=items[i];
+    if(it.b){
+      const b=it.b,T=b.t>=0?tribes[b.t]:null,s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier,b.v):buildingSprite('',3,0,'');
+      glQuad(s,false,SX((b.x+.5)*TS-s.w/2),SY((b.y+1)*TS-s.h+1),Math.round(s.w*pz),Math.round(s.h*pz),1);
+    }else if(it.u){
+      const u=it.u;if(u.dig>step)continue;
+      const moving=u.moving&&speed>0,fr=moving||u.fly&&speed>0?(((frameN>>(u.fly?2:3))+u.id)&1):0,alt=u.fly?SPECIES[u.sp].alt+Math.sin(frameN/14+u.id)*1.2:0;
+      const s=unitSprite(u,fr);let sc=adult(u)?1:u.k===0?.7:.65;
+      if(u.scale)sc*=u.scale;
+      if(u.k!==0&&SPECIES[u.sp].sz)sc*=SPECIES[u.sp].sz;
+      glQuad(s,u.dir<0,SX(it.x*TS-s.w*sc/2),SY((it.ry+.35)*TS-s.h*sc-alt-(moving&&fr&&!u.fly?.7:0)),Math.round(s.w*pz*sc),Math.round(s.h*pz*sc),u.sp==='wraith'?.78:1);
+    }else if(it.boat){
+      const b=it.boat,[bx,by]=ipos(b),s=boatSprite(b.kind,b.race,b.ci,tribes[b.tribe].age),bob=Math.sin(frameN/18+b.id)*.8;
+      glQuad(s,b.dir<0,SX(bx*TS-s.w/2),SY((by+.5)*TS-s.h+2+bob),Math.round(s.w*pz),Math.round(s.h*pz),1);
+    }
+  }
+  if(glN){gl.bufferSubData(gl.ARRAY_BUFFER,0,glData,0,glN*20);gl.drawElements(gl.TRIANGLES,glN*6,gl.UNSIGNED_SHORT,0)}
+  ctx.drawImage(glc,0,0);
+  return true;
+}
+function drawMono(m,blit,SX,SY,tz){
+  const s=spr('monolith',monolithSprite);
+  blit(s.c,s.w,s.h,(m.x+.5)*TS-s.w/2,(m.y+1)*TS-s.h+1,1);
+  const pulse=.25+.25*Math.sin(frameN/12);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=pulse;
+  const rad=1.6*tz;ctx.drawImage(GLOW_C,SX((m.x+.5)*TS)-rad,SY((m.y+.2)*TS)-rad,rad*2,rad*2);
+  ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+}
+/* the few unit extras still drawn in 2D at far zoom, after the GL batch */
+function farExtras(u,x,y,SX,SY,pz,tz,dt){
+  const fx=x*TS,fy=(y+.35)*TS;
+  if(u.dig>step){
+    const mx=SX(fx),my=SY(fy),dr=u.tx>u.x?1:-1;
+    for(let q=3;q>=0;q--){const rr=tz*(.95-q*.14),ox2=-dr*q*tz*.55;ctx.fillStyle=q?'rgba(170,128,78,'+(.5-q*.1)+')':'rgba(196,152,98,.95)';ctx.beginPath();ctx.ellipse(mx+ox2,my-q*.2*pz,rr,rr*.42,0,0,7);ctx.fill()}
+    ctx.fillStyle='rgba(236,204,150,.9)';ctx.beginPath();ctx.ellipse(mx,my-tz*.12,tz*.55,tz*.2,0,0,7);ctx.fill();
+  }else if(u.k===1&&pz>=.55&&u.hp<u.maxhp&&u.hp>0&&SPECIES[u.sp].boss){
+    const s=unitSprite(u,0),sc=(adult(u)?1:.65)*(u.scale||1)*(SPECIES[u.sp].sz||1);
+    const f=u.hp/u.maxhp,pw=Math.max(1,Math.round(pz)),bw=Math.round(16*pz),bx=SX(fx-8),by=SY(fy-s.h*sc-4);
+    ctx.fillStyle='rgba(10,6,6,.85)';ctx.fillRect(bx-pw,by-pw,bw+2*pw,3*pw);
+    ctx.fillStyle='#e0301f';ctx.fillRect(bx,by,Math.max(pw,Math.round(bw*f)),pw);
+  }
 }
 function draw(dt){
   frameN++;const nowT=performance.now();propBakes=0;
@@ -369,7 +479,14 @@ function draw(dt){
     const lp=tz/FL;ctx.drawImage(flC,Math.round(ox),Math.round(oy-tz*.35),Math.round(W*FL*lp),Math.round(H*FL*lp));
     tr=trEnd+1;
   }
+  const viaGL=tz<FAR_TZ&&glItems(SX,SY,pz);
   for(const it of items){
+    if(viaGL){
+      /* the batch drew the sprites; only what it cannot draw is left: burrow mounds, boss health bars, monoliths */
+      if(it.u)farExtras(it.u,it.x,it.ry,SX,SY,pz,tz,dt);
+      else if(it.mono)drawMono(it.mono,blit,SX,SY,tz);
+      continue;
+    }
     while(tr<=trEnd&&tr+.55<it.y)drawPropRow(tr++,pxa,pxb,ox,oy,pz);
     if(it.b){
       const b=it.b,T=b.t>=0?tribes[b.t]:null;
@@ -402,7 +519,8 @@ function draw(dt){
         ctx.fillStyle='rgba(236,204,150,.9)';ctx.beginPath();ctx.ellipse(mx,my-tz*.12,tz*.55,tz*.2,0,0,7);ctx.fill();
         if(!reduceMotion&&speed>0&&RC()<.18*(dt/16.7)&&effects.length<300)effects.push({type:'dust',x:u.x+(RC()-.5)*.8,y:u.y,t:0,dur:26});
       }else
-      blit(img,s.w,s.h,fx-s.w*sc/2,fy-s.h*sc-alt-(moving&&fr&&!u.fly?.7:0),sc);
+      {const at=img===s.c||img===s.f?unitAtlas(s):null,X=SX(fx-s.w*sc/2),Y=SY(fy-s.h*sc-alt-(moving&&fr&&!u.fly?.7:0)),w=Math.round(s.w*pz*sc),h=Math.round(s.h*pz*sc);
+      if(at)ctx.drawImage(ATLAS,u.dir<0?at[2]:at[0],u.dir<0?at[3]:at[1],s.w,s.h,X,Y,w,h);else ctx.drawImage(img,X,Y,w,h)}
       ctx.globalAlpha=1;
       if(u.frozen>step){ctx.fillStyle='rgba(176,224,255,.42)';ctx.fillRect(SX(fx-s.w*sc/2-.5),SY(fy-s.h*sc-alt-.5),Math.round((s.w*sc+1)*pz),Math.round((s.h*sc+1)*pz));ctx.strokeStyle='rgba(235,250,255,.8)';ctx.lineWidth=Math.max(1,pz*.5);ctx.strokeRect(SX(fx-s.w*sc/2-.5),SY(fy-s.h*sc-alt-.5),Math.round((s.w*sc+1)*pz),Math.round((s.h*sc+1)*pz))}
       if(u.shield>step){ctx.strokeStyle=`rgba(255,226,120,${.45+.3*Math.sin(frameN/6+u.id)})`;ctx.lineWidth=Math.max(1,pz*.7);ctx.beginPath();ctx.arc(SX(fx),SY(fy-s.h*sc*.5-alt),Math.max(4,s.h*sc*pz*.72),0,7);ctx.stroke()}
@@ -420,11 +538,7 @@ function draw(dt){
         ctx.fillStyle=f>.6?'#6fd36a':f>.3?'#e8c23c':'#e5533d';ctx.fillRect(bx,by,Math.max(pw,Math.round(bw*f)),pw);
       }
     }else if(it.mono){
-      const m=it.mono,s=spr('monolith',monolithSprite);
-      blit(s.c,s.w,s.h,(m.x+.5)*TS-s.w/2,(m.y+1)*TS-s.h+1,1);
-      const pulse=.25+.25*Math.sin(frameN/12);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=pulse;
-      const rad=1.6*tz;ctx.drawImage(GLOW_C,SX((m.x+.5)*TS)-rad,SY((m.y+.2)*TS)-rad,rad*2,rad*2);
-      ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+      drawMono(it.mono,blit,SX,SY,tz);
     }else{
       const b=it.boat,[bx,by]=ipos(b),s=boatSprite(b.kind,b.race,b.ci,tribes[b.tribe].age),bob=Math.sin(frameN/18+b.id)*.8;
       blit(b.dir<0?flipped(s):s.c,s.w,s.h,bx*TS-s.w/2,(by+.5)*TS-s.h+2+bob,1);
