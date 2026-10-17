@@ -10,6 +10,8 @@ for(let cy=0;cy<CCH;cy++)for(let cx=0;cx<CCW;cx++){
   chunks.push({c,x,img,buf:new Uint32Array(img.data.buffer),x0:cx*CHT,y0:cy*CHT,tw,th,pw:tw*TS,dirty:false,dx0:CHT,dy0:CHT,dx1:-1,dy1:-1});
 }
 const tileFlag=new Uint8Array(N);let tileQ=[];
+/* deco[i]=1: a loose boulder lies on this tile (drawn as a shaded sprite by drawPropRow, never baked into the ground) */
+const deco=new Uint8Array(N);
 /* derived village layout (never saved, rebuilt from the buildings): dirt roads, and crop fields beside houses */
 const road=new Uint8Array(N),fld=new Uint8Array(N),roadNew=new Uint8Array(N),fldNew=new Uint8Array(N);
 let pnoise=null,frameN=0,curSea=1;
@@ -158,12 +160,10 @@ function decorTile(buf,pw,lx,ly,tx,ty,bmi,b0){
     for(let x=0;x<4;x++){buf[(ly+py+1)*pw+lx+px+x]=mid;buf[(ly+py+2)*pw+lx+px+x]=x===0||x===3?lo:dark}
     buf[(ly+py+1)*pw+lx+px+1]=light;
     if(!snow&&!bmi&&hash(tx,ty+3)<.3)buf[(ly+py+1)*pw+lx+px+3]=P(220,60,60);
-  }else if(h>.975&&(b0===4||bmi===BM.ROCK||bmi===BM.WASTE)){
-    const px=1+((hash(tx+2,ty)*4)|0),py=3+((hash(tx,ty+2)*3)|0);
-    for(let x=0;x<3;x++){buf[(ly+py)*pw+lx+px+x]=P(138,134,130);buf[(ly+py+1)*pw+lx+px+x]=P(92,88,86)}
-    buf[(ly+py)*pw+lx+px]=P(184,180,172);
   }
 }
+/* boulders lie on highland and rock: the same hash decorTile used, now a sprite */
+function boulderAt(tx,ty,bmi,b0){return hash(tx*13+5,ty*11+9)>.975&&(b0===4||bmi===BM.ROCK||bmi===BM.WASTE)}
 function bmAt(fx,fy,px,py){
   const q=((py>>1)<<1)*OW+((px>>1)<<1),a=pnoise[q]/255,b=pnoise[(q+524287)%pnoise.length]/255;
   const X=clamp((fx+.5+(a-.5)*.95)|0,0,W-1),Y=clamp((fy+.5+(b-.5)*.95)|0,0,H-1);
@@ -188,15 +188,12 @@ function renderTile(i){
     }
   }
   tq[i]=curSea;
-  if(!lv&&!tree[i]&&!ore[i]&&bld[i]===-1&&!bt&&!road[i]&&!fld[i]){const b0=bio(hgt[i]);if(b0>=2&&b0<=4)decorTile(buf,pw,lx,ly,tx,ty,bmi,b0)}
+  /* nothing is scattered under or beside a building (its yard is bare dirt), and trees and ore are sprites now, not ground */
+  deco[i]=0;
+  if(!lv&&!tree[i]&&!ore[i]&&bld[i]===-1&&!dirt&&!bt&&!road[i]&&!fld[i]){const b0=bio(hgt[i]);if(b0>=2&&b0<=4){decorTile(buf,pw,lx,ly,tx,ty,bmi,b0);if(boulderAt(tx,ty,bmi,b0))deco[i]=1}}
   if((road[i]||fld[i])&&!lv&&!bt&&hgt[i]>=.38)paintVillage(buf,pw,lx,ly,tx,ty,i);
-  if(ore[i]&&!lv)drawOre(buf,pw,lx,ly,ore[i],tx,ty);
-  if(tree[i]&&!lv){
-    const kind=treeKind(i),T=TREES[kind],rows=T.rows,v=.86+hash(tx,ty+999)*.26,pal=treePal(kind,v,tx,ty,bmi);
-    /* each tree is nudged and sometimes mirrored, so a forest never looks like a grid */
-    const jx=((hash(tx+3,ty)*3)|0)-1,jy=-((hash(tx,ty+3)*2)|0),fl=hash(tx+9,ty+9)<.5;
-    for(let y=0;y<8;y++){const r=rows[y],Y=y+jy;if(Y<0||Y>7)continue;for(let x=0;x<8;x++){const c=r[fl?7-x:x],X=x+jx;if(X<0||X>7)continue;if(c!=='.'&&pal[c]!==undefined)buf[(ly+Y)*pw+lx+X]=pal[c]}}
-  }
+  /* a tree's roots darken the soil a little; the tree itself is a sprite drawn y-sorted in render.js */
+  if(tree[i]&&!lv&&!bt){for(let sy=2;sy<TS;sy++)for(let sx=1;sx<TS-1;sx++){const o=(ly+sy)*pw+lx+sx,c=buf[o];buf[o]=(0xff000000|((((c>>16)&255)*.82)<<16)|((((c>>8)&255)*.84)<<8)|((c&255)*.82))>>>0}}
   ch.dirty=true;
   const cx=tx-ch.x0,cy=ty-ch.y0;
   if(cx<ch.dx0)ch.dx0=cx;if(cx>ch.dx1)ch.dx1=cx;if(cy<ch.dy0)ch.dy0=cy;if(cy>ch.dy1)ch.dy1=cy;

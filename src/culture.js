@@ -261,7 +261,7 @@ function makeArt(T){
   const t=artTitle(T,f),maker=T.members.length?pick(T.members):null;
   const q=clamp(1+((R()*3)|0)+(T.values.some(v=>v.buff.art>=.3)?1:0)+(R()<.1?1:0),1,5);
   const art={name:t.name,form:f.n,theme:t.theme,desc:t.desc,creator:maker?maker.name:'an unknown artisan',year:year(),q,i:spot>=0?spot:null};
-  if(spot>=0){bld[spot]=T.id;btype[spot]=4;T.monuments++;bDirty=true;ownDirty=true;markDirty(spot)}
+  if(spot>=0){bld[spot]=T.id;btype[spot]=4;T.monuments++;bDirty=true;ownDirty=true;clearAround(spot,T);markDirty(spot)}
   T.arts.unshift(art);T.renown+=q;T.devo=Math.min(100,T.devo+q*(t.theme==='deity'?1.5:.7));
   const at=spot>=0?spot:(T.hall>=0?T.hall:-1);
   log(`The ${T.title} unveiled the ${f.n.toLowerCase()} \u201c${art.name}\u201d.`,[240,208,110],!(q>=4||spot>=0),q>=4&&spot>=0?{x:spot%W+.5,y:((spot/W)|0)+.5,ic:'🗿',p:1}:null);

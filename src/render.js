@@ -119,7 +119,7 @@ function ovColourRow(py,px0,px1,cols){
   for(let px=px0;px<px1;px++){
     const k=py*ow+px,o=ovOwn[k];if(o<0){buf[k]=0;continue}
     const e=(px>0&&ovOwn[k-1]!==o)||(px<ow-1&&ovOwn[k+1]!==o)||(py>0&&ovOwn[k-ow]!==o)||(py<oh-1&&ovOwn[k+ow]!==o);
-    buf[k]=cols[o][e?1:0];
+    const cc=cols[o];buf[k]=cc?cc[e?1:0]:0;
   }
 }
 /* the layer is redrawn only around tiles whose owner changed, a few rows per frame within OV_MS, so it never stalls a frame.
@@ -207,7 +207,7 @@ function drawCorpses(SX,SY,pz,now){
   if(!corpses.length)return;
   const life=reduceMotion?700:2000,mark=reduceMotion?1500:4500;let n=0;
   for(let i=0;i<corpses.length;i++){
-    const c=corpses[i],age=now-c.t0;
+    const c=corpses[i],age=Math.max(0,now-c.t0);
     if(age>=mark)continue;
     corpses[n++]=c;
     const X=SX(c.x*TS),Y=SY((c.y+.35)*TS);
@@ -215,7 +215,7 @@ function drawCorpses(SX,SY,pz,now){
     ctx.fillStyle='rgba(120,20,20,'+ma+')';
     ctx.beginPath();ctx.ellipse(X,Y-pz*.5,pz*5*Math.min(1,.4+age/400),pz*2.2,0,0,7);ctx.fill();
     if(age>=life)continue;
-    const u=c.u,s=unitSprite(u,0);let sc=adult(u)?1:u.k===0?.7:.65;if(u.scale)sc*=u.scale;
+    const u=c.u,s=unitSprite(u,0);let sc=adult(u)?1:u.k===0?.7:.65;if(u.scale)sc*=u.scale;if(u.k!==0&&SPECIES[u.sp].sz)sc*=SPECIES[u.sp].sz;
     const img=c.dir<0?flipped(s):s.c,fall=reduceMotion?1:Math.min(1,age/260),e=fall*fall*(3-2*fall);
     ctx.globalAlpha=age<life*.35?1:1-(age-life*.35)/(life*.65);
     ctx.save();ctx.translate(X,Y);ctx.rotate((c.dir<0?1:-1)*1.5708*e);
@@ -225,6 +225,47 @@ function drawCorpses(SX,SY,pz,now){
   corpses.length=n;
 }
 
+/* trees, ore and boulders are sprites, drawn row by row between the y-sorted items so they overlap people and homes with depth.
+   Sprites are cached by a numeric key (kind, size, shade, season, paradox phase), so a frame allocates nothing */
+/* every prop sprite (and its mirror) is copied once into one shared atlas, so a forest of hundreds of trees is drawn from a single
+   source canvas and the GPU can batch the lot. If the atlas ever fills, a sprite just keeps drawing from its own canvas */
+const AT_W=2048,AT_H=1024,ATLAS=document.createElement('canvas'),ATX=(ATLAS.width=AT_W,ATLAS.height=AT_H,ATLAS.getContext('2d'));
+let atX=0,atY=0,atRow=0;
+function atlasPut(c,w,h){
+  if(atX+w>AT_W){atX=0;atY+=atRow;atRow=0}
+  if(atY+h>AT_H)return null;
+  ATX.drawImage(c,atX,atY);const r=[atX,atY];atX+=w+1;if(h+1>atRow)atRow=h+1;return r;
+}
+function propSprite(s){
+  const a=atlasPut(s.c,s.w,s.h),b=a&&atlasPut(flipped(s),s.w,s.h);
+  s.at=a&&b?[a[0],a[1],b[0],b[1]]:null;return s;
+}
+const SHD=shadowSprite().c,TSPR=[],ORSPR=[],TWO_PI=6.2832;
+function drawPropRow(ty,xa,xb,ox,oy,pz){
+  const row=ty*W;
+  for(let x=xa;x<xb;x++){
+    const i=row+x;
+    let s,jx=0,jy=0,mir=false;
+    if(tree[i]){
+      if(lava[i])continue;
+      const kind=treeKind(i),sea=tq[i],r=hash(x+9,ty+9),sz=r<.28?0:r<.78?1:2,vi=(hash(x,ty+999)*4)|0;
+      let ph=-1;if(bm[i]===BM.PARA)ph=((((frameN*.012+(x+ty)*.14)%TWO_PI)+TWO_PI)%TWO_PI/TWO_PI*12|0)%12;
+      const key=(((TKI[kind]*3+sz)*4+vi)*4+sea)*13+ph+1;
+      s=TSPR[key]||(TSPR[key]=propSprite(treeSprite(kind,sz,vi,sea,ph)));
+      jx=((hash(x+3,ty+11)*5)|0)-2;jy=((hash(x+5,ty+3)*3)|0)-1;mir=hash(x+3,ty)<.5;
+    }else if(ore[i]){
+      if(lava[i])continue;
+      const o=ore[i],a=oreAmt[i],sz=a<10?0:a<24?1:2,vi=(hash(x+1,ty+2)*4)|0,key=(o*3+sz)*4+vi;
+      s=ORSPR[key]||(ORSPR[key]=propSprite(rockSprite(o,sz,vi)));mir=hash(x+7,ty)<.5;
+    }else if(deco[i]){
+      const sz=hash(x+2,ty)<.6?0:1,vi=(hash(x,ty+2)*4)|0,key=1000+sz*4+vi;
+      s=ORSPR[key]||(ORSPR[key]=propSprite(rockSprite(0,sz,vi)));mir=hash(x+7,ty)<.5;jx=((hash(x+1,ty+4)*3)|0)-1;
+    }else continue;
+    const ax=mir?s.w-1-s.ax:s.ax,dx=Math.round(ox+(x*TS+4+jx-ax)*pz),dy=Math.round(oy+(ty*TS+6+jy-s.ay)*pz),dw=Math.round(s.w*pz),dh=Math.round(s.h*pz),at=s.at;
+    if(at)ctx.drawImage(ATLAS,mir?at[2]:at[0],mir?at[3]:at[1],s.w,s.h,dx,dy,dw,dh);
+    else ctx.drawImage(mir?flipped(s):s.c,dx,dy,dw,dh);
+  }
+}
 function draw(dt){
   frameN++;const nowT=performance.now();
   updateTerrain();
@@ -284,10 +325,13 @@ function draw(dt){
   items.sort(byY);
   const close=pz>=1.5;
   drainCombat(inView,pz);drawCorpses(SX,SY,pz,nowT);
+  let tr=Math.max(0,y0),trEnd=Math.min(H-1,y1-2);const pxa=Math.max(0,x0),pxb=Math.min(W,x1);
   for(const it of items){
+    while(tr<=trEnd&&tr+.55<it.y)drawPropRow(tr++,pxa,pxb,ox,oy,pz);
     if(it.b){
       const b=it.b,T=b.t>=0?tribes[b.t]:null;
       const s=T?buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier,b.v):buildingSprite('',3,0,'');
+      {const sw=s.w*.98;ctx.drawImage(SHD,SX((b.x+.5)*TS-s.w/2+s.w*.07),SY((b.y+1)*TS-3.2),Math.round(sw*pz),Math.round(Math.min(8,3+s.w*.2)*pz))}
       blit(s.c,s.w,s.h,(b.x+.5)*TS-s.w/2,(b.y+1)*TS-s.h+1,1);
       if(b.ty===8&&s.hub){const h=s.hub,hx=(b.x+.5)*TS-s.w/2+h.x,hy=(b.y+1)*TS-s.h+1+h.y,L=h.len,st=6.2832/h.n,a=(reduceMotion?0:frameN*.045)+b.x;ctx.strokeStyle=h.col;ctx.lineWidth=Math.max(1,pz*1.1);ctx.beginPath();for(let q=0;q<h.n;q++){const an=a+q*st;ctx.moveTo(SX(hx),SY(hy));ctx.lineTo(SX(hx+Math.cos(an)*L),SY(hy+Math.sin(an)*L))}ctx.stroke();ctx.strokeStyle='rgba(60,50,40,.55)';ctx.lineWidth=Math.max(1,pz*.5);ctx.beginPath();for(let q=0;q<h.n;q++){const an=a+q*st+.08;ctx.moveTo(SX(hx),SY(hy));ctx.lineTo(SX(hx+Math.cos(an)*L),SY(hy+Math.sin(an)*L))}ctx.stroke()}
       if(T&&close&&b.ty===5&&b.tier<=5&&RC()<(b.tier===5?.03:.012)*(dt/16.7)&&effects.length<300)effects.push({type:'smoke',x:b.x+.85,y:b.y-.6,t:0,dur:80});
@@ -297,6 +341,7 @@ function draw(dt){
       const u=it.u,y=it.ry,moving=u.moving&&speed>0,fr=moving||u.fly&&speed>0?(((frameN>>(u.fly?2:3))+u.id)&1):0,alt=u.fly?SPECIES[u.sp].alt+Math.sin(frameN/14+u.id)*1.2:0;
       const s=unitSprite(u,fr);let sc=adult(u)?1:u.k===0?.7:.65;
       if(u.scale)sc*=u.scale;
+      if(u.k!==0&&SPECIES[u.sp].sz)sc*=SPECIES[u.sp].sz;
       let fx=it.x*TS,fy=(y+.35)*TS;
       let img=u.dir<0?flipped(s):s.c;
       if(!reduceMotion){
@@ -305,7 +350,7 @@ function draw(dt){
         if(ha<150){const o=(1-ha/150)*.22*TS;fx+=u._kx*o;fy+=u._ky*o*.6}
       }
       {const ha=nowT-u._hitAt;if(ha<130)img=tinted(img,ha>55)}
-      if(close){ctx.fillStyle=u.fly?'rgba(0,0,0,.12)':'rgba(0,0,0,.18)';ctx.fillRect(SX(fx-s.w*sc*.35),SY(fy-1),Math.round(s.w*sc*.7*pz),Math.round(pz*1.5))}
+      if(pz>=.8){const sw=Math.max(5,s.w*sc*.78);if(u.fly)ctx.globalAlpha=.55;ctx.drawImage(SHD,SX(fx-sw/2+.8),SY(fy-sw*.12-.4),Math.round(sw*pz),Math.max(1,Math.round(sw*.3*pz)));ctx.globalAlpha=1}
       if(u.sp==='wraith')ctx.globalAlpha=.78;
       blit(img,s.w,s.h,fx-s.w*sc/2,fy-s.h*sc-alt-(moving&&fr&&!u.fly?.7:0),sc);
       ctx.globalAlpha=1;
@@ -330,6 +375,7 @@ function draw(dt){
       if(close&&speed>0&&frameN%10===0&&b.x!==b.px&&effects.length<300)effects.push({type:'wake',x:bx,y:by+.35,t:0,dur:40});
     }
   }
+  while(tr<=trEnd)drawPropRow(tr++,pxa,pxb,ox,oy,pz);
   const fs=[spr('flame0',()=>flameSprite(0)),spr('flame1',()=>flameSprite(1))];
   let fireVis=0;
   for(const i of fires){
