@@ -234,7 +234,8 @@ function draw(dt){
   ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=false;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
   ctx.fillStyle='#123068';ctx.fillRect(0,0,cw,ch);
   let sx=0,sy=0;
-  if(shake>0){sx=(RC()-.5)*shake*dpr;sy=(RC()-.5)*shake*dpr;shake*=Math.pow(.88,dt/16.7);if(shake<.4)shake=0}
+  const qs=quakeShake();
+  if(shake>0||qs>0){const sh=Math.max(shake,qs);sx=(RC()-.5)*sh*dpr;sy=(RC()-.5)*sh*dpr;if(shake>0){shake*=Math.pow(.88,dt/16.7);if(shake<.4)shake=0}}
   const pz=cam.pz,ox=cam.ox+sx,oy=cam.oy+sy,tz=pz*TS;
   const SX=v=>Math.round(ox+v*pz),SY=v=>Math.round(oy+v*pz);
 
@@ -605,7 +606,7 @@ function updEffects(dt){
   if(effects.length>600)effects.splice(0,effects.length-600);
 }
 /* spatial sound: only what's on screen is heard, louder the closer you zoom */
-const GLOBAL_SFX=new Set(['horn','thunder','boom']);
+const GLOBAL_SFX=new Set(['horn','thunder','boom','rumble']);
 function processSound(ox,oy,pz,vis,fireVis,dt){
   if(!AU.ready||!AU.sfx||speed===0){SFXQ.length=0;return}
   AU.tokens=Math.min(8,AU.tokens+dt/140);

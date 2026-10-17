@@ -110,6 +110,7 @@ const SFX={
   splash:(o,t)=>noiseHit(o,'lowpass',1600,250,1,t,.01,.45,.35),
   thunder:(o,t)=>{noiseHit(o,'highpass',2000,800,1,t,.002,.18,.5);noiseHit(o,'lowpass',260,90,1,t+.25,.15,2.8,.9);osc(o,'sine',48,32,t+.25,.2,2,.4)},
   boom:(o,t)=>{noiseHit(o,'bandpass',300,2400,1,t-.6,.6,.3,.25);noiseHit(o,'lowpass',420,80,1,t,.01,2.2,1);osc(o,'sine',62,28,t,.01,1.5,.7)},
+  rumble:(o,t)=>{noiseHit(o,'lowpass',180,60,1.2,t,.15,1.4,1);noiseHit(o,'bandpass',90,50,2,t+.05,.2,1.1,.8);osc(o,'sine',42,26,t,.1,1.3,.6);for(let k=0;k<5;k++)noiseHit(o,'bandpass',500+RC()*900,300,3,t+RC()*1.1,.002,.05,.3)},
   horn:(o,t)=>{const c=AU.ctx,s=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain();s.type='sawtooth';s.frequency.setValueAtTime(196,t);s.frequency.linearRampToValueAtTime(220,t+.3);fl.type='lowpass';fl.frequency.value=900;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.18,t+.25);g.gain.setValueAtTime(.18,t+1);g.gain.linearRampToValueAtTime(0,t+1.5);s.connect(fl);fl.connect(g);g.connect(o);s.start(t);s.stop(t+1.6)},
   spawn:(o,t)=>{[880,1175,1568].forEach((f,k)=>osc(o,'sine',f,f,t+k*.07,.005,.4,.08))},
   crackle:(o,t)=>{for(let k=0;k<4;k++)noiseHit(o,'bandpass',2000+RC()*2000,1500,3,t+RC()*.3,.001,.02,.25)},

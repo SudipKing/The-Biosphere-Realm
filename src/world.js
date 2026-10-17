@@ -131,20 +131,68 @@ function laser(p){
 }
 
 /* ---------- natural disasters ---------- */
+const QUAKE_DUR=110,QUAKE_R=12;
 function earthquake(p){
-  const x=p.x|0,y=p.y|0;if(!inb(x,y))return;const r=11;
+  const x=p.x|0,y=p.y|0;if(!inb(x,y))return;const r=QUAKE_R;
+  const h0=hgt[y*W+x],deep=h0<.3,ang=R()*Math.PI;
+  /* a fault line through the epicentre: one side rises, the other sinks. Deep water mostly rises (new islands), land mostly sinks. */
+  const up=deep?.9:h0<.45?.22:.16,dn=deep?.05:h0<.45?.4:.22;
+  wfx.push({type:'quake',x:p.x,y:p.y,at:step,until:step+QUAKE_DUR,r,a:ang,s:(R()*65536)|0,up,dn,pp:0});
+  /* the first jolt: buildings crumble and people are hurt, harder near the epicentre */
   for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
     const X=x+dx,Y=y+dy;if(!inb(X,Y))continue;const d=Math.hypot(dx,dy);if(d>r)continue;
     const i=Y*W+X,f=d/r;
-    hgt[i]+=(R()-.5)*.1*(1-f);
-    if(f<.85&&bld[i]!==-1&&R()<.4*(1-f)){destroyBld(i);burn(i,500)}
-    if(f<.7&&tree[i]&&R()<.1)tree[i]=0;
-    afterH(i);
+    if(f<.9&&bld[i]!==-1&&R()<.55*(1-f)){destroyBld(i);burn(i,500)}
+    if(f<.75&&tree[i]&&R()<.12){tree[i]=0;markTile(i)}
   }
-  for(const u of units)if(!u.dead&&Math.hypot(u.x-p.x,u.y-p.y)<r){u.hp-=u.maxhp*(.1+R()*.4);if(u.hp<=0)die(u)}
-  shake=reduceMotion?0:36;sfx('boom',x,y);bDirty=true;ownDirty=true;
-  effects.push({type:'blast',x:x+.5,y:y+.5,r:r,t:0,dur:50,c:[170,140,100],dark:false,big:false});
-  log(`The earth shook ${nearTribeText(x,y)}.`,[190,150,100]);
+  for(const u of units)if(!u.dead&&!u.inside){const f=Math.hypot(u.x-p.x,u.y-p.y)/r;if(f<1){u.hp-=u.maxhp*(.08+R()*.35*(1-f*.7));if(u.hp<=0)die(u)}}
+  sfx('rumble',x,y);bDirty=true;ownDirty=true;
+  log(`The earth shook ${nearTribeText(x,y)}${deep?', and the sea floor heaved':''}.`,[190,150,100]);
+}
+/* target height change of a tile for quake f: a fault scarp with a ragged edge (a pure function of f and the tile) */
+function quakeDelta(f,X,Y){
+  const dx=X+.5-f.x,dy=Y+.5-f.y,d=Math.hypot(dx,dy),q=d/f.r;if(q>=1)return 0;
+  const c=Math.cos(f.a),s=Math.sin(f.a),al=dx*c+dy*s;
+  const perp=-dx*s+dy*c+Math.sin(al*.55+f.s)*1.3+Math.sin(al*1.3+f.s*.7)*.6+(hash(X+f.s,Y)-.5)*.9;
+  const side=Math.max(-1,Math.min(1,perp/2.2)),fall=Math.pow(1-q,1.15),n=.7+hash(X*3+f.s,Y*5)*.6;
+  return (side>0?f.up*side:f.dn*side)*fall*n;
+}
+function updateQuake(f){
+  const t=(step-f.at)/QUAKE_DUR,pr=Math.min(1,t/.75),inc=pr-f.pp;
+  if(inc>0){
+    f.pp=pr;const x=f.x|0,y=f.y|0,r=f.r;
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+      const X=x+dx,Y=y+dy;if(!inb(X,Y))continue;
+      const D=quakeDelta(f,X,Y);if(D===0)continue;
+      const i=Y*W+X,was=bio(hgt[i]);
+      hgt[i]+=D*inc;afterH(i);
+      const b=bio(hgt[i]);
+      if(was<2&&b>=2){bm[i]=0;tree[i]=0}
+      else if(was>=2&&b<2)ore[i]=0;
+    }
+    ownDirty=true;bDirty=true;
+  }
+  /* aftershocks: rubble keeps falling around the fault */
+  if(step%6===0){
+    const a=R()*6.28,d=R()*f.r*.9,X=(f.x+Math.cos(a)*d)|0,Y=(f.y+Math.sin(a)*d)|0;
+    if(inb(X,Y)){const i=Y*W+X;if(bld[i]!==-1&&R()<.18*(1-d/f.r)){destroyBld(i);burn(i,400)}
+      if(tree[i]&&R()<.3){tree[i]=0;markTile(i)}}
+    const v=nearest({x:f.x+Math.cos(a)*d,y:f.y+Math.sin(a)*d},3,u=>!u.dead&&!u.inside);
+    if(v&&R()<.2){v.hp-=v.maxhp*.06;if(v.hp<=0)die(v)}
+  }
+  if(step%14===0)sfx('rumble',f.x|0,f.y|0);
+}
+/* camera shake from the lasting quakes (render only): strongest near the epicentre of what you are looking at */
+function quakeShake(){
+  if(reduceMotion||speed===0)return 0;let m=0;
+  for(const f of wfx){
+    if(f.type!=='quake')continue;
+    const t=(step-f.at)/(f.until-f.at);if(t<0||t>1)continue;
+    const env=t<.08?t/.08:Math.pow(1-(t-.08)/.92,1.3);
+    const cx=(cw/2-cam.ox)/(cam.pz*TS),cy=(ch/2-cam.oy)/(cam.pz*TS),d=Math.hypot(cx-f.x,cy-f.y);
+    m=Math.max(m,34*env/(1+d/16));
+  }
+  return m;
 }
 const volcanoes=[];
 function volcano(p){
@@ -545,6 +593,7 @@ function updateWorldFx(){
         if(R()<.01&&(bio(hgt[i])===3||bio(hgt[i])===4)){bm[i]=BM.WASTE;markDirty(i)}
       }
       for(const u of units){if(u.dead||u.inside||Math.hypot(u.x-f.x,u.y-f.y)>=f.r)continue;u.hp-=.12;if(u.hp<=0)die(u)}
-    }else if(WFX2[f.type])WFX2[f.type](f);
+    }else if(f.type==='quake')updateQuake(f);
+    else if(WFX2[f.type])WFX2[f.type](f);
   }
 }
