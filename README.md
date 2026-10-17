@@ -113,7 +113,7 @@ Kingdoms research (more people, teachers and a great hall make it faster) and di
 
 ### Seasons and domains
 
-- The **Seasons** button in the header holds the world in one season, or lets them turn. The 🔓 lock beside the clock holds the time of day (tap the clock to pick another), and the lock beside the weather holds the weather. A change of season dissolves across the whole map at once (no sweep), recoloring land, trees and sea, and shifting the weather.
+- The **Seasons** button in the header holds the world in one season, or lets them turn. The 🔓 lock beside the clock holds the time of day (tap the clock to pick another), and the lock beside the weather holds the weather. The four seasons pass within each year (months 1-3 spring, 4-6 summer, 7-9 autumn, 10-12 winter). Each change of season dissolves across the whole map, recoloring land, trees and sea, and shifting the weather.
 - The **Domains** button shows a colour layer for each kingdom with crisp borders, bold when zoomed out and fading as you zoom in. Every tile has exactly one owner, a kingdom cannot found itself or build on another kingdom's land (unless the two are at war), and the side panel shows each kingdom's share of the world.
 
 ## Panels

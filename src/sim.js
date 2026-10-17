@@ -862,7 +862,7 @@ function setBiome(i,b,treeP){
 
 /* ---------- time & weather ---------- */
 function setWeather(type){
-  WX.type=type;WX.until=step+900+((R()*1800)|0);WX.wind=(R()<.5?-1:1)*(.5+R());
+  WX.type=type;WX.until=step+100+((R()*260)|0);WX.wind=(R()<.5?-1:1)*(.5+R());
   if(type==='storm')log('A storm is rolling in.',[120,140,200]);
   if(type==='snow')log('Snow begins to fall.',[200,210,240]);
 }
@@ -874,8 +874,11 @@ function updateLight(){
 function updateTimeWeather(){
   updateLight();
   if(wxLock)WX.until=Math.max(WX.until,step+1);
+  const sw=SEASON_WX[season()];
+  /* weather the new season forbids (snow in summer) gives way at the turn; otherwise it runs its course */
+  if(!wxLock&&step%(YEAR/4)===0&&sw[WX.type]===0)WX.until=step;
   if(step>=WX.until){
-    const sw=SEASON_WX[season()];let tot=0;for(const k of WT_KEYS)tot+=WTYPES[k].w*(sw[k]??1);
+    let tot=0;for(const k of WT_KEYS)tot+=WTYPES[k].w*(sw[k]??1);
     let r=R()*tot,t='clear';for(const k of WT_KEYS){r-=WTYPES[k].w*(sw[k]??1);if(r<=0){t=k;break}}
     setWeather(t);
   }
@@ -935,6 +938,7 @@ function simStep(){
   updateUnits();updateTribes();updateBoats();updateFire();growth();updateWorldFx();
   /* a burst of building only redraws borders every 10 steps */
   if(ownDirty&&step-lastDomains>=10||step-lastDomains>=40)computeDomains();
+  if(step%(YEAR/4)===0)snowmenOfWinter();
   if(step%YEAR===0)yearly();
 }
 

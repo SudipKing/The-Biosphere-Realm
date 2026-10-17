@@ -367,7 +367,7 @@ $('wxLockBtn').addEventListener('click',()=>{
 $('weatherBtn').addEventListener('click',()=>{const i=(WT_KEYS.indexOf(WX.type)+1)%WT_KEYS.length;setWeather(WT_KEYS[i]);toast(`The weather turns: ${WTYPES[WT_KEYS[i]].name.toLowerCase()}.`)});
 $('seasonBtn').addEventListener('click',()=>{
   seasonLock=seasonLock>=3?-1:seasonLock+1;
-  toast(seasonLock<0?'The seasons turn with the years again.':`The world is held in ${SEASONS[seasonLock].toLowerCase()}. ${SEASON_TEXT[seasonLock]}`);
+  toast(seasonLock<0?'The seasons turn through each year again.':`The world is held in ${SEASONS[seasonLock].toLowerCase()}. ${SEASON_TEXT[seasonLock]}`);
   for(const T of tribes)if(T.alive)T.fx=computeFx(T);renderHeader();
 });
 $('domainBtn').addEventListener('click',()=>{showDomains=!showDomains;if(showDomains)ovDirty=true;renderHeader();toast(showDomains?'Showing each kingdom\u2019s domain.':'Domains hidden.')});

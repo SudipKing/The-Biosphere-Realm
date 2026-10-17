@@ -3,7 +3,7 @@
    Every race has its own pantheon. A kingdom's faith picks a patron god and a doctrine; devotion and a temple
    scale the blessing, which feeds back into combat, building, growth, diplomacy and stability. */
 const SEASONS=['Spring','Summer','Autumn','Winter'];
-const season=()=>seasonLock>=0?seasonLock:year()%4;
+const season=()=>seasonLock>=0?seasonLock:((step%YEAR)*4/YEAR)|0; /* months 1-3 spring, 4-6 summer, 7-9 autumn, 10-12 winter */
 const SEASON_BOON=[{grow:.4,fert:.12},{ranged:.2,dmg:.04},{food:.2},{regen:.3,def:.08}];
 const SEASON_TEXT=['Spring wakes the forest: faster tree growth and births.','Summer light sharpens every arrow.','Autumn fills the granaries.','Winter starlight heals and shields.'];
 
