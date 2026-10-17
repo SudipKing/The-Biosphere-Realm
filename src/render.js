@@ -243,6 +243,16 @@ function propSprite(s){
   s.at=a&&b?[a[0],a[1],b[0],b[1]]:null;return s;
 }
 const SHD=shadowSprite().c,TSPR=[],ORSPR=[],TWO_PI=6.2832;
+/* baking a prop sprite costs a few ms, so a frame bakes at most PROP_BAKES (a tree not baked yet borrows one of its kind),
+   and spare frames bake the current season's trees ahead of time (warmProps) so panning never stalls */
+const PROP_BAKES=4,TFALL=[];let propBakes=0,warmK=0;
+function warmProps(){
+  const sea=curSea,tot=TREE_KINDS.length*12;
+  for(let n=0;n<tot&&propBakes<2;n++){
+    const j=warmK++%tot,kind=TREE_KINDS[(j/12)|0],sz=((j%12)/4)|0,vi=j%4,key=(((TKI[kind]*3+sz)*4+vi)*4+sea)*13;
+    if(TSPR[key])continue;propBakes++;const t=TSPR[key]=propSprite(treeSprite(kind,sz,vi,sea,-1));TFALL[TKI[kind]*4+sea]=TFALL[TKI[kind]*4+sea]||t;
+  }
+}
 function drawPropRow(ty,xa,xb,ox,oy,pz){
   const row=ty*W;
   for(let x=xa;x<xb;x++){
@@ -253,23 +263,48 @@ function drawPropRow(ty,xa,xb,ox,oy,pz){
       const kind=treeKind(i),sea=tq[i],r=hash(x+9,ty+9),sz=r<.28?0:r<.78?1:2,vi=(hash(x,ty+999)*4)|0;
       let ph=-1;if(bm[i]===BM.PARA)ph=((((frameN*.012+(x+ty)*.14)%TWO_PI)+TWO_PI)%TWO_PI/TWO_PI*12|0)%12;
       const key=(((TKI[kind]*3+sz)*4+vi)*4+sea)*13+ph+1;
-      s=TSPR[key]||(TSPR[key]=propSprite(treeSprite(kind,sz,vi,sea,ph)));
+      s=TSPR[key];
+      if(!s){if(propBakes<PROP_BAKES){propBakes++;s=TSPR[key]=propSprite(treeSprite(kind,sz,vi,sea,ph));TFALL[TKI[kind]*4+sea]=TFALL[TKI[kind]*4+sea]||s}else if(!(s=TFALL[TKI[kind]*4+sea]))continue}
       jx=((hash(x+3,ty+11)*5)|0)-2;jy=((hash(x+5,ty+3)*3)|0)-1;mir=hash(x+3,ty)<.5;
     }else if(ore[i]){
       if(lava[i])continue;
       const o=ore[i],a=oreAmt[i],sz=a<10?0:a<24?1:2,vi=(hash(x+1,ty+2)*4)|0,key=(o*3+sz)*4+vi;
-      s=ORSPR[key]||(ORSPR[key]=propSprite(rockSprite(o,sz,vi)));mir=hash(x+7,ty)<.5;
+      s=ORSPR[key];if(!s){if(propBakes>=PROP_BAKES)continue;propBakes++;s=ORSPR[key]=propSprite(rockSprite(o,sz,vi))}mir=hash(x+7,ty)<.5;
     }else if(deco[i]){
       const sz=hash(x+2,ty)<.6?0:1,vi=(hash(x,ty+2)*4)|0,key=1000+sz*4+vi;
-      s=ORSPR[key]||(ORSPR[key]=propSprite(rockSprite(0,sz,vi)));mir=hash(x+7,ty)<.5;jx=((hash(x+1,ty+4)*3)|0)-1;
+      s=ORSPR[key];if(!s){if(propBakes>=PROP_BAKES)continue;propBakes++;s=ORSPR[key]=propSprite(rockSprite(0,sz,vi))}mir=hash(x+7,ty)<.5;jx=((hash(x+1,ty+4)*3)|0)-1;
     }else continue;
     const ax=mir?s.w-1-s.ax:s.ax,dx=Math.round(ox+(x*TS+4+jx-ax)*pz),dy=Math.round(oy+(ty*TS+6+jy-s.ay)*pz),dw=Math.round(s.w*pz),dh=Math.round(s.h*pz),at=s.at;
     if(at)ctx.drawImage(ATLAS,mir?at[2]:at[0],mir?at[3]:at[1],s.w,s.h,dx,dy,dw,dh);
     else ctx.drawImage(mir?flipped(s):s.c,dx,dy,dw,dh);
   }
 }
+/* far zoom: thousands of tiny tree sprites cost a draw call each, so props are painted into one small layer
+   (3px per tile) refreshed about once a second and drawn with a single call. */
+const FAR_TZ=6,FL=3,FCOL=new Map();let flC=null,flX=null,flImg=null,flBuf=null,flAt=-1e9;
+function meanCol(s){
+  const d=s.c.getContext('2d').getImageData(0,0,s.w,s.h).data;let r=0,g=0,b=0,n=0;
+  for(let k=0;k<d.length;k+=4)if(d[k+3]>200){r+=d[k];g+=d[k+1];b+=d[k+2];n++}
+  if(!n)return [0xff406030,0xff507838,0xff283c20];
+  r/=n;g/=n;b/=n;const pk=(f)=>(0xff000000|(Math.min(255,b*f)<<16)|(Math.min(255,g*f)<<8)|Math.min(255,r*f))>>>0;
+  return [pk(1),pk(1.25),pk(.62)];
+}
+function farCol(key,mk){let c=FCOL.get(key);if(!c){c=meanCol(mk());FCOL.set(key,c)}return c}
+function buildFarLayer(){
+  const lw=W*FL,lh=H*FL;
+  if(!flC){flC=document.createElement('canvas');flC.width=lw;flC.height=lh;flX=flC.getContext('2d');flImg=flX.createImageData(lw,lh);flBuf=new Uint32Array(flImg.data.buffer)}
+  flBuf.fill(0);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x;let c;
+    if(tree[i]&&!lava[i]){const kind=treeKind(i),sea=tq[i];c=farCol('t'+kind+'_'+sea,()=>treeSprite(kind,1,0,sea,-1));
+      const o=(y*FL)*lw+x*FL;flBuf[o+1]=c[1];flBuf[o+lw]=c[0];flBuf[o+lw+1]=c[0];flBuf[o+lw+2]=c[0];flBuf[o+2*lw+1]=c[2];if(hash(x,y)<.5)flBuf[o]=c[0];else flBuf[o+2]=c[0]}
+    else if(ore[i]&&!lava[i]){const o0=ore[i];c=farCol('o'+o0,()=>rockSprite(o0,1,0));const o=(y*FL+1)*lw+x*FL;flBuf[o]=c[1];flBuf[o+1]=c[0];flBuf[o+lw]=c[0];flBuf[o+lw+1]=c[2]}
+    else if(deco[i]){c=farCol('o0',()=>rockSprite(0,1,0));const o=(y*FL+1)*lw+x*FL+1;flBuf[o]=c[1];flBuf[o+lw]=c[2]}
+  }
+  flX.putImageData(flImg,0,0);flAt=frameN;
+}
 function draw(dt){
-  frameN++;const nowT=performance.now();
+  frameN++;const nowT=performance.now();propBakes=0;
   updateTerrain();
   if(bDirty)rebuildBList();
   updateCamera(dt);
@@ -329,6 +364,11 @@ function draw(dt){
   const close=pz>=1.5;
   drainCombat(inView,pz);drawCorpses(SX,SY,pz,nowT);
   let tr=Math.max(0,y0),trEnd=Math.min(H-1,y1-2);const pxa=Math.max(0,x0),pxb=Math.min(W,x1);
+  if(tz<FAR_TZ){
+    if(!flC||frameN-flAt>60)buildFarLayer();
+    const lp=tz/FL;ctx.drawImage(flC,Math.round(ox),Math.round(oy-tz*.35),Math.round(W*FL*lp),Math.round(H*FL*lp));
+    tr=trEnd+1;
+  }
   for(const it of items){
     while(tr<=trEnd&&tr+.55<it.y)drawPropRow(tr++,pxa,pxb,ox,oy,pz);
     if(it.b){
@@ -492,6 +532,7 @@ function draw(dt){
   let water=0;for(let k=0;k<9;k++){const tx=clamp(x0+((k%3)+.5)*(x1-x0)/3|0,0,W-1),ty=clamp(y0+(((k/3)|0)+.5)*(y1-y0)/3|0,0,H-1);if(isWater(ty*W+tx))water++}
   viewInfo={water:water/9,close:clamp((pz/dpr-.4)/1.4,0,1)};
   processSound(ox,oy,pz,vis,fireVis,dt);
+  if(tz>=FAR_TZ||frameN%4===0)warmProps();
   if(speed>0&&close&&(fishT+=dt)>1800){fishT=RC()*900;for(let k=0;k<12;k++){const fx=x0+RC()*(x1-x0),fy=y0+RC()*(y1-y0);if(inb(fx|0,fy|0)&&isWater((fy|0)*W+(fx|0))&&(fx|0)>0){effects.push({type:'fish',x:fx,y:fy,t:0,dur:36});SFXQ.push({t:'fish',x:fx,y:fy});break}}}
 }
 function drawPrecip(dt,run){
