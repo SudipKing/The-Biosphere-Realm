@@ -309,8 +309,13 @@ function convert(T){
   const old=T.rel;T.rel=best.rel;T.devo=55;T.fx=computeFx(T);
   log(`Missionaries of the ${best.title} converted the ${T.title} from the ${old.name} to the ${best.rel.name}.`,DOMAINS[best.rel.patron.sym].c,false,newsAt(T,'📿',2));
 }
+/* when a kingdom has villages, unrest breaks one of them away whole: the village, its homes, works, people and herds
+   become a new kingdom named after it. A kingdom with only its capital splits as a band of rebels instead */
 function rebellion(T){
   if(tribes.filter(t=>t.alive).length>=36)return;
+  let k=-1,bs=-1;
+  for(let j=1;j<T.towns.length;j++){const H=T.towns[j];if(H.pop<4)continue;const s=Math.hypot(H.x-T.cx,H.y-T.cy)*(.5+R());if(s>bs){bs=s;k=j}}
+  if(k>0){cityRevolt(T,k);return}
   const adults=T.members.filter(m=>adult(m)&&!m.inside);if(adults.length<8)return;
   const i=sampleNear(T.cx,T.cy,14,j=>fertile(j)&&farFrom(j,10)&&lineOK(T.cx,T.cy,j%W,(j/W)|0,walk),120);if(i<0)return;
   const x=i%W,y=(i/W)|0,NT=newTribe(T.race,x,y,T,{rebel:true});
@@ -321,6 +326,35 @@ function rebellion(T){
   T.stab=Math.min(100,T.stab+25);NT.stab=45;
   wars.push({a:T.id,b:NT.id,until:year()+3+((R()*3)|0)});T.foes.push(NT.name);NT.foes.push(T.name);
   log(`Unrest tore through the ${T.title}: rebels led by ${movers[0].name} broke away to found the ${NT.title}, worshipping ${NT.rel.patron.name}.`,[210,110,60],false,newsAt(NT,'🔥',3));
+}
+function cityRevolt(T,k){
+  const H=T.towns[k],NT=newTribe(T.race,H.x,H.y,T,{rebel:true});
+  NT.name=H.name;NT.title=`${RACES[T.race].title} ${H.name}`;
+  Object.assign(NT.towns[0],{name:H.name,founded:H.founded});
+  /* homes and works nearest this village change hands; the capital keeps its hall and temple */
+  for(let i=0;i<N;i++){
+    if(bld[i]!==T.id||nearestTown(T,i%W,(i/W)|0)!==k||btype[i]===1||btype[i]===2)continue;
+    bld[i]=NT.id;markDirty(i);
+    if(btype[i]===4){T.monuments=Math.max(0,T.monuments-1);NT.monuments++}
+    else if(btype[i]<5){T.houses=Math.max(0,T.houses-1);NT.houses++}
+  }
+  T.towns.splice(k,1);T.colonies=T.towns.length-1;
+  let n=0;
+  for(const u of units){
+    if(u.k===0?u.tribe!==T.id:u.owner!==T.id)continue;
+    const t=u.town|0;
+    if(t===k){
+      if(u.k===0){u.tribe=NT.id;u.target=null;u.task=null;u.cd=20;u.inside=false;n++}else u.owner=NT.id;
+      u.town=0;
+    }else if(t>k)u.town=t-1;
+  }
+  const share=n/Math.max(1,T.pop);
+  NT.food=Math.floor(T.food*share);T.food-=NT.food;NT.mat=Math.floor(T.mat*share);T.mat-=NT.mat;
+  for(const r in T.res){NT.res[r]=Math.floor(T.res[r]*share)}
+  bDirty=true;ownDirty=true;census();
+  T.stab=Math.min(100,T.stab+25);NT.stab=50;
+  wars.push({a:T.id,b:NT.id,until:year()+3+((R()*3)|0)});T.foes.push(NT.name);NT.foes.push(T.name);
+  log(`The city of ${H.name} rose against the ${T.title} and declared itself the ${NT.title}, worshipping ${NT.rel.patron.name}.`,[210,110,60],false,newsAt(NT,'🔥',3));
 }
 const REBEL_STAB=40,STAB_CALM=55;
 function culturalYear(){

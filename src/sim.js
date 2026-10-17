@@ -845,12 +845,13 @@ function setWeather(type){
   if(type==='snow')log('Snow begins to fall.',[200,210,240]);
 }
 function updateLight(){
-  tod=((step+DAY*.3)%DAY)/DAY;
+  tod=dayLock>=0?dayLock:((step+DAY*.3)%DAY)/DAY;
   sunH=Math.sin((tod-.25)*Math.PI*2);
   light=smooth(-.28,.3,sunH);
 }
 function updateTimeWeather(){
   updateLight();
+  if(wxLock)WX.until=Math.max(WX.until,step+1);
   if(step>=WX.until){
     const sw=SEASON_WX[season()];let tot=0;for(const k of WT_KEYS)tot+=WTYPES[k].w*(sw[k]??1);
     let r=R()*tot,t='clear';for(const k of WT_KEYS){r-=WTYPES[k].w*(sw[k]??1);if(r<=0){t=k;break}}

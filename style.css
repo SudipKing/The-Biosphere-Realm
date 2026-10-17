@@ -46,6 +46,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .year{font-family:var(--pixel);font-size:20px;margin-left:auto;text-align:right}
 .chip{border:2px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 12px;cursor:pointer;font-weight:700;font-size:14px;white-space:nowrap}
 .chip:hover{border-color:var(--accent)}
+.chip.lock{padding:4px 7px;margin-left:-6px}
 .snd{border:2px solid var(--line);background:var(--panel);border-radius:10px;width:38px;height:36px;cursor:pointer;font-size:17px;position:relative}
 .snd[aria-pressed="false"]{opacity:.45}
 .snd[aria-pressed="false"]::after{content:"";position:absolute;left:8px;right:8px;top:50%;height:2px;background:var(--ink);transform:rotate(-35deg)}

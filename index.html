@@ -15,7 +15,9 @@
     <h1 class="brand">The Biosphere Realm <small>a living world in your hands</small></h1>
     <div class="year" id="year" aria-live="polite">Year 0</div>
     <button class="chip" id="clockBtn" title="Skip ahead to the next part of the day">🌅 Dawn</button>
+    <button class="chip lock" id="dayLockBtn" title="Hold the time of day, or let the days turn" aria-pressed="false" aria-label="Hold the time of day">🔓</button>
     <button class="chip" id="weatherBtn" title="Change the weather">☀️ Clear</button>
+    <button class="chip lock" id="wxLockBtn" title="Hold the weather, or let it change on its own" aria-pressed="false" aria-label="Hold the weather">🔓</button>
     <button class="chip" id="seasonBtn" title="Hold the world in one season, or let the seasons turn" aria-pressed="false">🔄 Seasons turn</button>
     <button class="chip" id="domainBtn" title="Show or hide the colour layer for each kingdom's domain" aria-pressed="true">🗺️ Domains</button>
     <div class="seg" role="group" aria-label="Time speed">
@@ -153,6 +155,7 @@
 <script src="src/architecture.js"></script>
 <script src="src/audio.js"></script>
 <script src="src/fauna.js"></script>
+<script src="src/powers.js"></script>
 <script src="src/render.js"></script>
 <script src="src/codex.js"></script>
 <script src="src/ui.js"></script>

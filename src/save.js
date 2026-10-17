@@ -49,7 +49,7 @@ function saveWorld(){
   for(const k in SAVE_ARRAYS)arrays[k]=toB64(L[k]);
   return {
     format:SAVE_FORMAT,version:SAVE_VERSION,W,H,savedAt:new Date().toISOString(),year:year(),
-    seedText:worldSeed,rng:rngS,salt:seed,step,uid,seasonLock,startFocus,story,lastDomains,ownDirty,landTiles,
+    seedText:worldSeed,rng:rngS,salt:seed,step,uid,seasonLock,dayLock,wxLock,startFocus,story,lastDomains,ownDirty,landTiles,
     WX:Object.assign({},WX),
     arrays,
     races:RACE_KEYS.filter(k=>RACES[k].uplift).map(k=>({key:k,def:RACES[k]})),
@@ -58,6 +58,8 @@ function saveWorld(){
     units:alive.map(plainUnit),
     boats:liveBoats.map(b=>Object.assign({},b,{pass:b.pass.map(plainUnit)})),
     ghosts:ghostsOf(alive.concat(...liveBoats.map(b=>b.pass))),
+    /* fires and lava are walked in the order they started (with random draws), so that order is kept */
+    fireOrder:[...fires],lavaOrder:[...lavas],
     wars,alliances,logs,volcanoes,monoliths,
     wfx:wfx.map(f=>f.o?Object.assign({},f,{o:bombKey(f.o)}):f),
     cam:{x:cx,y:cy,pz:cam.tpz/dpr},
@@ -116,13 +118,15 @@ function applyWorld(w){
   religions=w.religions;tribes=w.tribes;units=w.units;boats=w.boats;uid=w.uid;
   /* gods renamed in the Registry keep their names */
   for(const r of religions){const [p,s]=r.names;delete r.names;if(p)r.patron.name=p;if(r.second&&s)r.second.name=s}
-  worldSeed=String(o.seedText||'');rngS=o.rng|0;seed=o.salt|0;step=o.step|0;seasonLock=o.seasonLock??-1;
+  worldSeed=String(o.seedText||'');rngS=o.rng|0;seed=o.salt|0;step=o.step|0;seasonLock=o.seasonLock??-1;dayLock=typeof o.dayLock==='number'&&o.dayLock>=0&&o.dayLock<1?o.dayLock:-1;wxLock=!!o.wxLock;
   startFocus=o.startFocus||[W/2,H/2];if(o.story)story=Object.assign(newStory(),o.story);
   Object.assign(WX,o.WX||{});
   wars=o.wars||[];alliances=o.alliances||[];logs=o.logs||[];
   volcanoes.push(...(o.volcanoes||[]));monoliths.push(...(o.monoliths||[]));
   for(const f of o.wfx||[])if(f.type!=='delay'||BOMBS[f.o])wfx.push(f.o?Object.assign({},f,{o:BOMBS[f.o]}):f);
   Object.assign(LANG,o.lang||{});
+  for(const i of Array.isArray(o.fireOrder)?o.fireOrder:[])if(fire[i])fires.add(i);
+  for(const i of Array.isArray(o.lavaOrder)?o.lavaOrder:[])if(lava[i])lavas.add(i);
   for(let i=0;i<N;i++){if(fire[i])fires.add(i);if(lava[i])lavas.add(i);if(burnt[i]>step)burnSet.add(i)}
   updateLight();census();rebuildGrid();
   for(const T of tribes)if(!T.fx)T.fx=computeFx(T);

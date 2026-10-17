@@ -232,6 +232,7 @@ const TABS=[
     ['tstorm','⛈️','Thunderstorm','Tap to park a thunderstorm overhead. Lightning strikes again and again.'],
     ['acid','☣️','Acid rain','Tap for acid rain: it hurts every living thing, kills trees, eats homes and leaves wasteland.'],
     ...FAUNA_ITEMS.chaos,
+    ...POWER_ITEMS.chaos,
   ]},
   {ic:'✨',name:'Wonders & Oddities',items:[
     ['monolith',()=>monolithSprite(),'Monolith','Place a black monolith anywhere. Every 10 seconds its beam turns any animal or monster nearby into a brand-new sapient people, with its own kingdom, language and faith. Tap it again to remove it.'],
@@ -259,6 +260,7 @@ const TABS=[
     ['w_charm','💘','Charm','Animals and monsters nearby come to serve the closest kingdom. Charmed monsters fight its enemies.'],
     ['w_time','⏳','Hourglass','Tap to let a whole year pass in a blink.'],
     ...FAUNA_ITEMS.wonders,
+    ...POWER_ITEMS.wonders,
   ]},
 ];
 const PINNED=[
@@ -319,7 +321,19 @@ let speed=1,stepMs=2;const SPS=[0,20,60,180],SIM_BUDGET=10;
 const segBtns=document.querySelectorAll('.seg button');
 function setSpeed(s){speed=s;segBtns.forEach(b=>b.setAttribute('aria-pressed',+b.dataset.speed===s))}
 segBtns.forEach(b=>b.addEventListener('click',()=>setSpeed(+b.dataset.speed)));
-$('clockBtn').addEventListener('click',()=>{const target=Math.ceil((tod*4+.01))/4;let add=Math.round(((target-tod+1)%1)*DAY);step+=add;updateTimeWeather();toast(`Skipped ahead to ${phaseName().toLowerCase()}.`)});
+$('clockBtn').addEventListener('click',()=>{
+  const target=Math.ceil((tod*4+.01))/4;
+  if(dayLock>=0)dayLock=target%1;else{const add=Math.round(((target-tod+1)%1)*DAY);step+=add}
+  updateTimeWeather();toast(`${dayLock>=0?'Now held at':'Skipped ahead to'} ${phaseName().toLowerCase()}.`);renderHeader();
+});
+$('dayLockBtn').addEventListener('click',()=>{
+  dayLock=dayLock>=0?-1:tod;updateLight();renderHeader();
+  toast(dayLock>=0?`The sun stands still: always ${phaseName().toLowerCase()}. Tap the clock to pick another time.`:'The days turn again.');
+});
+$('wxLockBtn').addEventListener('click',()=>{
+  wxLock=!wxLock;renderHeader();
+  toast(wxLock?`The weather is held: ${WTYPES[WX.type].name.toLowerCase()} until you let it go. Tap the weather to pick another.`:'The weather changes on its own again.');
+});
 $('weatherBtn').addEventListener('click',()=>{const i=(WT_KEYS.indexOf(WX.type)+1)%WT_KEYS.length;setWeather(WT_KEYS[i]);toast(`The weather turns: ${WTYPES[WT_KEYS[i]].name.toLowerCase()}.`)});
 $('seasonBtn').addEventListener('click',()=>{
   seasonLock=seasonLock>=3?-1:seasonLock+1;
@@ -480,6 +494,7 @@ function renderHeader(){
   $('domainBtn').setAttribute('aria-pressed',showDomains);
   $('clockBtn').textContent=`${phaseIcon()} ${phaseName()}`;
   $('weatherBtn').textContent=`${WTYPES[WX.type].ic} ${WTYPES[WX.type].name}`;
+  for(const [id,on] of [['dayLockBtn',dayLock>=0],['wxLockBtn',wxLock]]){const b=$(id);b.textContent=on?'🔒':'🔓';b.setAttribute('aria-pressed',on)}
 }
 function renderPanel(force){
   renderHeader();

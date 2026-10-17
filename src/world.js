@@ -225,13 +225,14 @@ function morphAnimal(u,sp){
 const TAPS={
   meteor:p=>{if(inb(p.x|0,p.y|0)){effects.push({type:'meteor',x:p.x|0,y:p.y|0,t:0,dur:52});SFXQ.push({t:'boom',x:null,y:null})}},
   lightning:p=>strike(p),
-  grenade:p=>blast(p.x,p.y,BOMBS.grenade),bomb:p=>blast(p.x,p.y,BOMBS.bomb),
-  antimatter:p=>blast(p.x,p.y,BOMBS.antimatter),nuke:p=>blast(p.x,p.y,BOMBS.nuke),tsar:p=>blast(p.x,p.y,BOMBS.tsar),
-  molotov,laser,earthquake,volcano,flood,plague,
+  /* bombs fall out of the sky first (dropBomb, powers.js) and explode on landing */
+  grenade:p=>dropBomb(p,'grenade'),bomb:p=>dropBomb(p,'bomb'),
+  antimatter:p=>dropBomb(p,'antimatter'),nuke:p=>dropBomb(p,'nuke'),tsar:p=>dropBomb(p,'tsar'),
+  molotov:p=>dropBomb(p,null,'molotov'),laser,earthquake,volcano,flood,plague,
   /* new chaos, all of it ticking along in the simulation (see updateWorldFx) */
   tornado:p=>{wfx.push({type:'tornado',x:p.x,y:p.y,a:R()*6.28,until:step+320,r:1.8});log(`A tornado touched down ${nearTribeText(p.x|0,p.y|0)}.`,[170,170,190]);sfx('thunder',p.x|0,p.y|0)},
   blackhole:p=>{wfx.push({type:'hole',x:p.x,y:p.y,until:step+160,r:8});sfx('boom',p.x|0,p.y|0);log(`A black hole opened ${nearTribeText(p.x|0,p.y|0)}.`,[150,90,220])},
-  cluster:p=>{for(let k=0;k<7;k++)wfx.push({type:'delay',at:step+k*4+1,x:p.x+(R()-.5)*9,y:p.y+(R()-.5)*9,o:BOMBS.grenade});},
+  cluster:p=>{for(let k=0;k<7;k++)dropBomb({x:p.x+(R()-.5)*9,y:p.y+(R()-.5)*9},'grenade',null,k*4,k>0)},
   shower:p=>{for(let k=0;k<7;k++)effects.push({type:'meteor',x:clamp((p.x+(R()*20-10))|0,1,W-2),y:clamp((p.y+(R()*20-10))|0,1,H-2),t:-k*14,dur:52});SFXQ.push({t:'boom',x:null,y:null})},
   tstorm:p=>{wfx.push({type:'storm',x:p.x,y:p.y,until:step+200,next:step,r:9});setWeather('storm')},
   acid:p=>{wfx.push({type:'acid',x:p.x,y:p.y,until:step+260,r:6});log(`Acid rain fell ${nearTribeText(p.x|0,p.y|0)}.`,[140,210,80])},
@@ -511,6 +512,7 @@ function updateWorldFx(){
   for(let k=wfx.length-1;k>=0;k--){
     const f=wfx[k];
     if(f.type==='delay'){if(step>=f.at){blast(f.x,f.y,f.o);wfx.splice(k,1)}continue}
+    if(f.type==='fall'){if(step>=f.land){wfx.splice(k,1);landBomb(f)}continue}
     if(step>f.until){if(f.type==='hole')blast(f.x,f.y,{r:3.5,void:true,core:1,shake:14,dur:40,c:[150,90,220],dark:true,name:'The black hole',snd:'boom'});wfx.splice(k,1);continue}
     if(f.type==='tornado'){
       f.a+=(R()-.5)*.5;f.x+=Math.cos(f.a)*.09;f.y+=Math.sin(f.a)*.09;

@@ -23,6 +23,8 @@ const smooth=(a,b,v)=>{const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t)};
 
 let hgt,tree,fire,lava,bld,btype,burnt,bm,ore,oreAmt,btier,own,ownScore;
 let ownDirty=true,ovDirty=true,showDomains=true,seasonLock=-1;
+/* like the seasons, the time of day (dayLock: the held time of day 0..1, or -1) and the weather (wxLock) can be held */
+let dayLock=-1,wxLock=false;
 let units,tribes,religions,boats,fires,lavas,burnSet,step,logs,wars,alliances,effects,bList,bDirty,uid=1;
 let cnt={people:0,race:{},sp:{}};
 /* the storyteller: year a kingdom last rose or fell (sig fingerprints the kingdom count), earliest year it may act again, what it did */

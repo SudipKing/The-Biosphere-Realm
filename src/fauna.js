@@ -143,6 +143,100 @@ function faunaSprite(sp,fr,v,male){
       gr(g,2,0,5,1,c);gr(g,1,1,7,3,c);gr(g,0,4,9,5,c);gr(g,0,9,9,2,cd);
       const w=fr?[0,2,4,6,8]:[1,3,5,7];for(const x of w)gr(g,x,11,1,2,cd);
       gr(g,2,3,2,2,ey);gr(g,5,3,2,2,ey);gp(g,4,6,ey);gp(g,3,6,ey);gp(g,5,6,ey);gr(g,0,6,1,2,cd);gr(g,8,6,1,2,cd);break}
+/*SPR-BEGIN*/
+    /* ---- the wider bestiary ---- */
+    case'yak':{g=G(15,11);const b=v%2?[126,90,60]:[68,52,46],bd=sh(b,.62),bl=sh(b,1.4),hn=[236,226,196];
+      if(fr===0){gr(g,3,9,2,2,bd);gr(g,9,9,2,2,bd)}else{gr(g,4,9,2,2,bd);gr(g,8,9,2,2,bd)}
+      gr(g,2,2,10,6,b);gr(g,4,1,5,1,b);gr(g,4,2,6,1,bl);gr(g,3,3,2,1,bl);
+      gr(g,2,7,10,2,bd);for(const x of [2,4,6,8,10])gp(g,x,9,bd);gp(g,5,8,b);gp(g,9,8,b);
+      gp(g,1,3,bd);gp(g,1,4,bd);gp(g,1,5,bd);gp(g,0,5,bd);
+      gr(g,11,3,3,4,b);gr(g,13,4,2,3,bd);gp(g,14,6,CL.dark);gp(g,12,4,CL.eye);gp(g,11,3,bl);
+      gp(g,12,2,hn);gp(g,13,1,hn);gp(g,14,1,hn);gp(g,14,0,hn);gp(g,11,2,sh(hn,.8));break}
+    case'camel':{g=G(15,15);const c=[212,172,112],cd=[164,126,78],cl=[236,206,156];
+      const L=fr===0?[2,4,9,11]:[3,5,8,10];
+      for(const x of L)gr(g,x,10,1,5,cd);for(const x of L)gp(g,x,14,CL.dark);
+      gr(g,2,5,10,5,c);gr(g,2,9,10,1,cd);gell(g,4.5,4,2,1.8,c);gell(g,8.5,4,2,1.8,c);gp(g,4,3,cl);gp(g,8,3,cl);gr(g,3,6,6,1,cl);
+      gp(g,1,6,cd);gp(g,1,7,cd);gp(g,1,8,cd);gp(g,0,8,CL.dark);
+      gr(g,11,4,2,3,c);gr(g,11,2,2,3,c);gr(g,12,0,3,3,c);gr(g,14,1,1,2,cd);gp(g,14,2,cd);gp(g,13,0,CL.eye);gp(g,12,-1,cd);gp(g,12,0,cd);gp(g,13,3,cl);gp(g,11,4,cd);
+      gr(g,11,6,2,1,[176,70,70]);break}
+    case'duck':{g=G(8,7);const mal=v%2,b=mal?[150,124,96]:CL.white,bd=sh(b,.78),hd=mal?[36,124,76]:CL.white;
+      gell(g,3.5,4.4,3,1.9,b);gr(g,1,5,5,1,bd);gp(g,0,3,bd);gp(g,0,4,b);gp(g,3,3,bd);gp(g,4,3,bd);
+      gr(g,5,2,1,3,b);gr(g,5,1,2,2,hd);gp(g,5,3,mal?CL.white:b);gp(g,6,1,CL.eye);gp(g,7,2,[246,170,40]);gp(g,7,1,[246,170,40]);
+      if(fr===0){gp(g,3,6,[240,150,40]);gp(g,4,6,[240,150,40])}else{gp(g,2,6,[240,150,40]);gp(g,5,6,[240,150,40])}break}
+    case'gazelle':{g=G(12,13);const c=[206,154,94],cd=[150,100,58],st=[100,64,38];
+      if(fr===0){gr(g,2,8,1,5,cd);gr(g,4,8,1,5,cd);gr(g,7,8,1,5,cd);gr(g,9,9,1,4,cd)}else{gr(g,3,8,1,5,cd);gr(g,1,9,1,4,cd);gr(g,8,8,1,5,cd);gr(g,6,9,1,4,cd)}
+      gr(g,2,5,8,3,c);gr(g,3,6,6,1,st);gr(g,2,7,8,1,CL.white);gp(g,1,5,CL.white);gp(g,1,6,CL.white);gp(g,0,5,cd);
+      gr(g,9,3,2,3,c);gr(g,10,2,2,2,c);gp(g,11,3,CL.dark);gp(g,10,2,CL.eye);gp(g,11,4,CL.white);gp(g,9,4,CL.white);
+      gp(g,9,1,cd);gp(g,9,0,[60,44,36]);gp(g,10,1,[60,44,36]);gp(g,8,0,[60,44,36]);gp(g,10,0,[60,44,36]);gp(g,11,1,cd);break}
+    case'reindeer':{g=G(14,13);const c=[148,126,106],cd=[102,84,70],cl=[238,234,226],an=[214,196,158];
+      if(fr===0){gr(g,3,9,1,4,cd);gr(g,5,9,1,4,cd);gr(g,8,9,1,4,cd);gr(g,10,9,1,3,cd)}else{gr(g,4,9,1,4,cd);gr(g,3,9,1,3,cd);gr(g,9,9,1,4,cd);gr(g,7,9,1,3,cd)}
+      gr(g,2,5,9,4,c);gr(g,2,8,9,1,cd);gr(g,3,5,6,1,sh(c,1.15));gr(g,2,4,2,1,cl);gp(g,1,5,cl);gp(g,1,6,cl);
+      gr(g,9,3,3,4,cl);gr(g,10,2,3,3,c);gr(g,12,3,2,2,c);gp(g,13,4,CL.dark);gp(g,11,3,CL.eye);gp(g,10,1,cd);
+      gp(g,10,0,an);gp(g,9,1,an);gp(g,8,0,an);gp(g,11,0,an);gp(g,12,1,an);gp(g,13,0,an);gp(g,11,1,an);gp(g,7,1,an);break}
+    case'capybara':{g=G(11,7);const c=[156,110,68],cd=[112,76,46],cl=[190,146,98];
+      if(fr===0){gr(g,2,5,1,2,cd);gr(g,6,5,1,2,cd)}else{gr(g,3,5,1,2,cd);gr(g,5,5,1,2,cd)}
+      gr(g,1,2,7,3,c);gr(g,1,4,7,1,cd);gr(g,2,2,5,1,cl);gp(g,0,3,cd);
+      gr(g,7,2,3,3,c);gr(g,9,3,2,2,cd);gp(g,10,3,CL.dark);gp(g,8,2,CL.eye);gp(g,7,1,cd);gp(g,8,1,cd);gp(g,10,5,cd);break}
+    case'otter':{g=G(12,6);const c=[112,82,58],cd=[78,56,40],cl=[226,206,164];
+      if(fr===0){gp(g,3,5,cd);gp(g,7,5,cd)}else{gp(g,4,5,cd);gp(g,6,5,cd);gp(g,3,4,cd)}
+      gr(g,3,2,6,3,c);gr(g,3,4,6,1,cl);gr(g,3,2,6,1,sh(c,1.2));
+      gr(g,0,3,3,2,cd);gp(g,0,4,cd);gp(g,1,2,cd);
+      gr(g,8,1,3,3,c);gr(g,10,2,2,2,cl);gp(g,11,2,CL.dark);gp(g,9,1,CL.eye);gp(g,8,0,cd);gp(g,10,3,[240,240,240]);break}
+    case'hippo':{g=G(17,10);const c=[132,118,140],cd=[92,80,104],cl=[168,152,176],pk=[226,150,164];
+      if(fr===0){gr(g,3,7,3,3,cd);gr(g,10,7,3,3,cd)}else{gr(g,4,7,3,3,cd);gr(g,9,7,3,3,cd)}
+      gr(g,2,2,11,6,c);gr(g,2,7,11,1,pk);gr(g,3,2,7,1,cl);gr(g,2,6,11,1,cd);gp(g,1,3,cd);gp(g,1,4,cd);
+      gr(g,11,1,5,6,c);gr(g,13,0,2,1,c);gr(g,12,1,1,1,pk);gr(g,15,2,2,5,cl);gr(g,13,6,4,1,pk);gp(g,15,6,CL.tusk);gp(g,13,6,CL.tusk);
+      gp(g,13,2,CL.eye);gp(g,11,0,c);gp(g,12,0,pk);gp(g,16,3,cd);gp(g,15,3,cd);break}
+    case'lion':{g=G(15,10);const c=[216,170,88],cd=[160,116,56],cl=[240,214,156],mn=[116,68,34],mn2=[84,48,26];
+      if(fr===0){gr(g,3,6,1,4,cd);gr(g,5,7,1,3,cd);gr(g,9,6,1,4,cd);gr(g,11,7,1,3,cd)}else{gr(g,4,6,1,4,cd);gr(g,3,7,1,3,cd);gr(g,10,6,1,4,cd);gr(g,9,7,1,3,cd)}
+      gr(g,2,3,9,4,c);gr(g,2,6,9,1,cd);gr(g,4,3,5,1,sh(c,1.12));gr(g,3,6,7,1,cl);
+      gp(g,1,3,cd);gp(g,0,4,cd);gp(g,0,5,cd);gp(g,0,6,cd);gp(g,0,7,mn2);
+      if(male){gell(g,10,4.3,3.2,3.2,mn);gr(g,8,2,2,5,mn2);gr(g,9,6,3,1,mn2);gr(g,11,3,3,3,c);gp(g,13,5,CL.dark);gp(g,12,3,CL.eye);gp(g,10,1,mn);gp(g,11,1,mn);gp(g,12,2,c);gr(g,12,5,2,1,cl)}
+      else{gr(g,10,2,3,4,c);gr(g,12,3,3,3,c);gr(g,13,5,2,1,cl);gp(g,14,4,CL.dark);gp(g,12,3,CL.eye);gp(g,10,1,cd);gp(g,12,1,cd);gp(g,11,1,c);gp(g,10,2,cd)}break}
+    case'tiger':{g=G(15,9);const c=[228,128,40],cd=[150,76,24],bk=[34,28,30],wh=[246,240,226];
+      if(fr===0){gr(g,3,5,1,4,cd);gr(g,5,6,1,3,cd);gr(g,9,5,1,4,cd);gr(g,11,6,1,3,cd)}else{gr(g,4,5,1,4,cd);gr(g,3,6,1,3,cd);gr(g,10,5,1,4,cd);gr(g,9,6,1,3,cd)}
+      gr(g,2,2,9,4,c);gr(g,2,5,9,1,wh);gr(g,3,2,6,1,sh(c,1.12));
+      for(const x of [3,5,7,9]){gp(g,x,2,bk);gp(g,x,3,bk);gp(g,x-(x%2),4,bk)}
+      gp(g,1,3,c);gp(g,0,4,c);gp(g,0,5,c);gp(g,1,6,c);gp(g,0,6,bk);gp(g,0,3,bk);
+      gr(g,10,1,3,4,c);gr(g,12,2,3,3,c);gr(g,13,4,2,1,wh);gp(g,14,3,CL.dark);gp(g,12,2,[250,230,60]);gp(g,10,0,c);gp(g,12,0,c);gp(g,11,2,bk);gp(g,12,4,bk);gp(g,11,0,bk);break}
+    case'lynx':{g=G(11,8);const c=[190,162,120],cd=[128,102,70],cl=[238,226,200],bk=[34,30,32];
+      if(fr===0){gr(g,2,5,1,3,cd);gr(g,4,5,1,3,cd);gr(g,6,5,1,3,cd);gr(g,8,5,1,3,cd)}else{gr(g,3,5,1,3,cd);gr(g,2,6,1,2,cd);gr(g,7,5,1,3,cd);gr(g,6,6,1,2,cd)}
+      gr(g,2,3,7,3,c);gr(g,2,5,7,1,cl);gp(g,4,3,cd);gp(g,6,4,cd);gp(g,3,4,cd);gp(g,5,3,cd);
+      gp(g,1,4,cd);gp(g,0,4,bk);gp(g,1,5,cd);
+      gr(g,8,2,3,3,c);gp(g,10,3,CL.dark);gp(g,10,4,cl);gp(g,9,2,[240,200,70]);gp(g,8,1,bk);gp(g,10,1,bk);gp(g,8,2,c);gp(g,9,4,cl);gp(g,8,0,bk);gp(g,10,0,bk);break}
+    case'mongoose':{g=G(11,6);const c=[134,114,92],cd=[92,76,60],cl=[196,176,148];
+      if(fr===0){gr(g,3,4,1,2,cd);gr(g,6,4,1,2,cd)}else{gr(g,4,4,1,2,cd);gr(g,5,4,1,2,cd);gp(g,3,5,cd)}
+      gr(g,2,2,6,3,c);gr(g,2,4,6,1,cl);gp(g,4,2,cd);gp(g,6,3,cd);gr(g,0,3,2,1,cd);gp(g,0,2,cd);gp(g,0,4,cd);
+      gr(g,7,1,3,3,c);gr(g,9,2,2,2,cl);gp(g,10,3,CL.dark);gp(g,8,1,CL.eye);gp(g,7,0,cd);gp(g,8,0,cd);break}
+    case'seagull':{g=G(11,8);const w=CL.white,gy=[160,170,188],gd=[110,120,140];
+      gr(g,3,3,5,3,w);gr(g,2,4,2,1,w);gp(g,1,4,gy);gp(g,0,4,gd);gr(g,3,5,5,1,[218,224,234]);
+      gr(g,7,2,3,2,w);gp(g,9,2,CL.eye);gr(g,10,3,1,1,[250,190,50]);gp(g,10,4,[250,190,50]);gp(g,7,4,w);
+      if(fr===0){gr(g,2,0,4,3,gy);gp(g,1,0,gd);gp(g,2,1,gd);gp(g,5,1,w)}else{gr(g,1,5,5,2,gy);gp(g,0,6,gd);gp(g,1,5,gd);gp(g,3,6,gd)}break}
+    case'parrot':{g=G(9,10);const cs=[[222,46,42],[70,170,96],[60,112,214]],c=cs[v%3],cd=sh(c,.66),by=[250,204,54],bl=[60,110,220];
+      gr(g,2,0,2,2,cd);gp(g,3,1,cd);gr(g,3,2,3,3,c);gr(g,2,4,3,4,c);gr(g,1,6,3,3,cd);gr(g,2,8,2,2,by);gp(g,1,9,bl);gp(g,0,9,bl);
+      gr(g,3,3,2,1,CL.white);gp(g,4,2,CL.eye);gp(g,5,2,CL.white);gr(g,5,3,2,2,[236,230,206]);gp(g,6,4,CL.dark);gp(g,6,3,[236,230,206]);
+      if(fr===0){gr(g,3,5,2,3,by);gp(g,3,7,bl);gp(g,4,7,bl)}else{gr(g,3,4,3,3,by);gp(g,5,6,bl);gp(g,4,7,bl);gp(g,3,6,bl)}
+      gp(g,3,8,[220,170,60]);gp(g,3,9,[220,170,60]);break}
+    case'troll':{g=G(16,19);const sk=[116,132,142],sd=[78,94,106],mo=[92,142,70],ls=[102,82,62];
+      if(fr===0){gr(g,4,14,3,5,sd);gr(g,9,14,3,5,sd);gr(g,3,18,4,1,CL.stoneD);gr(g,9,18,4,1,CL.stoneD)}else{gr(g,5,14,5,5,sd);gr(g,4,18,7,1,CL.stoneD)}
+      gr(g,3,6,10,8,sk);gr(g,3,6,3,8,sd);gr(g,10,7,2,5,sh(sk,1.15));gr(g,3,12,10,2,ls);gp(g,8,12,CL.gold);
+      gr(g,3,6,5,2,mo);gp(g,9,6,mo);gp(g,5,8,mo);gp(g,4,9,mo);gp(g,11,9,mo);
+      gr(g,0,7,3,8,sk);gr(g,13,7,3,8,sk);gr(g,0,13,3,3,sd);gr(g,13,13,3,3,sd);gp(g,1,8,mo);
+      gr(g,4,1,8,6,sk);gr(g,4,1,8,1,sd);gr(g,5,0,3,1,mo);gp(g,9,0,CL.stoneL);gp(g,10,0,sd);
+      gr(g,5,3,2,1,[250,220,70]);gr(g,9,3,2,1,[250,220,70]);gp(g,6,3,CL.dark);gp(g,10,3,CL.dark);gp(g,8,3,sd);gr(g,5,5,6,2,sd);gp(g,5,4,CL.tusk);gp(g,10,4,CL.tusk);gp(g,6,5,CL.tusk);gp(g,9,5,CL.tusk);break}
+    case'basilisk':{g=G(17,9);const c=[126,158,62],cd=[78,104,44],cl=[210,220,120],cr=[236,200,44];
+      if(fr===0){gr(g,4,6,2,3,cd);gr(g,10,6,2,3,cd);gp(g,3,8,cd);gp(g,12,8,cd)}else{gr(g,5,6,2,3,cd);gr(g,9,6,2,3,cd);gp(g,6,8,cd);gp(g,8,8,cd)}
+      gr(g,3,3,9,4,c);gr(g,3,6,9,1,cl);for(let x=4;x<12;x+=2){gp(g,x,3,cd);gp(g,x,2,cr)}gr(g,2,4,2,2,c);gr(g,0,5,3,1,c);gp(g,0,6,cd);gp(g,1,5,cd);gp(g,2,4,cd);
+      gr(g,11,2,4,4,c);gr(g,14,3,3,2,c);gr(g,14,5,3,1,cl);gp(g,12,1,cr);gp(g,13,1,cr);gp(g,11,1,cr);gp(g,13,2,[255,60,40]);gp(g,14,2,[255,240,90]);gp(g,16,3,CL.dark);gp(g,15,5,CL.white);break}
+    case'thunderbird':{g=G(20,15);const d1=[40,48,88],d2=[70,86,150],d3=[22,26,52],yl=[255,226,70],bk=[244,190,40];
+      gr(g,7,6,7,3,d1);gr(g,7,6,7,1,d2);gr(g,8,9,4,1,d3);gr(g,1,7,6,2,d3);gr(g,0,8,3,2,d1);gp(g,0,7,yl);gp(g,1,9,yl);
+      gr(g,14,4,3,3,d1);gr(g,13,5,2,3,d1);gr(g,17,5,2,1,bk);gp(g,18,6,bk);gp(g,15,4,yl);gp(g,16,4,CL.white);gp(g,14,3,yl);gp(g,13,3,d3);
+      gp(g,9,9,yl);gp(g,11,9,yl);gp(g,9,10,bk);gp(g,11,10,bk);
+      for(let x=3;x<=12;x++){
+        if(fr===0){const t=Math.max(0,5-Math.round((12-x)*.6)-(x<8?1:0));gr(g,x,t,1,6-t,x%3===0?d2:d1);gp(g,x,t,d3);if(x%3===1)gp(g,x,t+2,yl)}
+        else{const b=Math.min(14,9+Math.round((12-x)*.6)+(x<8?1:0));gr(g,x,8,1,b-8+1,x%3===0?d2:d1);gp(g,x,b,d3);if(x%3===1)gp(g,x,b-2,yl)}
+      }break}
+/*SPR-END*/
   }
   if(!g)g=G(6,6),gr(g,1,1,4,4,[255,0,255]);
   return g;
@@ -176,6 +270,25 @@ Object.assign(CALLS,{
   maneater:(o,t)=>{vox(o,t,{type:'sawtooth',f0:150,f1:90,d:.5,a:.02,vib:40,vd:.2,ft:'lowpass',ff:500,p:.5});noiseHit(o,'bandpass',1400,900,3,t+.05,.002,.1,.3)},
   sandworm:(o,t)=>{vox(o,t,{type:'sawtooth',f0:70,mid:120,f1:50,d:1.6,a:.2,vib:7,vd:.1,ft:'lowpass',ff:400,q:2,p:.7});noiseHit(o,'bandpass',900,200,1,t,.2,1.4,.4)},
   ghost:(o,t)=>vox(o,t,{type:'sine',f0:420,mid:700,f1:300,d:1.8,a:.4,vib:5,vd:.1,ft:'bandpass',ff:900,q:4,p:.22}),
+/*CALLS-BEGIN*/
+  yak:(o,t)=>{vox(o,t,{type:'sawtooth',f0:90,f1:74,d:.7,a:.1,vib:25,vd:.1,ft:'lowpass',ff:360,q:2,p:.5});noiseHit(o,'lowpass',400,200,1,t,.05,.4,.12)},
+  camel:(o,t)=>vox(o,t,{type:'sawtooth',f0:150,mid:210,f1:120,d:.9,a:.08,vib:30,vd:.12,ft:'bandpass',ff:520,q:2.5,p:.38}),
+  duck:(o,t)=>{for(const k of [0,.14,.28])vox(o,t+k,{type:'square',f0:520,f1:400,d:.08,ff:900,q:4,p:.24})},
+  gazelle:(o,t)=>vox(o,t,{type:'triangle',f0:880,mid:1000,f1:760,d:.18,a:.01,vib:40,vd:.05,ff:1800,q:2,p:.18}),
+  reindeer:(o,t)=>{vox(o,t,{type:'sawtooth',f0:130,f1:100,d:.28,a:.02,ft:'lowpass',ff:520,q:2,p:.35});vox(o,t+.3,{type:'sawtooth',f0:140,f1:95,d:.22,a:.02,ft:'lowpass',ff:500,q:2,p:.3})},
+  capybara:(o,t)=>{for(const k of [0,.08,.16])osc(o,'sine',1600+k*1500,2300+k*900,t+k,.004,.05,.08)},
+  otter:(o,t)=>{for(let k=0;k<3;k++)vox(o,t+k*.09,{type:'square',f0:1500+k*160,f1:2300,d:.06,ff:2600,q:4,p:.16})},
+  hippo:(o,t)=>{for(const k of [0,.2,.4])vox(o,t+k,{type:'sawtooth',f0:78,f1:58,d:.16,a:.01,vib:30,vd:.15,ft:'lowpass',ff:280,q:2,p:.5});noiseHit(o,'lowpass',300,150,1,t,.1,.5,.18)},
+  lion:(o,t)=>{vox(o,t,{type:'sawtooth',f0:86,mid:130,f1:44,d:1.5,a:.2,vib:15,vd:.1,ft:'lowpass',ff:480,q:2.5,p:.62});noiseHit(o,'bandpass',500,200,1,t,.15,1.2,.25)},
+  tiger:(o,t)=>{vox(o,t,{type:'sawtooth',f0:120,mid:180,f1:80,d:.9,a:.05,vib:34,vd:.12,ft:'lowpass',ff:620,q:2,p:.55});noiseHit(o,'bandpass',900,400,1.5,t,.05,.7,.25)},
+  lynx:(o,t)=>{vox(o,t,{type:'sawtooth',f0:640,mid:900,f1:520,d:.5,a:.03,vib:12,vd:.08,ff:1400,q:3,p:.25});vox(o,t+.5,{type:'sawtooth',f0:620,f1:480,d:.3,ff:1300,q:3,p:.18})},
+  mongoose:(o,t)=>{for(let k=0;k<5;k++)vox(o,t+k*.06,{type:'sawtooth',f0:900-k*50,f1:700,d:.05,ff:1900,q:3,p:.16})},
+  seagull:(o,t)=>{vox(o,t,{type:'sawtooth',f0:900,mid:1500,f1:760,d:.3,a:.02,vib:18,vd:.06,ff:2200,q:2,p:.24});vox(o,t+.3,{type:'sawtooth',f0:1300,f1:800,d:.25,ff:2000,q:2,p:.2})},
+  parrot:(o,t)=>{vox(o,t,{type:'sawtooth',f0:1000,mid:1900,f1:1100,d:.2,a:.01,vib:25,vd:.06,ff:2600,q:2.5,p:.22});vox(o,t+.22,{type:'square',f0:1500,f1:2200,d:.12,ff:3000,q:3,p:.16})},
+  troll:(o,t)=>{vox(o,t,{type:'sawtooth',f0:72,mid:100,f1:46,d:1.3,a:.15,vib:9,vd:.12,ft:'lowpass',ff:360,q:3,p:.66});noiseHit(o,'lowpass',400,120,1,t+.1,.05,.8,.35)},
+  basilisk:(o,t)=>{noiseHit(o,'highpass',3600,2200,1.5,t,.15,.9,.28);vox(o,t,{type:'sawtooth',f0:200,f1:130,d:.7,a:.1,vib:60,vd:.15,ft:'bandpass',ff:800,q:4,p:.25})},
+  thunderbird:(o,t)=>{vox(o,t,{type:'sawtooth',f0:1100,mid:1700,f1:600,d:.9,a:.03,vib:14,vd:.08,ff:2400,q:2,p:.3});noiseHit(o,'lowpass',2000,200,1,t+.15,.002,.7,.5);osc(o,'sine',90,40,t+.15,.01,.6,.4)},
+/*CALLS-END*/
 });
 
 /* ---------- habitats: where each creature starts and where it wanders back in from ----------
@@ -196,6 +309,22 @@ const FHAB={
   scorpion:[2,1,j=>bm[j]===BM.WASTE||bio(hgt[j])===2],
   bee:[4,2,j=>fertile(j)],
   butterfly:[4,2,j=>fertile(j)],
+/*FHAB-BEGIN*/
+  yak:[2,3,j=>bio(hgt[j])===5||(bio(hgt[j])===4&&ringFind(j%W,(j/W)|0,4,k=>bio(hgt[k])===5)>=0)],
+  camel:[2,2,j=>bm[j]===BM.WASTE||bm[j]===BM.SAV||bio(hgt[j])===2],
+  duck:[3,3,j=>bio(hgt[j])===2||bio(hgt[j])===1],
+  gazelle:[3,4,j=>bm[j]===BM.SAV||(fertile(j)&&bio(hgt[j])===3)],
+  reindeer:[2,3,j=>bio(hgt[j])===5||(bio(hgt[j])===4&&ringFind(j%W,(j/W)|0,4,k=>bio(hgt[k])===5)>=0)],
+  capybara:[3,2,j=>bio(hgt[j])===2||(bio(hgt[j])===3&&ringFind(j%W,(j/W)|0,3,k=>bio(hgt[k])<=1)>=0)],
+  otter:[3,2,j=>bio(hgt[j])===2],
+  hippo:[1,2,j=>bio(hgt[j])===2||bio(hgt[j])===1],
+  lion:[1,2,j=>bm[j]===BM.SAV||fertile(j)],
+  tiger:[1,1,j=>bm[j]===BM.JUNGLE||bm[j]===BM.FOREST||(fertile(j)&&tree[j]>0)],
+  lynx:[2,1,j=>bio(hgt[j])===4||(fertile(j)&&tree[j]>0)],
+  mongoose:[2,2,j=>bm[j]===BM.SAV||bm[j]===BM.WASTE||fertile(j)],
+  seagull:[3,3,j=>bio(hgt[j])===2],
+  parrot:[2,3,j=>bm[j]===BM.JUNGLE||(fertile(j)&&tree[j]>0)],
+/*FHAB-END*/
 };
 function genFauna(herd){for(const sp in FHAB){const h=FHAB[sp];herd(sp,h[0],h[1],h[2])}}
 function faunaYear(){
@@ -293,6 +422,38 @@ const FAUNA={
     if(u.target)chase(u,.012,u.dmg,1.5);
     return true;
   },
+/*ACT-BEGIN*/
+  troll(u){
+    /* wounds knit shut almost as fast as they open */
+    if(u.hp<u.maxhp&&(step+u.id)%5===0)u.hp=Math.min(u.maxhp,u.hp+.5);
+    return false;
+  },
+  basilisk(u){
+    /* its stare locks the hunted rigid for a moment while it closes in */
+    if(u.target&&(step+u.id)%36===0){
+      const t=u.target;
+      if(!(t.frozen>step)&&Math.hypot(t.x-u.x,t.y-u.y)<5){
+        t.frozen=step+70;t.moving=false;
+        effects.push({type:'rite',x:t.x,y:t.y,c:[190,190,150],t:0,dur:22});sfx('cry',u.x,u.y,'basilisk');
+      }
+    }
+    return false;
+  },
+  thunderbird(u){
+    /* hurls a bolt of lightning from the sky at whatever it hunts */
+    if(u.target&&--u.fcd<=0){
+      const t=u.target,d=Math.hypot(t.x-u.x,t.y-u.y);
+      if(d<8){
+        u.fcd=60+((R()*50)|0);
+        const px=t.x+(R()-.5)*3,py=t.y-14,pts=[];
+        for(let k=0;k<=6;k++){const q=k/6;pts.push([px+(t.x-px)*q+(k&&k<6?(R()-.5)*2.4:0),py+(t.y-py)*q])}
+        effects.push({type:'bolt',pts,t:0,dur:12});
+        ignite(tileOf(t),true);hit(t,u.dmg*1.4,u);sfx('thunder',t.x,t.y);
+      }else u.fcd=0;
+    }
+    return false;
+  },
+/*ACT-END*/
 };
 
 /* ---------- lasting effects of the extra powers (called from updateWorldFx, drawn by drawWorldFx through FXDRAW) ---------- */
@@ -371,9 +532,10 @@ const ox2=(wx,X,fx,tz)=>X+(wx-fx)*tz,oy2=(wy,Y,fy,tz)=>Y+(wy-fy)*tz;
 function faunaBiome(i,b){
   const r=R();
   switch(b){
-    case BM.JUNGLE:if(r<.0035)spawnMon('monkey',i);else if(r<.0042)spawnMon('maneater',i);break;
-    case BM.SAV:if(r<.0014)spawnMon('hyena',i);else if(r<.0018)spawnMon('rhino',i);break;
-    case BM.WASTE:if(r<.003)spawnMon('scorpion',i);else if(r<.0033)spawnMon('sandworm',i);break;
+    case BM.JUNGLE:if(r<.0035)spawnMon('monkey',i);else if(r<.0042)spawnMon('maneater',i);else if(r<.0046)spawnMon('parrot',i);else if(r<.0049)spawnMon('basilisk',i);else if(r<.0051)spawnMon('tiger',i);break;
+    case BM.SAV:if(r<.0014)spawnMon('hyena',i);else if(r<.0018)spawnMon('rhino',i);else if(r<.0026)spawnMon('gazelle',i);else if(r<.0028)spawnMon('lion',i);break;
+    case BM.WASTE:if(r<.003)spawnMon('scorpion',i);else if(r<.0033)spawnMon('sandworm',i);else if(r<.0036)spawnMon('basilisk',i);else if(r<.0042)spawnMon('mongoose',i);break;
+    case BM.ROCK:if(r<.0006)spawnMon('troll',i);else if(r<.0012)spawnMon('lynx',i);break;
     case BM.CRYS:if(r<.0006)spawnMon('golem',i);break;
     case BM.FOREST:if(r<.003)spawnMon('raccoon',i);else if(r<.0033)spawnMon('treant',i);break;
     case BM.FLOWER:case BM.CLOVER:if(r<.005)spawnMon(r<.0025?'bee':'butterfly',i);else if(r<.0053)spawnMon('unicorn',i);break;
@@ -384,6 +546,10 @@ function faunaBiome(i,b){
 }
 /* the dead are restless at night: skeletons and ghosts rise from ruins (called every step from updateWorldFx) */
 function faunaWorld(){
+  /* thunderbirds ride in on big storms */
+  if(step%300===151&&WX.storm>.45&&units.length<1400&&(cnt.sp.thunderbird||0)<SPECIES.thunderbird.cap&&R()<.3){
+    const i=randomLand(j=>bio(hgt[j])>=4,200);if(i>=0)spawnMon('thunderbird',i);
+  }
   if(step%240!==97||!isNight()||units.length>1400)return;
   let pick1=-1,n=0;
   for(let i=0;i<N;i++)if(bld[i]===-2&&R()<1/(++n))pick1=i;

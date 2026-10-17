@@ -100,10 +100,18 @@ Kingdoms research (more people, teachers and a great hall make it faster) and di
 - **Immigrants.** Tap inside another people's kingdom with a people tool to send settlers to live among them (an elf in an orc horde). They keep their race, work in the kingdom and can have mixed children.
 - **Villages.** Growing kingdoms send settlers overland or by ship to found new villages. A village is its own settlement with its own name, homes and people, but it stays part of the kingdom: same colour, same stores, same domain. Only the capital has the great hall and temple. Empty villages are abandoned, and the capital sends families to villages that are struggling.
 
+### More powers and creatures
+
+- **Bombs fall from the sky.** Every bomb whistles down from above, its shadow growing on the ground, before it explodes. New: carpet bombing.
+- **New chaos:** sinkhole, lava fissure, locust swarm, firestorm, rain of frogs, decay wave, gravity flip.
+- **New wonders:** the lifting magnet (drag to pick up any creature or person; a bigger brush means a wider reach; let go to drop them), rainbow, golden harvest, healing spring, forest bloom, beacon, aurora, crystal bloom, ancient tree.
+- **New animals:** yak, camel and duck livestock; gazelle, reindeer and capybara; otter, hippo, lion, tiger, lynx and mongoose; seagulls and parrots; and the troll, the basilisk (its stare freezes) and the thunderbird (it rides storms and calls lightning).
+- **Revolts.** When a kingdom with villages revolts, one village breaks away whole and becomes a kingdom of its own, named after it.
+
 ### Seasons and domains
 
-- The **Seasons** button in the header holds the world in one season, or lets them turn. A change of season dissolves across the whole map at once (no sweep), recoloring land, trees and sea, and shifting the weather.
-- The **Domains** button shows a colour layer for each kingdom with crisp borders. Every tile has exactly one owner, a kingdom cannot found itself or build on another kingdom's land (unless the two are at war), and the side panel shows each kingdom's share of the world.
+- The **Seasons** button in the header holds the world in one season, or lets them turn. The 🔓 lock beside the clock holds the time of day (tap the clock to pick another), and the lock beside the weather holds the weather. A change of season dissolves across the whole map at once (no sweep), recoloring land, trees and sea, and shifting the weather.
+- The **Domains** button shows a colour layer for each kingdom with crisp borders, bold when zoomed out and fading as you zoom in. Every tile has exactly one owner, a kingdom cannot found itself or build on another kingdom's land (unless the two are at war), and the side panel shows each kingdom's share of the world.
 
 ## Panels
 

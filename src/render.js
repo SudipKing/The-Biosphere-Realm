@@ -130,7 +130,7 @@ function buildOverlay(){
     }
     ovBox[0]=W;ovBox[1]=H;ovBox[2]=ovBox[3]=-1;ovFull=false;
     ovJob={px0:tx0*OVS,px1:(tx1+1)*OVS,py0:ty0*OVS,py1:(ty1+1)*OVS,y:ty0*OVS,
-      cols:tribes.map(T=>[packRGBA(T.color[0],T.color[1],T.color[2],70),packRGBA(T.color[0]*.78|0,T.color[1]*.78|0,T.color[2]*.78|0,230)])};
+      cols:tribes.map(T=>[packRGBA(T.color[0],T.color[1],T.color[2],150),packRGBA(T.color[0]*.78|0,T.color[1]*.78|0,T.color[2]*.78|0,250)])};
   }
   const J=ovJob,t0=performance.now();let first=-1,last=-1;
   while(J.y<J.py1){
@@ -146,13 +146,15 @@ function buildOverlay(){
   if(first>=0)ovX.putImageData(ovImg,0,0,J.px0,first,J.px1-J.px0,last-first+1);
 }
 
-/* the visible part of the domain colour layer, scaled onto the map */
+/* the visible part of the domain colour layer, scaled onto the map. It is bold when zoomed out, so the map reads as
+   a political map, and fades as you zoom in so villages and people show through */
+function domainAlpha(tz){const z=tz/TS/dpr;return z<=.8?1:z>=4?.3:1-.7*Math.log(z/.8)/Math.log(5)}
 function drawDomains(ox,oy,tz){
   const vx0=clamp(Math.floor(-ox/tz)-1,0,W),vx1=clamp(Math.ceil((cw-ox)/tz)+1,0,W),vy0=clamp(Math.floor(-oy/tz)-1,0,H),vy1=clamp(Math.ceil((ch-oy)/tz)+1,0,H);
   if(vx1<=vx0||vy1<=vy0)return;
-  ctx.imageSmoothingEnabled=true;
+  ctx.globalAlpha=domainAlpha(tz);ctx.imageSmoothingEnabled=true;
   ctx.drawImage(ovC,vx0*OVS,vy0*OVS,(vx1-vx0)*OVS,(vy1-vy0)*OVS,Math.round(ox+vx0*tz),Math.round(oy+vy0*tz),Math.round((vx1-vx0)*tz),Math.round((vy1-vy0)*tz));
-  ctx.imageSmoothingEnabled=false;
+  ctx.imageSmoothingEnabled=false;ctx.globalAlpha=1;
 }
 
 /* ambient life that isn't simulated: birds, fish, fireflies */
