@@ -238,7 +238,7 @@ const TABS=[
     ['rain','🌧️','Rain','Drag to put out fires, cool lava and help forests grow back.'],
     ['lightning','⚡','Lightning','Tap to strike. Kills whatever it hits and sets the ground alight.'],
     ['fire','🔥','Fire','Drag to start fires. Forests and houses burn fast.'],
-    ['earthquake','🏚️','Earthquake','Tap to shake the ground: buildings collapse and the land buckles.'],
+    ['earthquake','🏚️','Earthquake','Tap to split the ground along a fault for several seconds: buildings collapse, one side rises and the other sinks. In deep ocean it can raise new islands; near the coast it can drown the land.'],
     ['volcano','🌋','Volcano','Tap to raise a volcano that spews lava for years.'],
     ['flood','💧','Flood','Tap to drown the land in a great flood.'],
     ['plague','🦠','Plague','Tap near a kingdom: a plague sweeps it and some of the dead rise as zombies.'],

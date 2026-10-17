@@ -497,6 +497,37 @@ const WFX2={
   },
 };
 const FXDRAW={
+  quake(f,X,Y,tz,pz){
+    const T=f.until-f.at,t=Math.max(0,Math.min(1,(step-f.at+alpha)/T)),R0=tz*f.r,env=t<.1?t/.1:Math.max(0,1-(t-.1)/.9);
+    /* ground darkening and shockwave rings */
+    const g=ctx.createRadialGradient(X,Y,0,X,Y,R0*.8);g.addColorStop(0,`rgba(60,40,25,${.4*env})`);g.addColorStop(1,'rgba(60,40,25,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(X,Y,R0*.8,0,7);ctx.fill();
+    ctx.lineWidth=Math.max(2,tz*.35);
+    for(let k=0;k<4;k++){const q=t*2.4-k*.28;if(q<=0||q>=1)continue;ctx.strokeStyle=`rgba(210,180,130,${.7*(1-q)})`;ctx.beginPath();ctx.arc(X,Y,R0*(.1+q*.95),0,7);ctx.stroke()}
+    /* fissures: the main fault plus radial cracks, jagged and growing */
+    const grow=Math.min(1,t*4),seed=f.s;
+    const crack=(a,len,w,id)=>{
+      const n=14,L=len*grow;let px=X,py=Y,ca=a;ctx.beginPath();ctx.moveTo(px,py);
+      for(let k=1;k<=n;k++){ca+=(hash(k*7+seed,id)-.5)*.9;const sl=L/n;px+=Math.cos(ca)*sl;py+=Math.sin(ca)*sl;ctx.lineTo(px,py)}
+      ctx.strokeStyle=`rgba(20,10,5,${.9*Math.min(1,env*1.6)})`;ctx.lineWidth=w;ctx.stroke();
+      ctx.strokeStyle=`rgba(255,150,60,${.35*env})`;ctx.lineWidth=Math.max(1,w*.35);ctx.stroke();
+    };
+    const cw0=Math.max(2,tz*.42);
+    crack(f.a,R0*.95,cw0*1.4,1);crack(f.a+Math.PI,R0*.95,cw0*1.4,2);
+    for(let k=0;k<7;k++){const a=f.a+.5+k*.9+hash(k,seed)*.4;crack(a,R0*(.35+hash(k+3,seed)*.4),cw0*.7,k+10)}
+    /* dust plumes and flying debris (visual only, a pure function of time) */
+    for(let k=0;k<22;k++){
+      const h=hash(k,seed+11),a=h*6.28,d=Math.sqrt(hash(k,seed+5))*R0*.9,life=((t*3+hash(k,seed+2)*2)%1.2);if(life>1)continue;
+      const px=X+Math.cos(a)*d,py=Y+Math.sin(a)*d*.8-life*tz*3,r=tz*(.5+life*1.6);
+      ctx.fillStyle=`rgba(170,145,110,${.45*(1-life)*env})`;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();
+    }
+    ctx.fillStyle='rgba(90,70,50,.95)';
+    for(let k=0;k<26;k++){
+      const h=hash(k,seed+17),a=h*6.28,d=hash(k,seed+19)*R0*.8,life=((t*4+hash(k,seed+23)*3)%1.5);if(life>1)continue;
+      const jump=Math.sin(life*Math.PI)*tz*(1+h*2.2),s=Math.max(2,Math.ceil(pz*1.3));
+      ctx.fillRect(Math.round(X+Math.cos(a)*d),Math.round(Y+Math.sin(a)*d*.8-jump),s,s);
+    }
+  },
   blizzard(f,X,Y,tz,pz){
     const r=tz*f.r,g=ctx.createRadialGradient(X,Y,0,X,Y,r);
     g.addColorStop(0,'rgba(230,240,255,.32)');g.addColorStop(1,'rgba(230,240,255,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(X,Y,r,0,7);ctx.fill();
