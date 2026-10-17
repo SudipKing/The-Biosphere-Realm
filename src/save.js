@@ -121,7 +121,7 @@ function applyWorld(w){
   ({hgt,tree,fire,lava,bld,btype,burnt,bm,ore,oreAmt,btier}=a);
   resetWorldState();
   /* borders come back as saved, with the same countdown to their next redraw */
-  own=a.own;ownSnap=Int16Array.from(own);ovFull=true;lastDomains=o.lastDomains??-99;ownDirty=o.ownDirty??true;
+  own=a.own;ownSnap=Int16Array.from(own);ownTSnap=null;brDirty=true;ovFull=true;lastDomains=o.lastDomains??-99;ownDirty=o.ownDirty??true;
   if(o.landTiles)landTiles=o.landTiles;
   /* peoples woken by the monolith come back exactly as they were saved */
   for(const r of w.races){RACES[r.key]=r.def;if(!RACE_KEYS.includes(r.key))RACE_KEYS.push(r.key);aliasRace(r.key)}
