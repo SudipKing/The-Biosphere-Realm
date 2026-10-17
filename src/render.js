@@ -101,7 +101,7 @@ const OVS=4;let ovC=null,ovX=null,ovOwn=null,ovImg=null,ovBuf=null;
 const packRGBA=(r,g,b,a)=>((a<<24)|(b<<16)|(g<<8)|r)>>>0;
 const ovCand=[0,0,0,0],ovWt=[0,0,0,0],OV_MS=3;let ovJob=null;
 /* owner key of each sub-pixel: kingdom id * 256 + village index, -1 for no owner */
-const ovKey=i=>{const o=own[i];return o<0?-1:o*256+ownT[i]};
+const ovKey=i=>{const o=own[i];return o<0?-1:o*256+(ownT?ownT[i]:0)};
 /* owner of each sub-pixel in one row */
 function ovOwnRow(py,px0,px1){
   const ow=W*OVS,fy=(py+.5)/OVS-.5,y0=Math.floor(fy),ty=fy-y0,ya=y0<0?0:y0,yb=y0+1>=H?H-1:y0+1,cand=ovCand,wt=ovWt;
@@ -202,7 +202,9 @@ function buildBorders(){
   }
 }
 function drawBorders(ox,oy,tz,ga){
-  if(brDirty||!ownT)buildBorders();
+  /* village owners (ownT) exist only after the first computeDomains */
+  if(!ownT)return;
+  if(brDirty)buildBorders();
   const px=1/(tz||1),z=tz/TS/dpr,va=Math.max(0,Math.min(1,(z-1)*1.5));
   ctx.save();ctx.translate(ox,oy);ctx.scale(tz,tz);ctx.lineCap='round';ctx.lineJoin='round';
   ctx.globalAlpha=ga;ctx.lineWidth=1.6*dpr*px;
