@@ -784,80 +784,155 @@ function boatSail(g,key,x,y,w,h,col,k){
     if(key==='dwarf'){gp(g,x+w-3,y+1,CL.dark);gp(g,x+w-3,y+2,CL.dark);gp(g,x+w-4,y+1,CL.dark)}
   }
 }
+/* line, trim and a side-view hull for the boats */
+function gline(g,x0,y0,x1,y1,c){
+  x0|=0;y0|=0;x1|=0;y1|=0;const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let e=dx-dy;
+  for(let n=0;n<200;n++){gp(g,x0,y0,c);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>-dy){e-=dy;x0+=sx}if(e2<dx){e+=dx;y0+=sy}}
+}
+function gcrop(g){
+  let t=0;while(t<g.h&&!g.d.slice(t*g.w,(t+1)*g.w).some(Boolean))t++;
+  const o=G(g.w,g.h-t);o.d=g.d.slice(t*g.w);o.wl=g.wl-t;return o;
+}
+/* bow on the right. Columns run from the stern (x0) to the bow tip (x1); the sheer line rises at both ends, the keel curves up
+   into a raked cutwater, and rows at or below the waterline (wl) are darker */
+function boatHull(g,x0,x1,sy,depth,o){
+  const n=x1-x0,wl=sy+depth-2;
+  for(let x=x0;x<=x1;x++){
+    const t=(x-x0)/n,top=sy-Math.round(o.stern*Math.pow(1-t,2.2)+o.bow*Math.pow(t,2.4));
+    const kl=t>.5?Math.pow((t-.5)*2,1.5)*.92:Math.pow((.5-t)*2,2)*(o.sk===undefined?.55:o.sk);
+    const bot=Math.max(top,sy+depth-1-Math.round(depth*kl));
+    for(let y=top;y<=bot;y++){
+      let c=o.hc;
+      if(y===top)c=o.hl;
+      else if(o.k&&y===top+1)c=o.k;
+      else if(y>=wl&&y>top+1)c=o.hd;
+      else if(o.plank&&(y-top)%2===0)c=sh(o.hc,.9);
+      gp(g,x,y,c);
+    }
+  }
+  g.wl=wl;
+}
+const BOAT_W=[[17,26],[20,30],[22,32],[22,32],[24,34],[24,34],[24,34],[22,30]];
 function boatGrid(kind,race,ci,era){
-  const k=KCOL[ci%KCOL.length],kd=sh(k,.7),kl=sh(k,1.2),key=rkey(race),L=RACES[race]||RACES[RB(race)]||RACES.human;
-  const big=kind==='settler',W=big?23:14,H=big?17:11,B=BOAT_LOOK[key],g=G(W,H);
+  const k=KCOL[ci%KCOL.length],kd=sh(k,.7),kl=sh(k,1.2),key=rkey(race),L=RACES[race]||RACES[RB(race)]||RACES.human,B=BOAT_LOOK[key];
+  const big=kind==='settler',b=big?1:0,W=BOAT_W[era][b],CH=40,Bh=CH-4,g=G(W,CH);
   let hc=B.hc,hd=B.hd,hl=B.hl;
   if(era>=5){hc=mixc(hc,CL.steelD,.45);hd=mixc(hd,CL.dark,.4);hl=mixc(hl,CL.steelL,.4)}
   const sailc=key==='elf'?[236,240,226]:key==='orc'?[158,116,80]:key==='dwarf'?[190,170,130]:key==='goblin'?[170,150,100]:key==='saurian'?JADE:k;
-  const hh=big?4:3,hy=H-hh;let deck=hy,mastX=big?10:6,mastTop=1;
-  const crew=(xs)=>{for(const x of xs){gp(g,x,deck-1,L.skins[0]);gp(g,x,deck-2,L.hairs[0])}};
-  const pennant=(x,y)=>{gr(g,x,y,3,2,k);gp(g,x+2,y+1,kd);gp(g,x,y+2,CL.woodD)};
-  const rig=(mx,top,sw,shh)=>{gr(g,mx,top,1,deck-top,CL.woodD);boatSail(g,key,mx+1,top+1,sw,shh,sailc,k);gr(g,mx-sw,top+1,sw,shh,sailc);};
-  if(era===0){
-    if(big){ /* raft of lashed logs with an awning */
-      for(let i=0;i<3;i++)gr(g,1,H-4+i*1+ (i?0:0),W-2,1,i%2?hc:hl);gr(g,0,H-1,W,1,hd);gr(g,1,H-4,W-2,3,hc);for(let x=3;x<W-2;x+=4)gr(g,x,H-4,1,3,hd);for(let i=0;i<3;i++)gr(g,1,H-4+i,W-2,1,i%2?hc:hl);gr(g,1,H-1,W-2,1,hd);
-      deck=H-4;gr(g,13,5,1,7,CL.woodD);gr(g,19,5,1,7,CL.woodD);for(let r=0;r<4;r++)gr(g,12-r*0,5+r,9,1,r%2?CL.hide:CL.hideD);gr(g,12,5,9,1,k);
-      crew([4,7,10,15,17]);
+  const RIG=[66,54,46],MX=CL.woodD;
+  let depth=2,sy=0,x1=W-2,bow=2,stern=2;
+  const hull=(d,bw,st,o)=>{depth=d;bow=bw;stern=st;sy=Bh-d+1;boatHull(g,1,x1,sy,d,Object.assign({bow:bw,stern:st,hc,hd,hl},o||{}))};
+  const top=(x)=>sy-Math.round(stern*Math.pow(1-(x-1)/(x1-1),2.2)+bow*Math.pow((x-1)/(x1-1),2.4));
+  const crew=(xs)=>{for(const x of xs){const y=top(x);gp(g,x,y-1,sh(k,.9));gp(g,x,y-2,L.skins[0]);gp(g,x,y-3,L.hairs[0])}};
+  const mast=(x,t)=>gr(g,x,t,1,sy-t,MX);
+  const stays=(x,t)=>{gline(g,x,t,x1,top(x1)-1,RIG);gline(g,x,t,2,top(2)-1,RIG)};
+  const sail=(x,y,w,h,bel)=>{
+    const t=G(w+3,h);boatSail(t,key,0,0,w,h,sailc,k);
+    for(let r=0;r<h;r++){const o=Math.round(Math.sin(Math.PI*(r+.5)/h)*(bel===undefined?1.3:bel));for(let i=0;i<t.w;i++){const c=t.d[r*t.w+i];if(c)gp(g,x+i+o,y+r,c)}}
+    gr(g,x-2,y-1,w+3,1,MX);
+  };
+  const pennant=(x,y)=>{gr(g,x+1,y,3,2,k);gp(g,x+3,y+1,kd);gp(g,x,y,CL.woodD)};
+  const oars=(row,from,to,step)=>{for(let x=from;x<to;x+=step){gline(g,x,sy+row,x-3,sy+depth+2,CL.woodD);gp(g,x-3,sy+depth+2,CL.wood)}};
+  if(era===0){ /* dugout canoe */
+    x1=W-2;hull(b?3:2,2,2,{sk:.5});
+    gp(g,W-2,sy-3,hl);gp(g,1,sy-3,hl);
+    if(!b){
+      const px=W>>1;crew([px]);gline(g,px+1,sy-3,px+4,sy+1,CL.woodD);gr(g,px+4,sy+1,1,2,CL.wood);gr(g,4,sy-1,3,1,[170,196,208]);gr(g,5,sy-2,2,1,[150,180,196]);
     }else{
-      hullShape(g,1,hy,W-2,2,hc,hd,hl,2);gp(g,0,hy-1,hc);gp(g,W-1,hy-1,hc);gp(g,W-1,hy-2,hl);deck=hy;
-      gp(g,6,hy-1,L.skins[0]);gp(g,6,hy-2,L.hairs[0]);gp(g,5,hy-1,CL.woodD);gr(g,9,hy-1,3,1,CL.wood);gp(g,11,hy,CL.woodD);gr(g,10,H-1,2,1,[150,190,220]);
+      gr(g,12,sy-2,3,2,CL.hide);gr(g,15,sy-2,3,2,CL.hideD); /* bundles */
+      for(const p of [W-14,W-5])gr(g,p,sy-7,1,6,CL.woodD);
+      for(let r=0;r<3;r++)gr(g,W-15+r,sy-8+r,12-r*2,1,r%2?CL.hide:CL.hideD);gr(g,W-15,sy-8,12,1,k);
+      crew([4,8,W-8]);for(const p of [8,W-8]){gline(g,p+1,sy-4,p+4,sy+1,CL.woodD);gr(g,p+4,sy+1,1,2,CL.wood)}
     }
-  }else if(era===1){
-    hullShape(g,1,hy,W-2,hh-1,hc,hd,hl,1);gr(g,W-3,hy-1,2,1,hl);gp(g,0,hy-1,hl);deck=hy;
-    if(key==='saurian'||key==='elf')for(let x=3;x<W-3;x+=3)gp(g,x,hy+1,CL.leafD);
-    rig(mastX,mastTop+(big?1:1),big?8:5,big?7:5);
-    for(let x=2;x<W-2;x+=3){gp(g,x,H-1,CL.woodD);gp(g,x-1,H,CL.woodD)}
-    if(big)crew([3,5,8,13,16,18]);else crew([3]);pennant(mastX,0);
-  }else if(era===2){
-    hullShape(g,1,hy,W-2,hh-1,hc,hd,hl,1);gr(g,0,hy-1,2,1,hl);gr(g,W-2,hy-1,2,1,hl);gp(g,0,hy-2,hl);gp(g,W-1,hy-2,hl);gp(g,W-1,hy-3,B.hl);deck=hy;
-    for(let x=3;x<W-3;x+=3)gp(g,x,hy,x%2?k:CL.steelL);
-    rig(mastX,mastTop,big?9:6,big?8:6);gr(g,1,H-1,W-2,1,hd);
-    if(big)crew([3,5,14,17,19]);else crew([3,9]);pennant(mastX,0);
-  }else if(era===3){
-    hullShape(g,0,hy,W,hh,hc,hd,hl,.5);gr(g,0,hy-2,4,2,hd);gr(g,0,hy-2,4,1,hc);gr(g,W-4,hy-1,4,1,hc);deck=hy;
-    rig(mastX,mastTop,big?9:6,big?8:6);gr(g,mastX-1,mastTop,3,1,hd);
-    for(let x=5;x<W-4;x+=4)gp(g,x,hy+1,CL.dark);gr(g,2,hy-3,1,1,k);
-    if(big)crew([6,8,16,18]);else crew([4,10]);pennant(mastX,0);
-  }else if(era===4){
-    hullShape(g,0,hy-1,W,hh,hc,hd,hl,.5);gr(g,0,hy-3,5,2,hd);gr(g,0,hy-3,5,1,hc);gr(g,W-3,hy-2,3,1,hc);deck=hy-1;
-    for(let x=4;x<W-3;x+=3){gp(g,x,hy,CL.dark);gp(g,x,hy+1,hl)}
-    if(big){rig(7,2,7,6);gr(g,7,9,1,0,CL.woodD);rig(16,3,6,6);gr(g,7,8,1,deck-8,CL.woodD);gr(g,6,0,1,2,CL.woodD);pennant(7,0);pennant(16,1);crew([3,10,12,20])}
-    else{rig(6,2,5,5);gr(g,4,3,1,0,sailc);gr(g,6,1,1,1,CL.woodD);pennant(6,0);crew([3,10])}
-  }else if(era===5){ /* paddle steamer */
-    hullShape(g,0,hy,W,hh,hc,hd,hl,.34);deck=hy;
-    gr(g,big?7:4,hy-(big?4:3),big?9:6,big?4:3,mixc(WHITE7,hc,.2));gr(g,big?7:4,hy-(big?4:3),big?9:6,1,k);
-    for(let x=(big?8:5);x<(big?15:9);x+=3)gr(g,x,hy-(big?3:2),2,1,[120,180,220]);
-    const fx=big?10:6;gr(g,fx,hy-(big?9:7),3,big?5:4,CL.dark);gr(g,fx,hy-(big?8:6),3,1,CL.red);gp(g,fx+1,hy-(big?10:8),[200,200,210]);gp(g,fx+2,hy-(big?11:9),[216,216,226]);
-    gell(g,2.5,hy+1,2.2,2.2,CL.steelD);gell(g,2.5,hy+1,1,1,CL.steelL);gr(g,0,hy-1,3,1,hd);
-    if(big)crew([14,16,19,21]);else crew([12]);
-  }else if(era===6){ /* steel motor ship */
-    hullShape(g,0,hy,W,hh,hc,hd,hl,.34);gr(g,1,hy+1,W-2,1,CL.red);deck=hy;
-    gr(g,2,hy-(big?4:3),big?7:5,big?4:3,WHITE7);gr(g,2,hy-(big?4:3),big?7:5,1,k);for(let x=3;x<(big?8:6);x+=2)gp(g,x,hy-(big?3:2),[90,140,200]);
-    gr(g,big?5:4,hy-(big?7:5),1,big?3:2,CL.steelL);gp(g,big?5:4,hy-(big?8:6),CL.red);
-    if(big){for(let i=0;i<3;i++){const c=i===0?k:i===1?[236,200,70]:[60,120,190];gr(g,10+i*4,hy-3,3,3,c);gr(g,10+i*4,hy-3,3,1,sh(c,1.25))}crew([20])}
-    else{gr(g,W-5,hy-4,1,4,CL.steelD);gr(g,W-8,hy-4,4,1,CL.steelD);gp(g,W-4,hy-3,CL.steelL);gr(g,W-7,hy-1,2,1,CL.hide)}
-  }else{ /* hovercraft / hydrofoil */
-    gr(g,0,hy+1,W,hh-2,WHITE7);for(let i=0;i<hh-1;i++){gr(g,0,hy+i,W-i*2+ (i?0:0),1,i?WHITE7D:WHITE7);}
-    gr(g,0,hy,W-1,1,WHITE7);gr(g,W-3,hy,3,1,WHITE7);gp(g,W-1,hy-0,WHITE7);gr(g,1,hy+hh-2,W-3,1,CYAN);gr(g,0,hy+hh-1,W-2,1,CYAND);
-    deck=hy;const cw=big?11:6;gell(g,5+cw/2,hy-1,cw/2,big?3.5:2.4,[56,100,140]);gell(g,5+cw/2,hy-1,cw/2-1,big?2.6:1.6,[140,240,255]);gclr(g,0,hy,W,hh);
-    gr(g,0,hy,W,hh-1,WHITE7);gr(g,0,hy+hh-2,W,1,CYAN);gr(g,0,hy+hh-1,W,1,CYAND);gr(g,0,hy,W,1,WHITE7);gp(g,0,hy,null);gr(g,W-4,hy-1,3,1,WHITE7);gr(g,W-2,hy,2,1,WHITE7);
-    gr(g,1,hy+hh-1,W-3,1,CYAND);gr(g,3,hy+1,W-6,1,k);
-    if(big){for(let i=0;i<3;i++)gp(g,4+i*3,hy-3+ (i&1),CL.white);crew([14,16,18])}
-    gp(g,3,H-1,CYAN);gp(g,W-5,H-1,CYAN);gr(g,1,hy-1,3,1,k);
+  }else if(era===1){ /* longboat: curled prow, shields, oars, one square sail */
+    hull(b?3:2,b?5:4,b?4:3,{k,plank:true,sk:.5});
+    gp(g,W-3,sy-bow-1,hl);gp(g,W-2,sy-bow-1,hl);gp(g,1,sy-stern-1,hl);gp(g,2,sy-stern-1,hl);
+    for(let x=5;x<W-5;x+=2)gp(g,x,sy-1,(x>>1)%2?k:CL.steelL);
+    oars(1,5,W-5,3);
+    const mx=(W>>1)-1,t=sy-(b?13:9);stays(mx,t);mast(mx,t);sail(mx+1,t+2,b?9:6,b?8:6);pennant(mx,t-2);
+    crew(b?[4,7,W-8]:[4]);
+  }else if(era===2){ /* galley: long and low, bronze ram, two banks of oars, cabin aft */
+    x1=W-5;hull(b?3:2,3,b?5:4,{k,plank:true,sk:.4});
+    gr(g,W-5,sy+depth-2,4,1,BRONZE);gp(g,W-1,sy+depth-2,GILD);gp(g,W-5,sy+depth-1,BRONZE_D);gp(g,W-6,sy+depth-1,BRONZE);
+    const ct=sy-stern;gr(g,2,ct-3,5,3,hc);gr(g,2,ct-3,5,1,hl);gr(g,1,ct-4,7,1,k);gp(g,4,ct-2,CL.dark);
+    for(let x=9;x<W-8;x+=2)gp(g,x,sy-1,(x>>1)%2?k:CL.steelL);
+    oars(1,8,W-9,3);if(b)oars(2,9,W-9,3);
+    const mx=(W>>1)+1,t=sy-(b?13:9);stays(mx,t);mast(mx,t);sail(mx+1,t+2,b?10:6,b?8:6);pennant(mx,t-2);
+    crew(b?[9,13,17]:[9]);
+  }else if(era===3){ /* cog: round hull, castles fore and aft, mast with crow's nest */
+    x1=W-3;hull(b?4:3,3,b?6:5,{k,plank:true,sk:.7});
+    const st=sy-stern;gr(g,2,st-3,6,3,hd);gr(g,2,st-3,6,1,hl);gr(g,2,st-2,6,1,sh(hd,1.2));gp(g,4,st-2,CL.glow);gr(g,6,st-5,1,2,MX);gr(g,6,st-5,3,1,k);
+    const fo=sy-bow;gr(g,W-9,fo-2,5,2,hd);gr(g,W-9,fo-2,5,1,hl);
+    gline(g,W-4,fo-1,W-1,fo-3,MX);
+    for(let x=6;x<W-9;x+=3){gp(g,x,sy+1,CL.dark)}
+    const mx=(W>>1)-1,t=sy-(b?15:11);stays(mx,t);mast(mx,t);gr(g,mx-1,t+1,3,1,MX);sail(mx+1,t+3,b?10:7,b?8:6);pennant(mx,t-2);
+    if(b){const fx=W-10,ft=sy-9;mast(fx,ft);sail(fx+1,ft+2,5,5,.9);}
+    crew(b?[10,14]:[7]);
+  }else if(era===4){ /* galleon: tall stern, gun ports, stacked sails, jib */
+    x1=W-4;hull(b?5:4,4,b?8:6,{k,plank:true,sk:.7});
+    const st=sy-stern;gr(g,2,st-3,6,3,hd);gr(g,2,st-3,6,1,hl);gp(g,3,st-2,CL.glow);gp(g,5,st-2,CL.glow);gr(g,1,st-4,8,1,k);gp(g,8,st-5,CL.gold);gr(g,2,st-6,1,2,MX);gp(g,3,st-6,k);
+    for(let x=7;x<W-6;x+=3){gp(g,x,sy+2,CL.dark);gp(g,x,sy+1,CL.steelD)}
+    gline(g,W-4,sy-bow+1,W-1,sy-bow-3,MX);gline(g,W-4,sy-bow-1,W-1,sy-bow-3,kl);gp(g,W-2,sy-bow-2,k);
+    const ms=b?[[(W>>1)-3,17,6],[(W>>1)+6,14,5],[8,11,4]]:[[(W>>1)-1,12,5],[(W>>1)+5,9,4]];
+    for(const [mx,h,sw] of ms){const t=sy-h;stays(mx,t);mast(mx,t);sail(mx+1,t+2,sw,b?6:4);sail(mx+1,t+2+(b?8:6),sw+1,b?5:4,.9);pennant(mx,t-2)}
+    crew(b?[12,16]:[9]);
+  }else if(era===5){ /* steamship: iron hull, deckhouse, funnel with smoke, paddle wheel */
+    x1=W-3;hull(b?4:3,3,2,{k:CL.red,sk:.4});
+    const hx=b?8:6,hw=b?10:7,hh=b?5:4;gr(g,hx,sy-hh,hw,hh,mixc(WHITE7,hc,.15));gr(g,hx,sy-hh,hw,1,k);for(let x=hx+1;x<hx+hw-1;x+=3)gp(g,x,sy-hh+2,[110,170,210]);
+    const fx=hx+(b?3:2),ft=sy-hh-(b?7:5);gr(g,fx,ft,3,sy-hh-ft,CL.dark);gr(g,fx,ft+2,3,1,CL.red);gr(g,fx-1,ft,5,1,CL.steelD);
+    for(let i=0;i<4;i++){const c=i<2?[210,210,218]:[190,190,200];gr(g,fx-2-i*2,ft-2-i,3,2,c);gp(g,fx-1-i*2,ft-3-i,[226,226,232])}
+    const wr=b?3:2,wy=sy+depth-2;gell(g,W-hx-3,wy,wr+.5,wr+.5,CL.steelD);gell(g,W-hx-3,wy,wr-.5,wr-.5,CL.red);gp(g,W-hx-3,wy,CL.steelL);
+    if(b){const mx=W-6,t=sy-9;mast(mx,t);gline(g,mx,t,mx-5,sy-2,RIG);gline(g,mx,t,mx-5,t+5,sailc);gr(g,mx-4,sy-3,5,1,MX);gline(g,mx,t+1,mx-4,sy-3,sailc);gline(g,mx,t+2,mx-3,sy-3,sailc);gline(g,mx,t+3,mx-3,sy-3,k)}
+    crew(b?[W-12,W-9]:[W-8]);
+  }else if(era===6){ /* motor ship: raked bow, bridge aft, funnel, containers */
+    x1=W-3;hull(b?4:3,3,1,{k:CL.red,sk:.35});
+    const hx=2,hw=b?7:6,hh=b?5:4;gr(g,hx,sy-stern-hh,hw,hh,WHITE7);gr(g,hx,sy-stern-hh,hw,1,k);for(let x=hx+1;x<hx+hw-1;x+=2){gp(g,x,sy-stern-hh+2,[90,140,200]);if(b)gp(g,x,sy-stern-hh+3,[90,140,200])}
+    const fx=hx+hw,ft=sy-stern-hh-1;gr(g,fx,ft+1,3,hh,WHITE7D);gr(g,fx,ft,3,2,k);gr(g,fx,ft-1,3,1,CL.dark);
+    gr(g,hx+2,ft-2,1,hh+1,CL.steelL);gp(g,hx+2,ft-3,CL.red);
+    if(b){for(let i=0;i<3;i++)for(let j=0;j<2;j++){const c=[k,[236,200,70],[60,120,190],[200,90,60],[90,170,90]][(i+j*2)%5];gr(g,fx+5+i*5,sy-3-j*3,4,3,c);gr(g,fx+5+i*5,sy-3-j*3,4,1,sh(c,1.25))}}
+    else{gline(g,W-10,sy-1,W-8,sy-7,CL.steelD);gline(g,W-6,sy-1,W-8,sy-7,CL.steelD);gr(g,W-9,sy-7,3,1,CL.steelL);gr(g,W-12,sy-1,3,1,CL.hide)}
+  }else{ /* hover craft */
+    x1=W-2;sy=Bh-1;depth=3;bow=1;stern=3;
+    boatHull(g,1,x1,sy,3,{bow:1,stern:3,hc:WHITE7,hd:WHITE7D,hl:[255,255,255],k:null,sk:.2});
+    for(let x=2;x<=x1;x++)gp(g,x,Bh+1,x%3===0?CYAN:null);
+    gr(g,3,sy-stern+1,x1-3,1,k);
+    const cw=b?11:7;gell(g,W-cw/2-4,sy-1,cw/2,b?3.6:2.8,[56,100,140]);gell(g,W-cw/2-4,sy-1,cw/2-1,b?2.8:2,[140,240,255]);gclr(g,0,sy,W,3);
+    for(let x=1;x<=x1;x++){const t=(x-1)/(x1-1),tp=sy-Math.round(stern*Math.pow(1-t,2.2)+bow*Math.pow(t,2.4)),bt=Math.max(tp,sy+2-Math.round(3*(t>.5?Math.pow((t-.5)*2,1.5)*.92:Math.pow((.5-t)*2,2)*.2)));for(let y=tp;y<=bt;y++)gp(g,x,y,y===tp?[255,255,255]:y===bt?WHITE7D:WHITE7)}
+    gr(g,3,sy-stern+1,x1-3,1,k);
+    gr(g,2,sy-stern-3,1,3,WHITE7D);gr(g,2,sy-stern-3,4,1,WHITE7);gp(g,2,sy-stern-4,CYAN);
+    if(b){gr(g,4,sy-4,3,2,CYAND);gp(g,5,sy-4,CYAN);gr(g,4,sy+1,3,1,CYAN);crew([])}
+    gp(g,3,sy+1,CYAN);gp(g,W-4,sy+1,CYAN);
+    g.wl=Bh+1;
   }
   /* each people's mark on the vessel */
-  if(key==='elf'){gp(g,W-1,hy-1,hl);gp(g,W-1,hy-2,hl);gp(g,W-2,hy-3,hl);gp(g,W-1,hy-3,CL.gold);gp(g,W-3,hy-3,hl);gr(g,2,deck,W-4,1,CL.gold)}
-  else if(key==='dwarf'){for(let x=2;x<W-2;x+=3)gp(g,x,deck+1,hl);gp(g,W>>1,deck+1,CL.fire2)}
-  else if(key==='orc'){for(let x=3;x<W-3;x+=3)gp(g,x,deck-1,CL.tusk);skullAt(g,W-3,Math.max(0,deck-3))}
-  else if(key==='gnome'){for(let x=3;x<W-3;x+=4)gp(g,x,deck+1,CL.glow);gear(g,2,deck-1,BRONZE)}
-  else if(key==='goblin'){for(let i=0;i<4;i++){const px=2+((ah(i,1,4)*(W-6))|0);gr(g,px,deck+(hh>2?1:0),2,1,ah(i,2,4)<.5?CL.steelD:CL.hide)}gp(g,W-1,deck-1,CL.tusk)}
-  else if(key==='saurian'){for(let x=2;x<W-2;x+=2)gp(g,x,deck+1,JADED);gp(g,W-1,deck-1,CL.gold);gp(g,W-1,deck-2,JADE)}
-  return g;
+  const dk=sy-stern;
+  if(key==='elf'){gp(g,W-2,sy-bow-2,CL.gold);gp(g,W-3,sy-bow-2,hl);gp(g,2,dk-1,hl);gr(g,4,sy,Math.max(1,x1-7),1,CL.gold)}
+  else if(key==='dwarf'){for(let x=3;x<x1-1;x+=3)gp(g,x,sy+1,hl);gp(g,W>>1,sy+1,CL.fire2)}
+  else if(key==='orc'){for(let x=4;x<x1-2;x+=3)gp(g,x,sy-1,CL.tusk);if(era<5)skullAt(g,Math.max(1,x1-3),Math.max(0,sy-bow-3))}
+  else if(key==='gnome'){for(let x=3;x<x1-2;x+=4)gp(g,x,sy+1,CL.glow);gear(g,3,sy-stern-2,BRONZE)}
+  else if(key==='goblin'){for(let i=0;i<4;i++){const px=3+((ah(i,1,4)*(W-8))|0);gr(g,px,sy+1,2,1,ah(i,2,4)<.5?CL.steelD:CL.hide)}gp(g,x1,sy-bow-1,CL.tusk)}
+  else if(key==='saurian'){for(let x=3;x<x1-1;x+=2)gp(g,x,sy+1,JADED);gp(g,x1,sy-bow-1,CL.gold);gp(g,x1,sy-bow-2,JADE)}
+  return gcrop(g);
 }
 function boatSprite(kind,race,ci,era){
   era=Math.max(0,Math.min(7,era|0));
-  return spr(`boat|${kind}|${race}|${ci}|${era}`,()=>bake(boatGrid(kind,race,ci,era)));
+  return spr(`boat|${kind}|${race}|${ci}|${era}`,()=>{const g=boatGrid(kind,race,ci,era),s=shade3d(bake(g));s.wl=g.wl+1;return s});
+}
+/* render-only water effects for a boat: a shimmer that slides along the waterline, and, while it moves, white foam at the bow and
+   a fading trail astern. Reads only; no allocation (colours are fixed strings) */
+const WAKE_C=['rgba(240,250,255,.8)','rgba(230,246,255,.55)','rgba(220,240,252,.35)','rgba(210,236,250,.2)'];
+function boatWake(b,s,bx,by,bob,SX,SY,pz){
+  const dr=b.dir<0?-1:1,moving=b.x!==b.px||b.y!==b.py,wy=SY((by+.5)*TS-s.h+2+bob+s.wl),u=Math.max(1,Math.round(pz)),hw=s.w/2;
+  ctx.fillStyle=WAKE_C[1];
+  const sx=bx*TS-hw+2+((frameN>>1)+b.id*5)%Math.max(4,s.w-4);ctx.fillRect(SX(sx),wy,u*2,u);
+  if(!moving)return;
+  const bowX=bx*TS+dr*(hw-1),sternX=bx*TS-dr*(hw-1);
+  ctx.fillStyle=WAKE_C[0];ctx.fillRect(SX(bowX+dr*.5)-(dr<0?u:0),wy-u,u,u);ctx.fillRect(SX(bowX)-(dr<0?u*2:0),wy,u*2,u);
+  ctx.fillRect(SX(bowX-dr*3)-(dr<0?u*2:0),wy+u,u*2,u);
+  for(let i=0;i<4;i++){
+    const off=2+i*3+((frameN>>2)+i)%2,X=sternX-dr*off;ctx.fillStyle=WAKE_C[i];
+    ctx.fillRect(SX(X)-(dr<0?u*(3-(i>>1)):0),wy+((i&1)?u:0),u*(3-(i>>1)),u);
+  }
 }
 /* monuments: the physical works of art each people leaves behind */
 function monumentGrid(race,k,dom){

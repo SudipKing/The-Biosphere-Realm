@@ -428,6 +428,7 @@ function draw(dt){
     }else{
       const b=it.boat,[bx,by]=ipos(b),s=boatSprite(b.kind,b.race,b.ci,tribes[b.tribe].age),bob=Math.sin(frameN/18+b.id)*.8;
       blit(b.dir<0?flipped(s):s.c,s.w,s.h,bx*TS-s.w/2,(by+.5)*TS-s.h+2+bob,1);
+      boatWake(b,s,bx,by,bob,SX,SY,pz);
       if(close&&speed>0&&frameN%10===0&&b.x!==b.px&&effects.length<300)effects.push({type:'wake',x:bx,y:by+.35,t:0,dur:40});
     }
   }
