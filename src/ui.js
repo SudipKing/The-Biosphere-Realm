@@ -536,9 +536,13 @@ $('kings').addEventListener('click',e=>{
   side.classList.remove('open');
 });
 const SEASON_IC=['🌱','☀️','🍂','❄️'];
+let _mo=0,_yf='';
 function renderHeader(){
-  $('year').textContent=`Year ${year()} · ${SEASON_IC[season()]} ${SEASONS[season()]}${seasonLock>=0?' 🔒':''}`;
-  $('seasonBtn').textContent=seasonLock<0?'🔄 Seasons turn':`🔒 Always ${SEASONS[seasonLock].toLowerCase()}`;
+  const fr=(step%YEAR)/YEAR,mo=Math.min(12,1+Math.floor(fr*12));
+  if(mo!==_mo){_mo=mo;$('yMonth').textContent=`Month ${mo}`;const b=$('yBar');b.setAttribute('aria-valuenow',mo);b.setAttribute('aria-valuetext',`Month ${mo} of 12`)}
+  const sc=fr.toFixed(3);if(sc!==_yf){_yf=sc;$('yFill').style.transform=`scaleX(${sc})`}
+  $('year').textContent=`Year ${year()} · ${SEASON_IC[season()]} ${SEASONS[season()]}`;
+  $('seasonBtn').textContent=seasonLock<0?'🔄 Seasons turn':`🔒 ${SEASONS[seasonLock]}`;
   $('seasonBtn').setAttribute('aria-pressed',seasonLock>=0);
   $('domainBtn').setAttribute('aria-pressed',showDomains);
   $('clockBtn').textContent=`${phaseIcon()} ${phaseName()}`;
