@@ -14,6 +14,7 @@ function glyphSVG(sym,size){
 }
 const meter=(label,v,color,note)=>`<div class="meter"><span>${label}</span><div class="mbar"><i style="width:${Math.round(v)}%;background:${color}"></i></div><b>${Math.round(v)}</b></div>${note?`<p class="mnote">${note}</p>`:''}`;
 const buffChips=(b,scale)=>Object.keys(b).map(k=>`<span class="bchip">${fmtBuff(k,b[k]*(scale||1))}</span>`).join('');
+const nmIn=(val,kind,attrs,label,cls)=>`<input class="nm-in${cls?' '+cls:''}" value="${esc(val==null?'':val)}" data-kind="${kind}" ${attrs} aria-label="${esc(label)}" maxlength="40" spellcheck="false"${kind==='pet'?' placeholder="Give it a name"':''}>`;
 const stars=q=>'\u2605'.repeat(q)+'\u2606'.repeat(5-q);
 const fxKeys=fx=>Object.keys(fx).filter(k=>Math.abs(fx[k])>.004).sort((a,b)=>Math.abs(fx[b])-Math.abs(fx[a]));
 
@@ -44,7 +45,7 @@ function cxOverview(T,L){
     <dt>Founded</dt><dd>Year ${T.founded}${T.parent>=0?`, by ${T.rebel?'rebels of':'settlers of'} the ${tribes[T.parent].title}`:''}</dd></dl>
   ${eraNote(T,L)}
   <h4>Settlements (${T.towns.length})</h4>
-  ${T.towns.map((H,k)=>`<div class="town"><span><b>${esc(H.name)}</b>${k===0?' <span class="tag">capital</span>':''}<br><span class="gdom">${H.pop} people, ${H.houses} ${H.houses===1?'building':'buildings'}, founded year ${H.founded}</span></span><button class="btn sm cx-town" data-x="${H.x}" data-y="${H.y}">Show</button></div>`).join('')}
+  ${T.towns.map((H,k)=>`<div class="town"><span>${nmIn(H.name,'town',`data-id="${T.id}" data-t="${k}"`,'Settlement name','b')}${k===0?' <span class="tag">capital</span>':''}<br><span class="gdom">${H.pop} people, ${H.houses} ${H.houses===1?'building':'buildings'}, founded year ${H.founded}</span></span><button class="btn sm cx-town" data-x="${H.x}" data-y="${H.y}">Show</button></div>`).join('')}
   <h4>Workforce</h4>
   <div class="chips2">${JOB_KEYS.filter(j=>T.jobs&&T.jobs[j]).map(j=>`<span class="bchip" title="${JOBS[j].d}">${JOBS[j].ic} ${JOBS[j].n} ${T.jobs[j]}</span>`).join('')||'<span class="empty">No one has a trade yet.</span>'}</div>
   ${T.colonies?`<p class="mnote">${T.colonies} ${T.colonies===1?'colony':'colonies'} founded.</p>`:''}
@@ -60,24 +61,24 @@ function cxFaith(T,L){
   const rel=T.rel,d=rel.patron,sec=rel.second,fol=units.filter(u=>u.k===0&&tribes[u.tribe].rel===rel).length;
   const seasonNote=d.season>=0?`<p class="mnote">Strongest in ${SEASONS[d.season]}${season()===d.season?' (now: +50% gift)':''}.</p>`:'';
   const next=T.temple?(year()>=T.nextFest?'Soon':`Year ${T.nextFest}`):'Needs a temple';
-  return `<div class="godcard">${glyphSVG(d.sym,52)}<div><h4 class="gname">${d.name}, ${d.title}</h4><p class="gdom">${d.dom}</p></div></div>
+  return `<div class="godcard">${glyphSVG(d.sym,52)}<div><h4 class="gname">${nmIn(d.name,'god',`data-rel="${rel.id}" data-g="patron"`,'Patron god name')}, ${d.title}</h4><p class="gdom">${d.dom}</p></div></div>
   <p>${d.desc}</p><div class="chips2">${buffChips(d.buff,1)}</div>${seasonNote}
-  <dl><dt>Faith</dt><dd>${rel.name}</dd><dt>Doctrine</dt><dd><b>${rel.doc.name}</b>. ${rel.doc.desc}</dd>
+  <dl><dt>Faith</dt><dd>${nmIn(rel.name,'faith',`data-rel="${rel.id}"`,'Faith name')}</dd><dt>Doctrine</dt><dd><b>${rel.doc.name}</b>. ${rel.doc.desc}</dd>
   <dt>Followers</dt><dd>${fol} across ${(n=>n+(n===1?' realm':' realms'))(tribes.filter(t=>t.alive&&t.rel===rel).length)}</dd>
   <dt>Devotion</dt><dd>${Math.round(T.devo)} of 100, scaling every blessing</dd></dl>
-  ${sec?`<h4>Second god</h4><div class="godcard">${glyphSVG(sec.sym,36)}<div><b>${sec.name}, ${sec.title}</b><p class="gdom">${sec.dom}. Half of their gift is shared.</p></div></div>`:''}
+  ${sec?`<h4>Second god</h4><div class="godcard">${glyphSVG(sec.sym,36)}<div>${nmIn(sec.name,'god',`data-rel="${rel.id}" data-g="second"`,'Second god name','b')}, ${sec.title}<p class="gdom">${sec.dom}. Half of their gift is shared.</p></div></div>`:''}
   <h4>Tenets</h4><ul class="plain">${rel.tenets.map(t=>`<li>${t}</li>`).join('')}</ul>
   <h4>Sacred rite</h4><p><b>${d.rite}</b> \u2014 ${d.ritedesc}</p><p class="mnote">Next celebration: ${next}. Rites raise devotion and grant a blessing for a time${{dwarf:', plus a tribute of stone',elf:', healing everyone and waking new trees',human:', plus a feast and calmer streets',orc:', plus a war-frenzy for the horde'}[RB(T.race)]}.</p>
   <h4>Pantheon of the ${L.plural.toLowerCase()}</h4>
   ${PANTHEON[T.race].map(g=>`<div class="pg${g===d?' cur':''}">${glyphSVG(g.sym,30)}<div><b>${g.name}, ${g.title}</b>${g===d?' <span class="tag">patron</span>':''}${g===sec?' <span class="tag">second</span>':''}<p class="gdom">${g.dom}</p><div class="chips2 sm">${buffChips(g.buff,1)}</div></div></div>`).join('')}`;
 }
 function cxCulture(T,L){
-  return `<h4>${esc(cultureName(T))}</h4><p class="mnote">Spoken language: ${esc(LANG[T.race])}.</p>
+  return `<h4>${nmIn(cultureName(T),'culture',`data-id="${T.id}"`,'Culture name')}</h4><p class="mnote">Spoken language: ${nmIn(LANG[T.race],'lang',`data-r="${T.race}"`,'Language name')}</p>
   <h4>Values</h4>${T.values.map(v=>`<div class="val"><b>${v.name}</b><p class="gdom">${v.desc}</p><div class="chips2 sm">${buffChips(v.buff,1)}</div></div>`).join('')}
   <h4>Artistic traditions</h4><p>${ART_FORMS[T.race].map(f=>f.n).join(', ')}.</p>
   <p class="mnote">Renown ${T.renown}. Art lifts stability, devotion and diplomacy. Physical works stand on the map, like ${{human:'statues',elf:'living sculptures',dwarf:'rune-pillars',orc:'skull totems'}[RB(T.race)]}.</p>
   <h4>Works of art (${T.arts.length})</h4>
-  ${T.arts.length?T.arts.map(a=>`<div class="art"><div class="arth"><b>${a.name}</b><span class="stars" aria-label="${a.q} of 5">${stars(a.q)}</span></div>
+  ${T.arts.length?T.arts.map((a,ai)=>`<div class="art"><div class="arth">${nmIn(a.name,'art',`data-id="${T.id}" data-a="${ai}"`,'Work of art','b')}<span class="stars" aria-label="${a.q} of 5">${stars(a.q)}</span></div>
     <p class="gdom">${a.form} by ${a.creator}, year ${a.year}. ${a.desc}${a.lost?' (Destroyed.)':''}</p>
     ${a.i!=null&&!a.lost?`<button class="btn sm cx-fly" data-i="${a.i}">Show on map</button>`:''}</div>`).join(''):'<p class="empty">No works yet. Artists need a great hall, full stores and peace of mind.</p>'}`;
 }
@@ -88,11 +89,12 @@ function cxHistory(T){
   <h4>Chronicle</h4>
   <ol class="log">${T.hist.length?T.hist.slice(0,40).map(l=>`<li><span class="yr">Y${l.y}</span><span style="border-left:3px solid ${css(l.c)};padding-left:8px">${l.m}</span></li>`).join(''):'<li class="empty">Nothing recorded yet.</li>'}</ol>`;
 }
-function renderCodex(){
+function renderCodex(force){
   if(!codexT)return;
+  const ae=document.activeElement;if(!force&&ae&&ae.tagName==='INPUT'&&cxEl('codex').contains(ae))return;
   const T=codexT,L=RACES[T.race],d=T.rel.patron,body=cxEl('cxBody'),st=body.scrollTop;
   cxEl('cxHead').innerHTML=`<span class="sw3" style="background:${css(T.color)}"></span>
-    <div><h3>${L.icon} ${T.title}</h3><p>${d.epi.charAt(0).toUpperCase()+d.epi.slice(1)}${T.alive?'':' (fallen)'} \u00b7 ${T.rel.name}</p></div>
+    <div><h3>${L.icon} ${L.title} ${nmIn(T.name,'king',`data-id="${T.id}"`,'Kingdom name','big')}</h3><p>${d.epi.charAt(0).toUpperCase()+d.epi.slice(1)}${T.alive?'':' (fallen)'} \u00b7 ${T.rel.name}</p></div>
     <div class="cx-actions"><button class="btn sm" id="cxGo" title="Fly to the capital">Go to capital</button><button class="insp-x" id="cxClose" aria-label="Close codex">\u00d7</button></div>`;
   cxEl('cxTabs').innerHTML=CX_TABS.map(([k,n])=>`<button data-tab="${k}" aria-pressed="${k===codexTab}">${n}</button>`).join('');
   body.innerHTML=codexTab==='faith'?cxFaith(T,L):codexTab==='culture'?cxCulture(T,L):codexTab==='history'?cxHistory(T):cxOverview(T,L);
@@ -113,77 +115,124 @@ cxEl('cxBody').addEventListener('click',e=>{
 const esc=v=>String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ============ Registry: every kingdom, village, faith, culture and language, with names you can change ============ */
-let regOpen=false,regTab='kingdoms',regFaiths=[],regSig='';
-/* the registry only redraws when kingdoms, villages or faiths actually change, so a name box never moves under the cursor */
-const regSignature=()=>regTab+tribes.filter(T=>T.alive).map(T=>T.id+':'+T.towns.length+':'+T.rel.id).join(',');
+let regOpen=false,regTab='kingdoms',regHTML='';
+const regSort={kingdoms:['pop',-1],faiths:['fol',-1],cultures:['pop',-1],langs:['spk',-1]};
+const regFilt={kingdoms:{q:'',race:'',st:''},faiths:{q:'',race:''},cultures:{q:'',race:''},langs:{q:'',race:''}};
 const RG_TABS=[['kingdoms','🏰 Kingdoms'],['faiths','🛐 Religions'],['cultures','🎭 Cultures'],['langs','🗣️ Languages']];
+const RG_NOUN={kingdoms:'kingdoms',faiths:'faiths',cultures:'cultures',langs:'languages'};
+const rgSold=T=>((T.jobs&&T.jobs.soldier)||0)+(T.general>0?1:0);
+const rgWar=T=>wars.some(w=>w.a===T.id||w.b===T.id);
+const rgAlive=()=>tribes.filter(T=>T.alive);
+const rgSum=(a,f)=>a.reduce((s,T)=>s+f(T),0);
+const RG_SORTS={
+  kingdoms:[['pop','Population',o=>o.T.pop],['sol','Soldiers',o=>rgSold(o.T)],['area','Size',o=>o.T.area],['era','Era',o=>o.T.age],['age','Age',o=>year()-o.T.founded],['vil','Villages',o=>o.T.towns.length],['stab','Stability',o=>o.T.stab],['name','Name',o=>o.T.name]],
+  faiths:[['fol','Followers',o=>o.pop],['kin','Kingdoms',o=>o.k.length],['sol','Soldiers',o=>o.sol],['area','Size',o=>o.area],['age','Age',o=>year()-o.rel.founded],['name','Name',o=>o.rel.name]],
+  cultures:[['pop','Population',o=>o.T.pop],['ren','Renown',o=>o.T.renown],['art','Works of art',o=>o.T.arts.length],['area','Size',o=>o.T.area],['sol','Soldiers',o=>rgSold(o.T)],['age','Age',o=>year()-o.T.founded],['name','Name',o=>cultureName(o.T)]],
+  langs:[['spk','Speakers',o=>cnt.race[o.r]||0],['kin','Kingdoms',o=>o.k.length],['area','Size',o=>o.area],['sol','Soldiers',o=>o.sol],['name','Name',o=>LANG[o.r]]]};
 function openRegistry(tab){closePanels(closeRegistry);regOpen=true;if(tab)regTab=tab;cxEl('registry').hidden=false;renderRegistry(true)}
 function closeRegistry(){regOpen=false;cxEl('registry').hidden=true}
 const rgIn=(val,kind,attrs,label)=>`<input class="rg-in" value="${esc(val)}" data-kind="${kind}" ${attrs} aria-label="${esc(label)}" maxlength="40" spellcheck="false">`;
-function rgKingdoms(){
-  const alive=tribes.filter(T=>T.alive).sort((a,b)=>b.pop-a.pop);
-  if(!alive.length)return '<p class="empty">No kingdoms yet. Pick a people in the Creatures tab and tap on land.</p>';
-  return alive.map(T=>`<div class="rg-row"><span class="sw" style="background:${css(T.color)}"></span><div>
-    <label class="rg-lab">${RACES[T.race].icon} ${RACES[T.race].title}</label>${rgIn(T.name,'king',`data-id="${T.id}"`,'Kingdom name')}
-    <p class="gdom">${T.pop} ${RACES[T.race].plural.toLowerCase()} in ${T.towns.length} ${T.towns.length===1?'settlement':'settlements'} · ${AGE_NAME[T.age]} · ${sharePct(T)}% of the land</p>
+const rgSt=(l,v)=>`<span><i>${l}</i><b>${v}</b></span>`;
+const rgRaces=()=>RACE_KEYS.filter(r=>(cnt.race[r]||0)>0||tribes.some(T=>T.alive&&T.race===r));
+function rgItems(){
+  const F=regFilt[regTab],q=F.q.trim().toLowerCase(),A=rgAlive();let L=[],all=0;
+  if(regTab==='kingdoms')L=A.map(T=>({T,r:T.race,nm:[T.name,T.title,T.rel.name,...T.towns.map(H=>H.name)]}));
+  else if(regTab==='cultures')L=A.map(T=>({T,r:T.race,nm:[cultureName(T),T.name,T.title]}));
+  else if(regTab==='faiths'){const m=new Map();for(const T of A){const v=m.get(T.rel)||{rel:T.rel,k:[]};v.k.push(T);m.set(T.rel,v)}
+    L=[...m.values()].map(v=>(v.pop=rgSum(v.k,T=>T.pop),v.sol=rgSum(v.k,rgSold),v.area=rgSum(v.k,T=>T.area),v.rs=v.k.map(T=>T.race),v.nm=[v.rel.name,v.rel.patron.name,...v.k.map(T=>T.name)],v))}
+  else L=RACE_KEYS.map(r=>{const k=A.filter(T=>T.race===r);return {r,k,area:rgSum(k,T=>T.area),sol:rgSum(k,rgSold),nm:[LANG[r],RACES[r].plural,...k.map(T=>T.name)]}});
+  all=L.length;
+  L=L.filter(o=>(!F.race||(o.rs?o.rs.includes(F.race):o.r===F.race))&&(!q||o.nm.some(n=>String(n).toLowerCase().includes(q)))&&(!F.st||(F.st==='war')===rgWar(o.T)));
+  const S=RG_SORTS[regTab],cur=S.find(s=>s[0]===regSort[regTab][0])||S[0],d=regSort[regTab][1],f=cur[2];
+  L.sort((a,b)=>{const x=f(a),y=f(b);return typeof x==='string'?x.localeCompare(y)*-d:(x-y)*d});
+  return {L,all};
+}
+function renderRgBar(){
+  const F=regFilt[regTab],S=RG_SORTS[regTab],sd=regSort[regTab],rs=rgRaces();
+  if(F.race&&!rs.includes(F.race))F.race='';
+  cxEl('rgBar').innerHTML=`<input type="search" class="rg-q" id="rgQ" placeholder="Search names" value="${esc(F.q)}" aria-label="Search names" maxlength="40" spellcheck="false">
+  <select id="rgRace" aria-label="Filter by people"><option value="">All peoples</option>${rs.map(r=>`<option value="${r}"${F.race===r?' selected':''}>${esc(RACES[r].plural)}</option>`).join('')}</select>
+  ${regTab==='kingdoms'?`<select id="rgSt" aria-label="Filter by status">${[['','All'],['war','At war'],['peace','At peace']].map(([v,n])=>`<option value="${v}"${F.st===v?' selected':''}>${n}</option>`).join('')}</select>`:''}
+  <select id="rgSort" aria-label="Sort by">${S.map(s=>`<option value="${s[0]}"${s[0]===sd[0]?' selected':''}>Sort: ${s[1]}</option>`).join('')}</select>
+  <button class="btn sm" id="rgDir" aria-label="Sort order">${sd[1]<0?'↓ high first':'↑ low first'}</button>`;
+}
+function rgKingdoms(L){
+  return L.map(({T})=>{const R=RACES[T.race],foes=wars.filter(w=>w.a===T.id||w.b===T.id).map(w=>tribes[w.a===T.id?w.b:w.a]),al=alliesOf(T);
+    return `<div class="rg-row"><span class="sw" style="background:${css(T.color)}"></span><div>
+    <label class="rg-lab">${R.icon} ${R.title}</label>${rgIn(T.name,'king',`data-id="${T.id}"`,'Kingdom name')}
+    <div class="rg-stats">${rgSt('People',T.pop+' '+esc(R.plural.toLowerCase()))}${rgSt('Soldiers',rgSold(T))}${rgSt('Villages',T.towns.length)}${rgSt('Land',T.area+' tiles, '+sharePct(T)+'%')}${rgSt('Era',AGE_NAME[T.age])}${rgSt('Founded','Y'+T.founded+' ('+(year()-T.founded)+' yrs)')}${rgSt('Faith',esc(T.rel.name))}${rgSt('Stability',Math.round(T.stab))}${rgSt('Devotion',Math.round(T.devo))}${rgSt('Food',T.food)}${rgSt(T.race==='dwarf'?'Stone':'Timber',T.mat)}${rgSt('Livestock',T.stock)}${rgSt('Renown',T.renown)}${rgSt('Wars',foes.length?foes.map(f=>esc(f.name)).join(', '):'none')}${rgSt('Allies',al.length?al.map(f=>esc(f.name)).join(', '):'none')}</div>
     ${T.towns.length>1?`<label class="rg-lab">Villages</label><div class="rg-towns">${T.towns.map((H,k)=>k?rgIn(H.name,'town',`data-id="${T.id}" data-t="${k}"`,'Village name'):'').join('')}</div>`:''}
-    <div class="row-btns"><button class="btn sm rg-codex" data-id="${T.id}">Open codex</button></div></div></div>`).join('');
+    <div class="row-btns"><button class="btn sm rg-codex" data-id="${T.id}">Open codex</button><button class="btn sm rg-go" data-id="${T.id}">Go there</button></div></div></div>`}).join('');
 }
-function rgFaiths(){
-  const m=new Map();
-  for(const T of tribes)if(T.alive){const v=m.get(T.rel)||{n:0,k:[]};v.n+=T.pop;v.k.push(T);m.set(T.rel,v)}
-  regFaiths=[...m.entries()].sort((a,b)=>b[1].n-a[1].n);
-  if(!regFaiths.length)return '<p class="empty">No faiths yet.</p>';
-  return regFaiths.map(([rel,v],i)=>`<div class="rg-row"><span class="sw" style="background:${css(DOMAINS[rel.domain].c)}"></span><div>
-    <label class="rg-lab">Faith</label>${rgIn(rel.name,'faith',`data-i="${i}"`,'Faith name')}
-    <label class="rg-lab">Patron god, ${esc(rel.patron.title)}</label>${rgIn(rel.patron.name,'god',`data-i="${i}"`,'Patron god name')}
-    <p class="gdom">${esc(rel.doc.name)} · ${v.n} followers in ${v.k.map(T=>esc(T.name)).join(', ')}</p></div></div>`).join('');
+function rgFaiths(L){
+  return L.map(v=>{const rel=v.rel,p=rel.patron;return `<div class="rg-row"><span class="sw" style="background:${css(DOMAINS[rel.domain].c)}"></span><div>
+    <label class="rg-lab">Faith</label>${rgIn(rel.name,'faith',`data-rel="${rel.id}"`,'Faith name')}
+    <label class="rg-lab">Patron god, ${esc(p.title)}</label>${rgIn(p.name,'god',`data-rel="${rel.id}" data-g="patron"`,'Patron god name')}
+    <div class="rg-stats">${rgSt('Doctrine',esc(rel.doc.name))}${rgSt('Domain',esc(p.dom))}${rgSt('Founded','Y'+rel.founded+' ('+(year()-rel.founded)+' yrs)')}${rgSt('Followers',v.pop)}${rgSt('Kingdoms',v.k.map(T=>esc(T.name)).join(', '))}${rgSt('Soldiers',v.sol)}${rgSt('Land',v.area+' tiles')}</div>
+    <p class="gdom">${rel.tenets.map(esc).join(' · ')}</p></div></div>`}).join('');
 }
-function rgCultures(){
-  const alive=tribes.filter(T=>T.alive).sort((a,b)=>b.pop-a.pop);
-  if(!alive.length)return '<p class="empty">No cultures yet.</p>';
-  return alive.map(T=>`<div class="rg-row"><span class="sw" style="background:${css(T.color)}"></span><div>
+function rgCultures(L){
+  return L.map(({T})=>{const ar=T.arts.filter(a=>!a.lost).sort((a,b)=>b.q-a.q)[0];return `<div class="rg-row"><span class="sw" style="background:${css(T.color)}"></span><div>
     <label class="rg-lab">Culture of the ${esc(T.title)}</label>${rgIn(cultureName(T),'culture',`data-id="${T.id}"`,'Culture name')}
     <div class="chips2 sm">${T.values.map(v=>`<span class="bchip" title="${esc(v.desc)}">${esc(v.name)}</span>`).join('')}</div>
-    <p class="gdom">${T.arts.length} works of art, renown ${T.renown}</p></div></div>`).join('');
+    <div class="rg-stats">${rgSt('Kingdom',esc(T.name))}${rgSt('Population',T.pop)}${rgSt('Era',AGE_NAME[T.age])}${rgSt('Renown',T.renown)}${rgSt('Works',T.arts.length)}${rgSt('Best work',ar?esc(ar.name)+' '+stars(ar.q):'none')}</div></div></div>`}).join('');
 }
-function rgLangs(){
-  return RACE_KEYS.map(r=>`<div class="rg-row"><span class="sw" style="background:#8a7fb0"></span><div>
+function rgLangs(L){
+  return L.map(({r,k})=>`<div class="rg-row"><span class="sw" style="background:#8a7fb0"></span><div>
     <label class="rg-lab">${RACES[r].icon} Language of the ${RACES[r].plural.toLowerCase()}</label>${rgIn(LANG[r],'lang',`data-r="${r}"`,'Language name')}
-    <p class="gdom">Spoken by ${cnt.race[r]||0} · “${esc(phrase(r))}”</p>
+    <div class="rg-stats">${rgSt('Speakers',cnt.race[r]||0)}${rgSt('Kingdoms',k.length?k.map(T=>esc(T.name)).join(', '):'none')}${rgSt('Land',rgSum(k,T=>T.area)+' tiles')}${rgSt('Soldiers',rgSum(k,rgSold))}${k.length?rgSt('Greeting','“'+esc(k[0].motto)+'”'):''}</div>
     <div class="row-btns"><button class="btn sm rg-hear" data-r="${r}">Hear it</button></div></div></div>`).join('');
 }
-function renderRegistry(force){
+function renderRegistry(force,bar){
   if(!regOpen)return;
-  const body=cxEl('rgBody');
-  if(!force&&(body.contains(document.activeElement)||body.querySelector(':active')||regSignature()===regSig))return;
-  regSig=regSignature();
-  const st=body.scrollTop;
-  cxEl('rgHead').innerHTML=`<span class="sw3" style="background:var(--accent)"></span><div><h3>Registry of the World</h3><p>Every name here is yours to change. Type, then press Enter.</p></div>
+  const body=cxEl('rgBody'),ae=document.activeElement,inReg=ae&&cxEl('registry').contains(ae)&&(ae.tagName==='INPUT'||ae.tagName==='SELECT');
+  if(!force&&(inReg||body.querySelector(':active')))return;
+  if(force&&!bar){
+    cxEl('rgHead').innerHTML=`<span class="sw3" style="background:var(--accent)"></span><div><h3>Registry of the World</h3><p>Every name here is yours to change. Type, then press Enter.</p></div>
     <div class="cx-actions"><button class="insp-x" id="rgClose" aria-label="Close registry">×</button></div>`;
-  cxEl('rgTabs').innerHTML=RG_TABS.map(([k,n])=>`<button data-tab="${k}" aria-pressed="${k===regTab}">${n}</button>`).join('');
-  body.innerHTML=regTab==='faiths'?rgFaiths():regTab==='cultures'?rgCultures():regTab==='langs'?rgLangs():rgKingdoms();
-  body.scrollTop=st;
+    cxEl('rgTabs').innerHTML=RG_TABS.map(([k,n])=>`<button data-tab="${k}" aria-pressed="${k===regTab}">${n}</button>`).join('');
+    if(!cxEl('rgBar').innerHTML||!inReg)renderRgBar();
+  }
+  const {L,all}=rgItems();
+  let h;
+  if(!all)h=regTab==='kingdoms'?'<p class="empty">No kingdoms yet. Pick a people in the Creatures tab and tap on land.</p>':regTab==='cultures'?'<p class="empty">No cultures yet.</p>':regTab==='faiths'?'<p class="empty">No faiths yet.</p>':'';
+  else h=`<p class="rg-count">${L.length<all?`${L.length} of ${all} ${RG_NOUN[regTab]}`:`${all} ${RG_NOUN[regTab]}`}</p>`+(L.length?(regTab==='faiths'?rgFaiths:regTab==='cultures'?rgCultures:regTab==='langs'?rgLangs:rgKingdoms)(L):'<p class="empty">Nothing matches the filters.</p>');
+  if(h===regHTML&&!force)return;
+  regHTML=h;const st=body.scrollTop;body.innerHTML=h;body.scrollTop=st;
 }
+/* any name box in the game: class rg-in or nm-in with data-kind */
 function applyName(el){
-  const v=el.value.trim().slice(0,40),k=el.dataset.kind;if(!v){renderRegistry(true);return}
-  if(k==='king'){const T=tribes[+el.dataset.id];if(!T||T.name===v)return;const old=T.title;
-    if(T.towns[0].name===T.name)T.towns[0].name=v;T.name=v;T.title=`${RACES[T.race].title} ${v}`;
-    log(`The ${old} is now known as the ${T.title}.`,T.color);}
-  else if(k==='town'){const T=tribes[+el.dataset.id];if(T&&T.towns[+el.dataset.t])T.towns[+el.dataset.t].name=v}
-  else if(k==='faith'){const f=regFaiths[+el.dataset.i];if(f)f[0].name=v}
-  else if(k==='god'){const f=regFaiths[+el.dataset.i];if(f){f[0].patron.name=v;f[0].deity=v}}
-  else if(k==='culture'){const T=tribes[+el.dataset.id];if(T)T.cultureName=v}
-  else if(k==='lang')LANG[el.dataset.r]=v;
-  toast(`Renamed to “${v}”.`);renderPanel(true);if(codexOpen())renderCodex();
+  const k=el.dataset.kind,pet=k==='pet',v=el.value.trim().slice(0,40);
+  if(v===el.defaultValue||(!v&&!pet)){el.value=el.defaultValue;return}
+  const d=el.dataset;let ok=false;
+  if(k==='king'){const T=tribes[+d.id];if(T){const old=T.title;if(T.towns[0].name===T.name)T.towns[0].name=v;T.name=v;T.title=`${RACES[T.race].title} ${v}`;log(`The ${old} is now known as the ${T.title}.`,T.color);ok=true}}
+  else if(k==='town'){const T=tribes[+d.id],H=T&&T.towns[+d.t];if(H){H.name=v;ok=true}}
+  else if(k==='faith'){const r=religions[+d.rel];if(r){r.name=v;ok=true}}
+  else if(k==='god'){const r=religions[+d.rel],g=r&&(d.g==='second'?r.second:r.patron);if(g){g.name=v;if(g===r.patron)r.deity=v;ok=true}}
+  else if(k==='culture'){const T=tribes[+d.id];if(T){T.cultureName=v;ok=true}}
+  else if(k==='lang'){if(d.r in LANG){LANG[d.r]=v;ok=true}}
+  else if(k==='person'||k==='pet'){const id=+d.uid;let u=units.find(x=>x.id===id);
+    if(!u)for(const b of boats){u=b.pass.find(x=>x.id===id);if(u)break}
+    if(u){if(pet)u.nick=v;else u.name=v;ok=true}}
+  else if(k==='art'){const T=tribes[+d.id],a=T&&T.arts[+d.a];if(a){a.name=v;ok=true}}
+  if(!ok)return;
+  toast(v?`Renamed to “${v}”.`:'Name cleared.');renderPanel(true);
+  if(codexOpen())renderCodex(true);if(regOpen)renderRegistry(true,true);inspHTML='';
 }
-cxEl('rgBody').addEventListener('change',e=>{if(e.target.matches('.rg-in'))applyName(e.target)});
-cxEl('rgBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('.rg-in'))e.target.blur()});
+document.addEventListener('change',e=>{if(e.target.matches&&e.target.matches('input.rg-in[data-kind],input.nm-in[data-kind]'))applyName(e.target)});
+document.addEventListener('keydown',e=>{const el=e.target;if(!el.matches||!el.matches('input.rg-in[data-kind],input.nm-in[data-kind]'))return;
+  if(e.key==='Enter'){el.blur()}else if(e.key==='Escape'){e.stopPropagation();el.value=el.defaultValue;el.blur()}});
 cxEl('rgBody').addEventListener('click',e=>{
   const c=e.target.closest('.rg-codex');if(c){const T=tribes[+c.dataset.id];if(T){flyTo(T.cx+.5,T.cy+.5,Math.max(cam.tpz,2*dpr));openCodex(T,'overview')}return}
+  const g=e.target.closest('.rg-go');if(g){const T=tribes[+g.dataset.id];if(T)flyTo(T.cx+.5,T.cy+.5,Math.max(cam.tpz,2*dpr));return}
   const h=e.target.closest('.rg-hear');if(h){audioInit();playAt('speak',.9,0,{race:h.dataset.r,child:false})}
 });
-cxEl('rgTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;regTab=b.dataset.tab;cxEl('rgBody').scrollTop=0;renderRegistry(true)});
+cxEl('rgTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;regTab=b.dataset.tab;cxEl('rgBody').scrollTop=0;renderRgBar();renderRegistry(true,true);cxEl('rgTabs').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+cxEl('rgBar').addEventListener('input',e=>{if(e.target.id==='rgQ'){regFilt[regTab].q=e.target.value;renderRegistry(true,true)}});
+cxEl('rgBar').addEventListener('change',e=>{const t=e.target,F=regFilt[regTab];
+  if(t.id==='rgRace')F.race=t.value;else if(t.id==='rgSt')F.st=t.value;else if(t.id==='rgSort')regSort[regTab][0]=t.value;else return;
+  cxEl('rgBody').scrollTop=0;renderRegistry(true,true)});
+cxEl('rgBar').addEventListener('click',e=>{const b=e.target.closest('#rgDir');if(!b)return;const s=regSort[regTab];s[1]=-s[1];b.textContent=s[1]<0?'↓ high first':'↑ low first';renderRegistry(true,true)});
 cxEl('rgHead').addEventListener('click',e=>{if(e.target.closest('#rgClose'))closeRegistry()});
 
 /* ============ The Chronicle: the great events of the world, newest first ============ */

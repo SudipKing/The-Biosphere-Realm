@@ -13,7 +13,7 @@ A WorldBox-style god-simulation sandbox that runs entirely in the browser. Plain
 
 ## Architecture
 
-Scripts share one global scope and load in this order (see `index.html`): `data, core, sim, culture, world, terrain, sprites, people, architecture, audio, fauna, render, codex, ui, save`. Function declarations are hoisted across files. Top-level `const`/`let` tables must only be read at runtime, never at load time by an earlier file.
+Scripts share one global scope and load in this order (see `index.html`): `data, core, sim, culture, world, terrain, sprites, people, architecture, audio, fauna, powers, divine, render, codex, ui, save`. Function declarations are hoisted across files. Top-level `const`/`let` tables must only be read at runtime, never at load time by an earlier file.
 
 | File | Role |
 | --- | --- |
@@ -30,7 +30,8 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 | `fauna.js` | WorldBox-style creatures added later: sprites, calls, special behaviours (`act`), biome spawns, and their powers (`FAUNA_ITEMS`, `WFX2`) |
 | `render.js` | Camera with eased zoom and inertia, interpolated drawing, lighting, weather overlays, spatial sound mixing |
 | `powers.js` | More chaos and wonders (`POWER_ITEMS`, added to the Chaos and Wonders tabs), falling bombs (`dropBomb`, wfx type `fall`, landing in `updateWorldFx`) and the lifting magnet (`BRUSHFN.w_magnet`, wfx type `grab`; it wraps `updateUnits` so carried units neither act nor drown) |
-| `codex.js` | Realm Codex panel (Overview, Faith, Culture and Art, History) |
+| `divine.js` | The Divine hand tab (`DIVINE_ITEMS`, `d_*` taps): command, smite, resurrection (`fallen`), crown, found a kingdom, unite kingdoms, summon army, baby boom, golden age, prophet, awaken, ten-year warp. Its unit and kingdom functions (`smiteUnit`, `crownUnit`, `goldenAge`…) are also the inspector's action buttons |
+| `codex.js` | Realm Codex panel (Overview, Faith, Culture and Art, History), the Registry, the Chronicle, and the shared rename system (`nmIn`, `applyName`) |
 | `ui.js` | Power tray (`TABS`), inspector, side panel, World panel, help and first-run card, input, main loop |
 | `save.js` | Save the world to a gzipped `.biosphere` file and load it back (`saveWorld`, `buildWorld`, `applyWorld`) |
 
@@ -80,6 +81,17 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 - **Open land.** `domainRadius` is capped at `DOM_RMAX`, and every domain shrinks once more than `DOM_FULL` of the land is held, so migrants and villages always find a frontier.
 - **Frame budgets.** The main loop gives the sim `SIM_BUDGET` ms per frame (it predicts from the average step cost), terrain repainting gets `TERRAIN_MS`, chunks upload only their dirty rectangle, and the domain colour layer redraws only the box of tiles whose owner changed (`ovBox`). `computeDomains` runs at most every 10 steps when buildings change. Units cache their two sprite frames in `u._sp`. Every unit is created from `blankUnit()` so all units share one object shape (faster property access); add new unit fields there.
 - **Follow a life.** People store parent ids (`u.pa`, `u.pb`). When a followed person dies, the inspector offers their oldest living child (`heirOf`), or someone from the same kingdom.
+
+## Robustness, renaming and the divine hand (added later)
+
+- **The loop never dies.** `frame()` books the next frame first and runs `tick()` in a try/catch; `press()` wraps every tool. Errors go to `reportErr` (logged once each, a toast at most every 6 s). Never add code that can stop `requestAnimationFrame`.
+- **Time warp.** The hourglass (`w_time`) and Age of ages call `warpYears(n)`: years queue in `warpLeft` (at most `WARP_MAX`) and run `WARP_MS` per frame in `runWarp`, never in one blocking loop. Esc, a new world or a load stops it.
+- **Caps on repeat use.** After a tap, `trimWfx` keeps at most `WFX_KIND` lasting effects of one kind and `WFX_MAX` in all (bombs in flight and the magnet are kept); `updEffects` keeps at most 600 effects. Units stay under 1600.
+- **The hint bar has a fixed height.** Its text changes on every hover; if it grew, the stage and the canvas would resize (a black flash and a jump). `resize()` also skips no-op resizes and redraws at once.
+- **Camera.** A new world opens on the whole map (`showWholeWorld`); a load keeps its saved view.
+- **Popups.** With Inspect, a tap on bare ground closes the inspector and any open panel; a tap on a unit or building inspects it.
+- **Renaming.** Any `<input class="nm-in|rg-in" data-kind=…>` is a name field (`nmIn(val,kind,attrs,label,cls)`); `applyName` handles kinds `king, town, faith, god, culture, lang, person, pet, art`. Panels that refresh themselves must not rebuild while one of their inputs has focus. Animals carry a player-given `u.nick`.
+- **Commands.** `u.cmd` (a step number) makes `updateUnits` walk the unit straight to `tx,ty` and skip its own decisions until it arrives or is blocked. `fallen` (the last 150 dead) feeds Resurrection and is not saved.
 
 ## Balance knobs
 

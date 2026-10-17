@@ -39,7 +39,7 @@ function blankUnit(){
     race:undefined,tribe:undefined,town:undefined,job:undefined,xp:undefined,jhp:undefined,jdmg:undefined,genes:undefined,
     traits:undefined,name:undefined,gen:undefined,parents:undefined,pa:undefined,pb:undefined,born:undefined,kills:undefined,
     home:undefined,odd:undefined,frozen:undefined,shield:undefined,haste:undefined,charm:undefined,boost:undefined,
-    btype:undefined,_sp:undefined,_sg:undefined,_ssp:undefined,
+    btype:undefined,cmd:undefined,nick:undefined,_sp:undefined,_sg:undefined,_ssp:undefined,
     _atkAt:0,_ax:0,_ay:0,_hitAt:0,_kx:0,_ky:0};
 }
 function mkUnit(k,x,y){
@@ -82,8 +82,10 @@ function addPerson(T,x,y,pa,pb,race){
 }
 /* visual-only queues drained by render.js (never read by the sim, never saved) */
 const HITQ=[],DEATHQ=[];
+const fallen=[];   /* the recently dead, kept so the Resurrection power can raise them (never saved) */
 function die(u){
   if(u.dead)return;u.dead=true;
+  fallen.push(u);if(fallen.length>150)fallen.shift();
   if(!u.inside&&DEATHQ.length<200)DEATHQ.push(u);
   if(u.k===0&&u.kills>=5){const T=tribes[u.tribe];log(`${u.name}, hero of the ${T.title}, has fallen after ${u.kills} victories.`,T.color,false,{x:u.x,y:u.y,ic:'🎖️',p:1});T.heroes.push({name:u.name,kills:u.kills,y:year()});T.renown+=1}
 }
@@ -530,6 +532,7 @@ function updateUnits(){
     }
     if(u.age>u.life&&!(u.odd&&u.traits.includes('Immortal'))){die(u);dead=true;continue}
     if(u.frozen>step){u.moving=false;continue}
+    if(u.cmd>step){const ox=u.tx,oy=u.ty;u.inside=false;if(moveToward(u,u.spd*1.3)||u.tx!==ox||u.ty!==oy){u.cmd=0;u.task=null;u.cd=0}if(u.k===0)u.hunger++;continue}
     if(u.k===0)updPerson(u);else updAnimal(u);
     if(u.dead)dead=true;
   }
@@ -965,7 +968,7 @@ function genOres(){
 function resetWorldState(){
   own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;ovDirty=true;lastDomains=-99;ownSnap=null;
   fires=new Set();lavas=new Set();burnSet=new Set();effects=[];story=newStory();
-  bList=[];bDirty=true;logDirty=true;volcanoes.length=0;wfx.length=0;monoliths.length=0;dipPending=null;
+  bList=[];bDirty=true;logDirty=true;volcanoes.length=0;wfx.length=0;fallen.length=0;monoliths.length=0;dipPending=null;
 }
 function genWorld(seedText){
   worldSeed=seedText!=null&&String(seedText).trim()?String(seedText).trim().slice(0,40):randomSeed();

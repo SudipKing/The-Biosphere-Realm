@@ -50,7 +50,7 @@ Every people has its own pantheon, and each kingdom follows its own sect of it. 
 
 ## The power tray
 
-The dashboard on the left has six tabs (keys `1` to `6`). **Inspect** and **Move** stay pinned at the top. On a phone it moves to the bottom.
+The dashboard on the left has seven tabs (keys `1` to `7`), the last being the Divine hand. **Inspect** and **Move** stay pinned at the top. On a phone it moves to the bottom.
 
 | Tab | What is in it |
 | --- | --- |
@@ -60,6 +60,9 @@ The dashboard on the left has six tabs (keys `1` to `6`). **Inspect** and **Move
 | 🌿 **Nature & Disasters** | Biome seeds, ore deposits, rain, lightning, fire, earthquake, volcano, flood, plague |
 | 💥 **Chaos** | Meteor, grenade, bomb, molotov, orbital laser, nuke, Tsar Bomba, antimatter, tornado, black hole, cluster bomb, meteor shower, thunderstorm, acid rain |
 | ✨ **Wonders & Oddities** | The monolith, freeze, divine shield, haste, age blast, cloning, charm, wishing star (a surprise), elixir of life, giant potion, shrink mushroom, halo, hex, madness, hero's mantle, fountain of youth, love potion, mutation, portal, Midas touch, garden blessing, treasure chest, feast, hourglass |
+| 👑 **Divine hand** | Command any group to march where you point, smite, resurrect the fallen, crown a general, let a person found a kingdom, unite two kingdoms, summon an army, baby boom, golden age, a prophet with a new faith, awaken an animal, and ten years in a rush |
+
+Inspect anyone or anything and the same acts of god appear as buttons under it. Every name you see (people, pets, villages, kingdoms, faiths, gods, cultures, languages, works of art) is a field you can type over, right where it is shown. The Registry (Diplomacy tab) lists every kingdom, faith, culture and language with full details, and can be searched, filtered by people or war, and sorted by population, soldiers, size, era or age.
 
 ### The monolith and new peoples
 

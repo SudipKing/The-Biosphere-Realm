@@ -10,13 +10,20 @@ function centerOn(x,y){cam.ox=cw/2-x*TS*cam.pz;cam.oy=ch/2-y*TS*cam.pz}
 function viewCenter(){return[(cw/2-cam.ox)/(TS*cam.pz),(ch/2-cam.oy)/(TS*cam.pz)]}
 function resize(){
   const c=camInit?viewCenter():null;
-  dpr=window.devicePixelRatio||1;
-  const r=stage.getBoundingClientRect();
-  cw=Math.max(1,Math.round(r.width*dpr));ch=Math.max(1,Math.round(r.height*dpr));
-  cv.width=cw;cv.height=ch;cam.fit=fitPz();
-  if(!camInit){camInit=true;cam.pz=cam.tpz=Math.max(cam.fit,2*dpr);centerOn(startFocus[0],startFocus[1])}
-  else centerOn(c[0],c[1]);
+  const nd=window.devicePixelRatio||1,r=stage.getBoundingClientRect();
+  const nw=Math.max(1,Math.round(r.width*nd)),nh=Math.max(1,Math.round(r.height*nd));
+  /* a resize that changes nothing must not touch the canvas: setting its size wipes it to black */
+  if(camInit&&nw===cw&&nh===ch&&nd===dpr)return;
+  const wasFit=camInit&&cam.tpz<=cam.fit*1.001;
+  dpr=nd;cw=nw;ch=nh;cv.width=cw;cv.height=ch;cam.fit=fitPz();
+  /* a new world opens on the whole map */
+  if(!camInit){camInit=true;cam.pz=cam.tpz=cam.fit;centerOn(W/2,H/2)}
+  else{if(wasFit)cam.pz=cam.tpz=cam.fit;centerOn(c[0],c[1])}
+  /* redraw at once, so the frame between a resize and the next animation frame is never blank */
+  if(typeof draw==='function'&&hgt)try{draw(0)}catch(e){}
 }
+/* the whole map, centred */
+function showWholeWorld(){cam.fit=fitPz();cam.pz=cam.tpz=cam.fit;cam.vx=cam.vy=0;cam.flyTo=null;centerOn(W/2,H/2)}
 function fitView(){cam.fit=fitPz();zoomTo(cw/2,ch/2,cam.fit);const c=[W/2,H/2];cam.flyTo=c}
 function zoomRaw(sx,sy,nz){cam.ox=sx-(sx-cam.ox)*nz/cam.pz;cam.oy=sy-(sy-cam.oy)*nz/cam.pz;cam.pz=nz}
 function zoomTo(sx,sy,nz){cam.tpz=clamp(nz,cam.fit*.9,maxPz());cam.ax=sx;cam.ay=sy}
@@ -397,6 +404,7 @@ function draw(dt){
   if(WX.snow>.03){ctx.fillStyle=`rgba(235,242,255,${WX.snow*.1})`;ctx.fillRect(0,0,cw,ch)}
   drawPrecip(dt,run);
   drawWorldFx(ox,oy,pz,inView);
+  drawDivine(ox,oy,pz);
   drawEffects(ox,oy,pz,dt);
   drawWarArrows(ox,oy,pz);
   drawLabels(ox,oy,pz,inView);
@@ -580,19 +588,21 @@ function drawEffects(ox,oy,pz){
     }else if(e.type==='wake'){
       const p=e.t/e.dur,[X,Y]=T2S(e.x,e.y);
       ctx.strokeStyle=`rgba(230,245,255,${(1-p)*.6})`;ctx.lineWidth=Math.max(1,pz*.8);
-      ctx.beginPath();ctx.ellipse(X,Y,tz*(.3+p*.9),tz*(.12+p*.3),0,0,7);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(X,Y,Math.max(0,tz*(.3+p*.9)),Math.max(0,tz*(.12+p*.3)),0,0,7);ctx.stroke();
     }else if(e.type==='fish'){
       const p=e.t/e.dur,[X,Y]=T2S(e.x,e.y);
       ctx.strokeStyle=`rgba(230,245,255,${(1-p)*.7})`;ctx.lineWidth=Math.max(1,pz*.8);
-      ctx.beginPath();ctx.ellipse(X,Y,tz*(.2+p*.8),tz*(.08+p*.3),0,0,7);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(X,Y,Math.max(0,tz*(.2+p*.8)),Math.max(0,tz*(.08+p*.3)),0,0,7);ctx.stroke();
       if(p<.6){const q=p/.6,fx=X+(q-.5)*tz,fy=Y-Math.sin(q*Math.PI)*tz*.9;ctx.fillStyle='#c9d6de';ctx.fillRect(Math.round(fx),Math.round(fy),Math.ceil(pz*3),Math.ceil(pz*1.5))}
     }
   }
 }
 function updEffects(dt){
-  const k=dt/16.7;
+  const k=Math.max(0,dt)/16.7;
   for(const e of effects){const was=e.t;e.t+=k;if(e.type==='meteor'&&was<22&&e.t>=22){impact(e.x,e.y)}}
   effects=effects.filter(e=>e.t<e.dur);
+  /* a flood of taps can never pile up effects without end */
+  if(effects.length>600)effects.splice(0,effects.length-600);
 }
 /* spatial sound: only what's on screen is heard, louder the closer you zoom */
 const GLOBAL_SFX=new Set(['horn','thunder','boom']);

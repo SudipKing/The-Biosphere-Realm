@@ -305,7 +305,8 @@ const TAPS={
     const T=tribeNear(p);if(!T){toast('No kingdom is near enough to celebrate.');return}
     festival(T);T.nextFest=year()+4+((R()*3)|0);toast(`The ${T.title} threw a feast in your honour.`);
   },
-  w_time:()=>{toast('Spinning the hourglass: a year passes…');setTimeout(()=>{for(let k=0;k<YEAR;k++)simStep()},40)},
+  /* the years run a slice per frame in the main loop (warpYears, ui.js), so tapping again and again never freezes the page */
+  w_time:()=>warpYears(1),
   w_wish:p=>{
     const x=p.x|0,y=p.y|0;if(!inb(x,y))return;
     const outcomes=[

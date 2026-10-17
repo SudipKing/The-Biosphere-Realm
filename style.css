@@ -342,3 +342,37 @@ kbd{border:3px solid var(--line);border-radius:4px}
 .ch-go{margin-left:6px}
 @media (max-width:860px){.top{margin:-8px -8px 0;padding:6px 8px}.brand{font-size:15px}}
 @media (prefers-reduced-motion:reduce){.tile:active{transform:none}}
+
+/* the hint bar keeps one fixed height whatever text it shows, so hovering the tray never resizes the map */
+.hint{height:52px;min-height:52px;box-sizing:border-box;overflow:hidden}
+.hint p{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0}
+@media (max-width:860px){.hint{height:42px;min-height:42px}.hint p{font-size:13px;line-height:1.25}}
+@media (max-width:860px) and (max-height:520px) and (orientation:landscape){.hint{height:30px;min-height:30px}.hint p{-webkit-line-clamp:1}}
+
+/* generic name fields, registry toolbar and stats */
+.nm-in{font:inherit;color:inherit;background:transparent;border:2px solid transparent;border-radius:6px;padding:1px 5px;margin:0 -5px;width:100%;min-width:0;box-sizing:border-box;text-overflow:ellipsis}
+.nm-in:hover,.nm-in:focus{border-color:var(--accent);background:var(--bg);color:var(--ink)}
+.nm-in:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.nm-in.b{font-weight:700;width:auto;max-width:100%}
+.nm-in.big{font-size:inherit;font-weight:inherit;width:min(100%,14em)}
+h4.gname .nm-in{width:min(100%,10em);font-weight:inherit}
+dd .nm-in{font-weight:700}
+.rg-bar{display:flex;flex-wrap:wrap;gap:6px;padding:6px 12px;border-bottom:2px solid var(--line);background:var(--bg)}
+.rg-bar:empty{display:none}
+.rg-bar input,.rg-bar select{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:8px;padding:3px 7px;min-width:0}
+.rg-bar .rg-q{flex:1 1 120px}
+.rg-bar select{flex:0 1 auto;max-width:48%}
+.rg-bar input:hover,.rg-bar select:hover{border-color:var(--accent)}
+.rg-count{color:var(--muted);font-size:12.5px;margin:4px 2px}
+.rg-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:3px 8px;margin:6px 0;font-size:12.5px}
+.rg-stats span{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
+.rg-stats i{font-style:normal;color:var(--muted);font-size:11.5px}
+.rg-stats b{font-weight:600}
+
+/* the inspector's Divine hand: acts of god on whatever is selected */
+.insp-h{margin:12px 0 6px;font-family:var(--pixel);font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--accent)}
+.acts{display:flex;flex-wrap:wrap;gap:5px}
+.acts .act{font-size:12.5px;padding:3px 8px}
+.insp dd .nm-in{max-width:100%}
+/* seven tabs of powers share the width on a phone instead of running off the edge */
+@media (max-width:860px){.tabs{padding:0 6px}.tab{flex:1 1 0;min-width:0;padding:6px 0 4px}}

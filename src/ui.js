@@ -51,8 +51,31 @@ function heirOf(u){
   }
   return best?{u:best,kin:true}:null;
 }
+/* every name in the inspector is a field you can type over (applyName in codex.js does the renaming) */
+const kingIn=T=>`<span class="sw2" style="background:${css(T.color)}"></span>${RACES[T.race].title} ${nmIn(T.name,'king',`data-id="${T.id}"`,'Kingdom name','b')}`;
+/* the hand of god on whatever is selected: each button runs a divine power (divine.js) on it at once */
+const ACT_LABEL={smite:['⚡','Smite'],heal:['❤️','Heal'],crown:['👑','Crown general'],exile:['🏳️','Found a kingdom'],command:['👆','Command'],uplift:['🧠','Awaken'],
+  bless:['🙏','Bless'],golden:['🌟','Golden age'],enlighten:['💡','Enlighten'],prophet:['📜','New prophet'],army:['🛡️','Summon army'],boom:['👶','Baby boom'],curse:['😈','Curse']};
+const actRow=acts=>`<h4 class="insp-h">Divine hand</h4><div class="acts">${acts.map(a=>`<button class="btn sm act" data-act="${a}" title="${ACT_LABEL[a][1]}">${ACT_LABEL[a][0]} ${ACT_LABEL[a][1]}</button>`).join('')}</div>`;
+function inspTribe(){return sel&&sel.i!=null&&bld[sel.i]>=0?tribes[bld[sel.i]]:sel&&sel.t!=null&&own[sel.t]>=0?tribes[own[sel.t]]:null}
+function runAct(a){
+  const u=sel&&sel.u,T=u?null:inspTribe(),at=T?{x:T.cx+.5,y:T.cy+.5}:null;
+  try{
+    if(u&&u.dead){toast('They are beyond even your reach now. Try Resurrection in the Divine tab.');return}
+    switch(a){
+      case 'smite':smiteUnit(u);break;case 'heal':healUnit(u);break;case 'crown':crownUnit(u);break;case 'exile':exileUnit(u);break;
+      case 'uplift':if(upliftUnit(u))select(null);break;
+      case 'command':setTool('d_command');cmdSel=[u];toast(`Now tap where ${u.k===0?u.name:'it'} should go.`);break;
+      case 'bless':TAPS.dbless(at);break;case 'curse':TAPS.dcurse(at);break;case 'enlighten':TAPS.enlighten(at);break;
+      case 'golden':goldenAge(T);break;case 'prophet':newProphet(T);break;case 'army':summonArmy(T,at);break;case 'boom':babyBoom(T);break;
+    }
+  }catch(e){reportErr(e,'act '+a)}
+  inspHTML='';renderInspect();renderPanel(true);
+}
 function renderInspect(){
   if(!sel)return;
+  /* never rebuild under a name being typed */
+  const ae=document.activeElement;if(ae&&ae.tagName==='INPUT'&&inspEl.contains(ae))return;
   let html='',sprite=null;
   if(sel.u){
     const u=sel.u;
@@ -60,26 +83,28 @@ function renderInspect(){
       const T=tribes[u.tribe],L=RACES[u.race],g=u.genes,pct=v=>Math.round(v*100)+'%';
       sprite=unitSprite(u,0);
       const doing=u.dead?'Resting in peace':u.inside?'Asleep at home':!adult(u)?'Playing':u.target?(u.target.k===1?(u.task==='butcher'?TASKS.butcher:'Hunting'):'Fighting'):(TASKS[u.task]||'Wandering');
-      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${u.name}</h3><p>${u.dead?'Has died, ':''}${u.job==='general'&&T.general===u.id?'General':adult(u)?L.name:L.name+' child'} of the ${T.title}, ${AGE_NAME[T.age]}</p></div></div>
+      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${nmIn(u.name,'person',`data-uid="${u.id}"`,'Name','big')}</h3><p>${u.dead?'Has died, ':''}${u.job==='general'&&T.general===u.id?'General':adult(u)?L.name:L.name+' child'} of the ${T.title}, ${AGE_NAME[T.age]}</p></div></div>
       <dl><dt>Age</dt><dd>${yrs(u)}</dd><dt>Job</dt><dd>${u.job&&adult(u)?`<span title="${JOBS[u.job].d}">${JOBS[u.job].ic} ${JOBS[u.job].n}</span>`:adult(u)?'Looking for work':'Child'}</dd><dt>Doing</dt><dd>${doing}</dd>
         <dt>Health</dt><dd>${Math.max(0,Math.round(u.hp))} of ${Math.round(u.maxhp)}</dd>
         <dt>Generation</dt><dd>${u.gen}${u.parents?`, child of ${u.parents}`:', founder'}</dd>
-        <dt>Faith</dt><dd>${T.rel.name}, ${T.rel.patron.dom.toLowerCase()}</dd><dt>Home</dt><dd>${esc(townOf(u,T).name)}</dd><dt>Culture</dt><dd>${esc(cultureName(T))}</dd><dt>Speaks</dt><dd>${esc(LANG[u.race])}</dd><dt>Victories</dt><dd>${u.kills}</dd></dl>
+        <dt>Kingdom</dt><dd>${kingIn(T)}</dd><dt>Home</dt><dd>${nmIn(townOf(u,T).name,'town',`data-id="${T.id}" data-t="${T.towns[u.town|0]?u.town|0:0}"`,'Village name')}</dd><dt>Faith</dt><dd>${nmIn(T.rel.name,'faith',`data-rel="${T.rel.id}"`,'Faith name')}</dd><dt>God</dt><dd>${nmIn(T.rel.patron.name,'god',`data-rel="${T.rel.id}" data-g="patron"`,'Patron god name')}</dd><dt>Culture</dt><dd>${nmIn(cultureName(T),'culture',`data-id="${T.id}"`,'Culture name')}</dd><dt>Speaks</dt><dd>${nmIn(LANG[u.race],'lang',`data-r="${u.race}"`,'Language name')}</dd><dt>Victories</dt><dd>${u.kills}</dd></dl>
       ${u.traits.length?`<div class="chips">${u.traits.map(t=>`<span title="${TRAIT_INFO[t]}">${t}</span>`).join('')}</div>`:''}
       <dl><dt>Skin</dt><dd><span class="sw2" style="background:${css(L.skins[g.skin])}"></span>${L.skinNames[g.skin]}</dd>
         <dt>Hair</dt><dd><span class="sw2" style="background:${css(L.hairs[g.hair])}"></span>${L.hairNames[g.hair]}</dd>
         <dt>Strength</dt><dd>${pct(g.str)}</dd><dt>Vitality</dt><dd>${pct(g.vit)}</dd><dt>Agility</dt><dd>${pct(g.agi)}</dd></dl>
-      <div class="row-btns">${followBtn(u)}<button class="btn" id="hearBtn">Hear them speak</button></div>`;
+      <div class="row-btns">${followBtn(u)}<button class="btn" id="hearBtn">Hear them speak</button></div>
+      ${u.dead?'':actRow(['smite','heal','command',...(adult(u)&&u.job!=='general'?['crown']:[]),'exile'])}`;
     }else{
       const S=SPECIES[u.sp],own=u.owner>=0?tribes[u.owner]:null;
       sprite=animalSpr(u,0);
       const doing=u.dead?'Gone':u.target?'Hunting':u.mode?'Fleeing':own?'Grazing in the pasture':'Roaming';
-      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${S.name}${u.sp==='deer'&&u.male?' (buck)':''}</h3><p>${own?`Livestock of the ${own.title}`:S.monster?'A monster, hostile to all life':S.dom?'Feral, belongs to no one':'Wild animal'}</p></div></div>
+      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${u.nick?esc(u.nick)+' the ':''}${S.name}${u.sp==='deer'&&u.male?' (buck)':''}</h3><p>${own?`Livestock of the ${own.title}`:S.monster?'A monster, hostile to all life':S.dom?'Feral, belongs to no one':'Wild animal'}</p></div></div>
       <p class="quote" style="font-style:normal">${S.desc}</p>
-      <dl><dt>Age</dt><dd>${adult(u)?yrs(u):'Young'}</dd><dt>Doing</dt><dd>${doing}</dd>
+      <dl><dt>Name</dt><dd>${nmIn(u.nick||'','pet',`data-uid="${u.id}"`,'Animal name')}</dd><dt>Age</dt><dd>${adult(u)?yrs(u):'Young'}</dd><dt>Doing</dt><dd>${doing}</dd>
       <dt>Health</dt><dd>${Math.max(0,Math.round(u.hp))} of ${u.maxhp}</dd>
       <dt>Hunger</dt><dd>${u.hunger<400?'Well fed':u.hunger<1000?'Hungry':'Starving'}</dd></dl>
-      <div class="row-btns">${followBtn(u)}<button class="btn" id="hearBtn">Hear it</button></div>`;
+      <div class="row-btns">${followBtn(u)}<button class="btn" id="hearBtn">Hear it</button></div>
+      ${u.dead?'':actRow(['smite','heal','command','uplift'])}`;
     }
   }else if(sel.boat){
     const b=sel.boat,T=tribes[b.tribe];
@@ -94,7 +119,7 @@ function renderInspect(){
     html=`<div class="insp-head"><span id="ispr"></span><div><h3>${B&&B.name?B.name:BN}</h3><p>${BN}${tree[i]?', with trees':''}${lava[i]?', molten':''}</p></div></div>
       ${B&&B.desc?`<p class="quote" style="font-style:normal">${B.desc}</p>`:''}
       ${O?`<p class="quote" style="font-style:normal"><b>${O.name}</b> deposit, about ${oreAmt[i]} left. ${O.desc}</p>`:''}
-      <dl><dt>Domain</dt><dd>${ow?kingLine(ow)+` (${sharePct(ow)}% of the land)`:b>=2?'Unclaimed':'Open water'}</dd></dl>${ow?'<button class="btn" id="codexBtn">Open realm codex</button>':''}`;
+      <dl><dt>Domain</dt><dd>${ow?kingIn(ow)+` (${sharePct(ow)}% of the land)`:b>=2?'Unclaimed':'Open water'}</dd></dl>${ow?'<button class="btn" id="codexBtn">Open realm codex</button>'+actRow(['bless','golden','enlighten','prophet','army','boom','curse']):''}`;
   }else{
     const i=sel.i;
     if(bld[i]<0){html=`<div class="insp-head"><span id="ispr"></span><div><h3>Ruins</h3><p>All that remains of a fallen kingdom</p></div></div>`;sprite=spr('ruin',ruinSprite)}
@@ -108,22 +133,24 @@ function renderInspect(){
       const sleepers=units.filter(u=>u.inside&&u.home===i).length;
       const e=btier[i]|0,WN=[['Forge','Forge','Forge','Smithy','Workshop','Factory','Power plant','Fusion reactor'],['Dock','Dock','Dock','Wharf','Harbour','Harbour crane','Steel pier','Hover port'],['Watchtower','Watchtower','Watchtower','Castle tower','Bastion','Lookout','Radar tower','Shield pylon'],['Windmill','Windmill','Windmill','Windmill','Windmill','Steam mill','Wind turbine','Solar farm']],
         EN=[null,null,null,null,['Townhouse','Town hall','Cathedral'],['Row house','Clock-tower hall','Cathedral'],['Apartment block','Office tower','Temple'],['Habitat spire','Council spire','Temple of light']][e];
-      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${art?art.name:ty>=5?WN[ty-5][e]:EN&&ty<3?EN[ty]:names[ty]}</h3><p>${kingLine(T)}</p></div></div>
+      html=`<div class="insp-head"><span id="ispr"></span><div><h3>${art?nmIn(art.name,'art',`data-id="${T.id}" data-a="${T.arts.indexOf(art)}"`,'Name of the work','big'):ty>=5?WN[ty-5][e]:EN&&ty<3?EN[ty]:names[ty]}</h3><p>${kingIn(T)}</p></div></div>
       ${art?`<p class="quote" style="font-style:normal">${art.form} by ${art.creator}, year ${art.year}. ${art.desc} ${stars(art.q)}</p>`:''}${ty===2?`<p class="quote" style="font-style:normal">Sacred to ${T.rel.patron.name}, ${T.rel.patron.title}. ${T.rel.patron.dom}.</p>`:''}<p class="quote">“${T.motto}” they say in greeting.</p>
       <dl><dt>People</dt><dd>${T.pop} ${T.pop===1?L.name.toLowerCase():L.plural.toLowerCase()}${sleepers?`, ${sleepers} asleep here`:''}</dd>
         <dt>Buildings</dt><dd>${T.houses}</dd><dt>Livestock</dt><dd>${T.stock}</dd>
         <dt>Stores</dt><dd>${T.food} food, ${T.mat} ${T.race==='dwarf'?'stone':'timber'}</dd>
-        <dt>Faith</dt><dd>${T.rel.name} (${fol} followers)</dd>
+        <dt>Village</dt><dd>${nmIn(T.towns[nearestTown(T,i%W,(i/W)|0)].name,'town',`data-id="${T.id}" data-t="${nearestTown(T,i%W,(i/W)|0)}"`,'Village name')}</dd>
+        <dt>Faith</dt><dd>${nmIn(T.rel.name,'faith',`data-rel="${T.rel.id}"`,'Faith name')} (${fol} followers)</dd><dt>God</dt><dd>${nmIn(T.rel.patron.name,'god',`data-rel="${T.rel.id}" data-g="patron"`,'Patron god name')}</dd>
         <dt>Built of</dt><dd>${ty===4?'stone':TIER_MAT[btier[i]|0]}</dd>
         <dt>Era</dt><dd>${AGE_NAME[T.age]}</dd><dt>Domain</dt><dd>${sharePct(T)}% of the land</dd>
         <dt>Founded</dt><dd>Year ${T.founded}${T.parent>=0?` by settlers of the ${tribes[T.parent].title}`:''}</dd></dl>
-      <p class="quote" style="font-style:normal">${L.lore}</p><button class="btn" id="codexBtn">Open realm codex</button>`;
+      <p class="quote" style="font-style:normal">${L.lore}</p><button class="btn" id="codexBtn">Open realm codex</button>
+      ${actRow(['bless','golden','enlighten','prophet','army','boom','curse'])}`;
     }
   }
   if(html===inspHTML)return;
   inspHTML=html;inspBody.innerHTML=html;
   const slot=$('ispr');if(slot&&sprite)slot.replaceWith(spriteCanvas(sprite));
-  const cxb=$('codexBtn');if(cxb)cxb.addEventListener('click',()=>{const t=sel&&sel.i!=null&&bld[sel.i]>=0?tribes[bld[sel.i]]:sel&&sel.t!=null&&own[sel.t]>=0?tribes[own[sel.t]]:null;if(t)openCodex(t)});
+  const cxb=$('codexBtn');if(cxb)cxb.addEventListener('click',()=>{const t=inspTribe();if(t)openCodex(t)});
   const fb=$('followBtn');
   if(fb)fb.addEventListener('click',()=>{follow=!follow;if(follow&&cam.tpz<2*dpr)zoomTo(cw/2,ch/2,3*dpr);renderInspect()});
   const hr=$('heirBtn');
@@ -132,8 +159,9 @@ function renderInspect(){
   if(hb)hb.addEventListener('click',()=>{audioInit();const u=sel&&sel.u;if(!u)return;if(u.k===0)playAt('speak',.9,0,{race:u.race,child:!adult(u)});else playAt('call',.9,0,u.sp)});
 }
 $('inspClose').addEventListener('click',()=>select(null));
+inspBody.addEventListener('click',e=>{const b=e.target.closest('.act');if(b)runAct(b.dataset.act)});
 
-/* ---------- tray: six tabs of powers, drawn in the style of a god-game toolbox ---------- */
+/* ---------- tray: seven tabs of powers, drawn in the style of a god-game toolbox ---------- */
 function iconCanvas(sp,size=48){
   const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
   const raw=Math.min((size-6)/sp.w,(size-6)/sp.h),sc=raw>=2?Math.floor(raw):raw;
@@ -262,6 +290,8 @@ const TABS=[
     ...FAUNA_ITEMS.wonders,
     ...POWER_ITEMS.wonders,
   ]},
+  /* direct acts of a god on people, kingdoms and time itself (divine.js) */
+  {ic:'👑',name:'Divine hand',items:DIVINE_ITEMS},
 ];
 const PINNED=[
   ['inspect','🔍','Inspect','Tap anyone or anything to see who they are: genes, faith, family, what the ground holds, and who owns it.'],
@@ -307,7 +337,7 @@ trayEl.addEventListener('click',e=>{
 trayEl.addEventListener('mouseover',e=>{const b=e.target.closest('.tile');if(b&&performance.now()>toastUntil){hintEl.textContent=`${NAMES[b.dataset.tool]}: ${HINT[b.dataset.tool]}`;hintEl.classList.remove('toast')}});
 trayEl.addEventListener('mouseout',e=>{if(e.target.closest('.tile'))showHint()});
 function setTool(t){
-  tool=t;dipPending=null;
+  tool=t;dipPending=null;if(t!=='d_command')clearCmd();
   trayEl.querySelectorAll('.tile').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tool===t));
   stage.classList.toggle('pan',t==='move');stage.classList.toggle('look',t==='inspect');showHint();
 }
@@ -358,10 +388,10 @@ document.addEventListener('keydown',e=>{
   else if(k==='+'||k==='=')stepZoom(cw/2,ch/2,1);
   else if(k==='-')stepZoom(cw/2,ch/2,-1);
   else if(k==='0')fitView();
-  else if(k==='escape'){select(null);closePanels();closeWelcome();closeWorldPop();dipPending=null}
+  else if(k==='escape'){select(null);closePanels();closeWelcome();closeWorldPop();dipPending=null;stopWarp()}
   else if(e.key==='?'||(k==='/'&&e.shiftKey))helpEl.hidden?openHelp():closeHelp();
   else if(k==='c')chronOpen?closeChron():openChron();
-  else if(k>='1'&&k<='6')showTab(+k-1);
+  else if(k>='1'&&k<='9'&&+k<=TABS.length)showTab(+k-1);
 });
 document.addEventListener('pointerdown',()=>audioInit(),{capture:true});
 document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
@@ -389,12 +419,12 @@ $('seedCopy').addEventListener('click',()=>{
 $('seedIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('newWorld').click()});
 /* what every fresh or loaded world needs from the interface */
 function afterWorld(){
-  initFlocks();select(null);closePanels();dipPending=null;follow=false;
+  initFlocks();select(null);closePanels();dipPending=null;follow=false;warpLeft=warpTotal=0;clearCmd();
   cam.fit=fitPz();cam.vx=cam.vy=0;cam.flyTo=null;renderPanel(true);warmSprites();
 }
 $('newWorld').addEventListener('click',()=>{
   genWorld($('seedIn').value);syncRaceTiles(new Set());afterWorld();
-  cam.pz=cam.tpz=Math.max(cam.fit,2*dpr);centerOn(startFocus[0],startFocus[1]);
+  showWholeWorld();
   $('seedIn').value='';closeWorldPop();toast(`A new world rises. Its seed is ${worldSeed}.`);
 });
 
@@ -427,12 +457,31 @@ function pinchInfo(){
   const [a,b]=[...pointers.values()],r=cv.getBoundingClientRect();
   return {d:Math.hypot(a.x-b.x,a.y-b.y),mx:((a.x+b.x)/2-r.left)*dpr,my:((a.y+b.y)/2-r.top)*dpr};
 }
+/* lasting effects are capped, so tapping a power again and again can never pile up work without end */
+/* six of one kind at most (a seventh aurora looks no different but costs a frame), the oldest giving way;
+   falling and delayed bombs are short-lived and always kept */
+const WFX_MAX=80,WFX_KIND=6,WFX_KEEP=new Set(['grab','fall','delay']);
+function trimWfx(){
+  const n={};
+  for(let k=wfx.length-1;k>=0;k--){const t=wfx[k].type;if(WFX_KEEP.has(t))continue;n[t]=(n[t]||0)+1;if(n[t]>WFX_KIND)wfx.splice(k,1)}
+  for(let k=0;k<wfx.length&&wfx.length>WFX_MAX;)if(wfx[k].type!=='grab')wfx.splice(k,1);else k++;
+}
+const anyPanelOpen=()=>codexOpen()||regOpen||chronOpen||!helpEl.hidden;
 function press(p){
   lastPress=performance.now();closeWelcome();
-  if(tool==='inspect'&&cam.pz<1.25*dpr){const T=tribeUnder(p);if(T){select(null);openCodex(T,'overview');return}}
-  if(tool==='inspect'){const s=pickAt(p);select(s);if(s&&s.u&&AU.ready){if(s.u.k===0)playAt('speak',.7,0,{race:s.u.race,child:!adult(s.u)});else playAt('call',.7,0,s.u.sp)}}
-  else if(SPAWNABLE.has(tool))spawnAt(p,tool);
-  else if(TAPS[tool])TAPS[tool](p);
+  try{
+    if(tool==='inspect'){
+      /* zoomed far out, a tap opens the codex of the kingdom under it */
+      if(cam.pz<1.25*dpr){const T=tribeUnder(p);if(T&&T!==codexT){select(null);openCodex(T,'overview');return}}
+      const s=pickAt(p);
+      /* a tap on bare ground while a popup is open just closes it */
+      if((s==null||s.t!=null)&&(!inspEl.hidden||anyPanelOpen())){select(null);closePanels();return}
+      select(s);if(s&&s.u&&AU.ready){if(s.u.k===0)playAt('speak',.7,0,{race:s.u.race,child:!adult(s.u)});else playAt('call',.7,0,s.u.sp)}
+    }
+    else if(SPAWNABLE.has(tool))spawnAt(p,tool);
+    else if(TAPS[tool])TAPS[tool](p);
+    if(wfx.length>WFX_KIND)trimWfx();
+  }catch(e){reportErr(e,tool)}
 }
 cv.addEventListener('pointerdown',e=>{
   audioInit();
@@ -538,11 +587,42 @@ function renderMiniLog(){
 }
 $('miniLog').addEventListener('click',e=>{const b=e.target.closest('button.ml');if(b){follow=false;flyTo(+b.dataset.x,+b.dataset.y,Math.max(cam.tpz,3*dpr))}});
 
+/* a power or a frame that throws must never stop the world: the error is reported once and play goes on */
+let errAt=0;const errSeen=new Set();
+function reportErr(e,where){
+  const m=(e&&e.message)||String(e);
+  if(!errSeen.has(m)){errSeen.add(m);console.error(`[${where}]`,e)}
+  if(performance.now()-errAt>6000){errAt=performance.now();toast('Something went wrong there, but the world carries on.')}
+}
+/* time warp: the hourglass queues years that run in slices of a frame, so the page never freezes,
+   however often it is tapped. At most WARP_MAX years wait in the queue; Esc stops it */
+let warpLeft=0,warpTotal=0;const WARP_MAX=20,WARP_MS=24;
+function warpYears(n){
+  const room=WARP_MAX*YEAR-warpLeft;
+  if(room<=0){toast(`Time is already racing ahead ${WARP_MAX} years. Press Esc to stop it.`);return}
+  const add=Math.min(room,n*YEAR);warpLeft+=add;warpTotal+=add;
+}
+function stopWarp(){if(warpLeft>0){warpLeft=0;warpTotal=0;toast('Time slows to its usual pace.')}}
+function runWarp(){
+  const t0=performance.now();
+  while(warpLeft>0&&performance.now()-t0<WARP_MS){simStep();warpLeft--}
+  alpha=1;
+  if(warpLeft>0){
+    const yrs=Math.ceil(warpLeft/YEAR);
+    hintEl.textContent=`⏳ Time races on… year ${year()}, ${yrs} ${yrs===1?'year':'years'} to go. Esc stops it.`;hintEl.classList.add('toast');toastUntil=performance.now()+400;
+  }else{const n=Math.round(warpTotal/YEAR);warpTotal=0;toast(`${n} ${n===1?'year has':'years have'} passed. It is now year ${year()}.`);renderPanel(true)}
+}
 /* main loop: fixed-rate simulation, rendering interpolated in between */
 let last=performance.now(),acc=0,panelT=0,inspT=0;
 function frame(t){
-  const dt=Math.min(100,t-last);last=t;
-  if(speed>0){
+  /* the next frame is booked first, so an error below can never end the loop */
+  requestAnimationFrame(frame);
+  const dt=clamp(t-last,0,100);last=t;
+  try{tick(t,dt)}catch(e){reportErr(e,'frame')}
+}
+function tick(t,dt){
+  if(warpLeft>0)runWarp();
+  else if(speed>0){
     /* the sim gets a time budget per frame: a busy world runs a little slower rather than dropping frames.
        A step only starts if the average step still fits in what is left of the budget */
     acc+=dt*SPS[speed]/1000;let n=0;const t0=performance.now();
@@ -559,7 +639,6 @@ function frame(t){
   if(codexOpen()&&frameN%70===0)renderCodex();
   if(chronOpen&&frameN%40===0)renderChron();
   if(regOpen&&frameN%60===0)renderRegistry();
-  requestAnimationFrame(frame);
 }
 genWorld();initFlocks();resize();setTool('inspect');renderPanel(true);warmSprites();
 requestAnimationFrame(frame);
