@@ -465,6 +465,8 @@ Object.assign(TAPS,{
 
 /* ---------- domains: who holds which land (one owner per tile) ---------- */
 let landTiles=1,ownSnap=null,landM=null,lastDomains=-99;
+/* village that holds each tile (index into its kingdom's towns): runtime only, rebuilt by computeDomains */
+let ownT=null,ownTSnap=null,brDirty=true;
 /* tiles whose owner changed since the colour layer was last drawn: the layer is only redrawn there */
 const ovBox=[W,H,-1,-1];let ovFull=true;
 /* a domain stops growing at DOM_RMAX tiles, and every domain shrinks once most land is held, so a frontier stays open */
@@ -472,10 +474,11 @@ const DOM_RMAX=14,DOM_FULL=.55;
 const domainRadius=T=>Math.min(DOM_RMAX,3.2+Math.sqrt(T.houses)*1.9+(T.hall>=0?2.5:0)+(T.temple?1.5:0)+T.age*.5+Math.min(4,T.pop/12));
 function computeDomains(){
   if(!landM)landM=new Uint8Array(N);
+  if(!ownT)ownT=new Uint8Array(N);
   let held=0;for(const T of tribes)if(T.alive)held+=T.area;
   const f=held/landTiles,squeeze=f>DOM_FULL?Math.max(.5,1-(f-DOM_FULL)*2.5):1;
   const rads=tribes.map(T=>T.alive?domainRadius(T)*squeeze*(T.area/landTiles>.18?.8:1):0);
-  own.fill(-1);ownScore.fill(9);
+  own.fill(-1);ownScore.fill(9);ownT.fill(0);
   for(const T of tribes){T.area=0;for(const t of T.towns){t.houses=0;t.forge=0;t.dock=0;t.tower=0;t.mill=0}}
   let land=0;
   for(let i=0;i<N;i++){const l=bio(hgt[i])>=2;landM[i]=l;if(l)land++}
@@ -484,12 +487,12 @@ function computeDomains(){
     const o=bld[i];if(o<0)continue;
     const T=tribes[o];if(!T||!T.alive)continue;
     const bx=i%W,by=(i/W)|0;
-    const bt=btype[i];
-    if(bt<3)T.towns[nearestTown(T,bx,by)].houses++;
-    else if(bt>=5){const tw=T.towns[nearestTown(T,bx,by)];if(bt===5)tw.forge=1;else if(bt===6)tw.dock=1;else if(bt===7)tw.tower++;else tw.mill=1}
+    const bt=btype[i],tn=nearestTown(T,bx,by),tnc=tn>255?255:tn;
+    if(bt<3)T.towns[tn].houses++;
+    else if(bt>=5){const tw=T.towns[tn];if(bt===5)tw.forge=1;else if(bt===6)tw.dock=1;else if(bt===7)tw.tower++;else tw.mill=1}
     const m=bt===1?1.25:bt===4?.55:bt>=5?.5:1,rad=rads[o]*m,r2=rad*rad,inv=1/r2,rr=Math.ceil(rad);
     /* a building always holds its own tile */
-    if(ownScore[i]>0){ownScore[i]=0;own[i]=o}
+    if(ownScore[i]>0){ownScore[i]=0;own[i]=o;ownT[i]=tnc}
     for(let dy=-rr;dy<=rr;dy++){
       const Y=by+dy;if(Y<0||Y>=H)continue;
       const span=Math.sqrt(Math.max(0,r2-dy*dy))|0,row=Y*W,dy2=dy*dy;
@@ -498,19 +501,20 @@ function computeDomains(){
         const j=row+X;if(!landM[j])continue;
         const dx=X-bx,sc=(dx*dx+dy2)*inv;
         if(sc>=1||sc>=ownScore[j])continue;
-        ownScore[j]=sc;own[j]=o;
+        ownScore[j]=sc;own[j]=o;ownT[j]=tnc;
       }
     }
   }
   let changed=!ownSnap;if(!ownSnap){ownSnap=new Int16Array(N);ovFull=true}
+  if(!ownTSnap){ownTSnap=new Uint8Array(N);ovFull=true;changed=true}
   for(let i=0;i<N;i++){
     const o=own[i];if(o>=0)tribes[o].area++;
-    if(ownSnap[i]!==o){
-      ownSnap[i]=o;changed=true;const x=i%W,y=(i/W)|0;
+    if(ownSnap[i]!==o||ownTSnap[i]!==ownT[i]){
+      ownSnap[i]=o;ownTSnap[i]=ownT[i];changed=true;const x=i%W,y=(i/W)|0;
       if(x<ovBox[0])ovBox[0]=x;if(y<ovBox[1])ovBox[1]=y;if(x>ovBox[2])ovBox[2]=x;if(y>ovBox[3])ovBox[3]=y;
     }
   }
-  landTiles=Math.max(1,land);ownDirty=false;lastDomains=step;if(changed)ovDirty=true;
+  landTiles=Math.max(1,land);ownDirty=false;lastDomains=step;if(changed){ovDirty=true;brDirty=true}
   computeRoads();
 }
 const sharePct=T=>Math.round(T.area/landTiles*1000)/10;

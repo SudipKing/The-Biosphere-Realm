@@ -100,12 +100,14 @@ function rebuildBList(){
 const OVS=4;let ovC=null,ovX=null,ovOwn=null,ovImg=null,ovBuf=null;
 const packRGBA=(r,g,b,a)=>((a<<24)|(b<<16)|(g<<8)|r)>>>0;
 const ovCand=[0,0,0,0],ovWt=[0,0,0,0],OV_MS=3;let ovJob=null;
+/* owner key of each sub-pixel: kingdom id * 256 + village index, -1 for no owner */
+const ovKey=i=>{const o=own[i];return o<0?-1:o*256+ownT[i]};
 /* owner of each sub-pixel in one row */
 function ovOwnRow(py,px0,px1){
   const ow=W*OVS,fy=(py+.5)/OVS-.5,y0=Math.floor(fy),ty=fy-y0,ya=y0<0?0:y0,yb=y0+1>=H?H-1:y0+1,cand=ovCand,wt=ovWt;
   for(let px=px0;px<px1;px++){
     const fx=(px+.5)/OVS-.5,x0=Math.floor(fx),tx=fx-x0,xa=x0<0?0:x0,xb=x0+1>=W?W-1:x0+1;
-    cand[0]=own[ya*W+xa];cand[1]=own[ya*W+xb];cand[2]=own[yb*W+xa];cand[3]=own[yb*W+xb];
+    cand[0]=ovKey(ya*W+xa);cand[1]=ovKey(ya*W+xb);cand[2]=ovKey(yb*W+xa);cand[3]=ovKey(yb*W+xb);
     if(cand[0]===cand[1]&&cand[0]===cand[2]&&cand[0]===cand[3]){ovOwn[py*ow+px]=cand[0];continue}
     wt[0]=(1-tx)*(1-ty);wt[1]=tx*(1-ty);wt[2]=(1-tx)*ty;wt[3]=tx*ty;
     let best=cand[0],bw=-1;
@@ -113,20 +115,24 @@ function ovOwnRow(py,px0,px1){
     ovOwn[py*ow+px]=best;
   }
 }
-/* colour of each sub-pixel in one row, darker along borders */
+/* fill colour of each sub-pixel in one row: the kingdom colour, tinted a little differently per village.
+   The borders themselves are strokes (see buildBorders), so the fill stays soft */
+const VTINT=[1,1.16,.86,1.28,.74];
 function ovColourRow(py,px0,px1,cols){
-  const ow=W*OVS,oh=H*OVS,buf=ovBuf;
+  const ow=W*OVS,buf=ovBuf;
   for(let px=px0;px<px1;px++){
-    const k=py*ow+px,o=ovOwn[k];if(o<0){buf[k]=0;continue}
-    const e=(px>0&&ovOwn[k-1]!==o)||(px<ow-1&&ovOwn[k+1]!==o)||(py>0&&ovOwn[k-ow]!==o)||(py<oh-1&&ovOwn[k+ow]!==o);
-    const c=cols[o];buf[k]=c?c[e?1:0]:0;
+    const k=py*ow+px,key=ovOwn[k];if(key<0){buf[k]=0;continue}
+    const o=key>>8,t=key&255,cc=cols[o];
+    if(!cc){buf[k]=0;continue}
+    buf[k]=cc[t]||(cc[t]=ovTint(tribes[o].color,t));
   }
 }
+function ovTint(c,t){const f=VTINT[t%5];return packRGBA(Math.min(255,c[0]*f)|0,Math.min(255,c[1]*f)|0,Math.min(255,c[2]*f)|0,150)}
 /* the layer is redrawn only around tiles whose owner changed, a few rows per frame within OV_MS, so it never stalls a frame.
    Colours trail the owner rows by one, because a border pixel needs the row below it */
 function buildOverlay(){
   const ow=W*OVS,oh=H*OVS;
-  if(!ovC){ovC=document.createElement('canvas');ovC.width=ow;ovC.height=oh;ovX=ovC.getContext('2d');ovOwn=new Int16Array(ow*oh);
+  if(!ovC){ovC=document.createElement('canvas');ovC.width=ow;ovC.height=oh;ovX=ovC.getContext('2d');ovOwn=new Int32Array(ow*oh);
     ovImg=ovX.createImageData(ow,oh);ovBuf=new Uint32Array(ovImg.data.buffer);ovFull=true}
   if(ovFull)ovJob=null;
   if(!ovJob){
@@ -141,7 +147,7 @@ function buildOverlay(){
   const J=ovJob,t0=performance.now();let first=-1,last=-1;
   /* a job spans several frames and a kingdom can be founded meanwhile (rebellion, a new village), so the colours
      are extended to every kingdom that exists now; a missing entry used to throw on every frame and freeze the whole picture */
-  for(let k=J.cols.length;k<tribes.length;k++){const c=tribes[k].color;J.cols.push([packRGBA(c[0],c[1],c[2],150),packRGBA(c[0]*.78|0,c[1]*.78|0,c[2]*.78|0,250)])}
+  for(let k=J.cols.length;k<tribes.length;k++)J.cols.push([]);
   while(J.y<J.py1){
     ovOwnRow(J.y,J.px0,J.px1);
     if(J.y>J.py0){ovColourRow(J.y-1,J.px0,J.px1,J.cols);if(first<0)first=J.y-1;last=J.y-1}
@@ -158,12 +164,65 @@ function buildOverlay(){
 /* the visible part of the domain colour layer, scaled onto the map. It is bold when zoomed out, so the map reads as
    a political map, and fades as you zoom in so villages and people show through */
 function domainAlpha(tz){const z=tz/TS/dpr;return z<=.8?1:z>=4?.3:1-.7*Math.log(z/.8)/Math.log(5)}
+/* borders are strokes, so they stay 1 to 2 screen pixels wide at every zoom. They follow the owner map with marching
+   squares: each 2x2 block of tile centres joins the midpoints of the edges where the owner changes, which gives smooth
+   diagonals. Kingdom outlines are solid; a border two kingdoms share is two-tone; the lines between a
+   kingdom's own villages are thin and light, and show only once you zoom in. Rebuilt only when ownership changed */
+let brSolid=[],brShare=[],brVil=[],brCol=[],brLight=[];
+const brP=[0,0,0,0,0,0,0,0,0,0,0,0],brC=[0,0,0,0],brA=[0,0,0,0],brB=[0,0,0,0];
+function brAdd(set,k,x1,y1,x2,y2){if(k<0)return;let p=set[k];if(!p)p=set[k]=new Path2D();p.moveTo(x1,y1);p.lineTo(x2,y2)}
+function brSeg(c,a,b,x1,y1,x2,y2){
+  if(c===0)brAdd(brSolid,a>=0?a:b,x1,y1,x2,y2);
+  else if(c===1){brAdd(brShare,a,x1,y1,x2,y2);brAdd(brShare,b,x1,y1,x2,y2)}
+  else brAdd(brVil,a,x1,y1,x2,y2);
+}
+/* class of the edge between two tiles: 0 kingdom/coast, 1 shared by two kingdoms, 2 between villages, -1 none */
+function brClass(i,j){
+  const a=own[i],b=own[j];
+  if(a!==b)return a<0||b<0?0:1;
+  return a>=0&&ownT[i]!==ownT[j]?2:-1;
+}
+function buildBorders(){
+  brSolid=[];brShare=[];brVil=[];brDirty=false;
+  const P=brP,C=brC,A=brA,B=brB;
+  for(let y=0;y<H-1;y++)for(let x=0;x<W-1;x++){
+    const ia=y*W+x,ib=ia+1,ic=ia+W,id=ic+1;
+    if(own[ia]===own[ib]&&own[ia]===own[ic]&&own[ia]===own[id]&&ownT[ia]===ownT[ib]&&ownT[ia]===ownT[ic]&&ownT[ia]===ownT[id])continue;
+    let n=0;
+    const e=(i,j,mx,my)=>{const c=brClass(i,j);if(c<0)return;C[n]=c;A[n]=own[i];B[n]=own[j];P[n*2]=mx;P[n*2+1]=my;n++};
+    e(ia,ib,x+1,y+.5);e(ic,id,x+1,y+1.5);e(ia,ic,x+.5,y+1);e(ib,id,x+1.5,y+1);
+    if(n<2)continue;
+    if(n===2&&C[0]===C[1])brSeg(C[0],A[0],B[0],P[0],P[1],P[2],P[3]);
+    else for(let k=0;k<n;k++)brSeg(C[k],A[k],B[k],P[k*2],P[k*2+1],x+1,y+1);
+  }
+  for(let k=brCol.length;k<tribes.length;k++){
+    const c=tribes[k].color,m=Math.max(c[0],c[1],c[2],1),g=(c[0]+c[1]+c[2])/3,sc=.9*255/m,ch=v=>Math.max(0,Math.min(255,(g+(v-g)*1.35)*sc))|0;
+    brCol.push(`rgb(${ch(c[0])},${ch(c[1])},${ch(c[2])})`);
+    brLight.push(`rgb(${(c[0]+255*1.2)/2.2|0},${(c[1]+255*1.2)/2.2|0},${(c[2]+255*1.2)/2.2|0})`);
+  }
+}
+function drawBorders(ox,oy,tz,ga){
+  if(brDirty||!ownT)buildBorders();
+  const px=1/(tz||1),z=tz/TS/dpr,va=Math.max(0,Math.min(1,(z-1)*1.5));
+  ctx.save();ctx.translate(ox,oy);ctx.scale(tz,tz);ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.globalAlpha=ga;ctx.lineWidth=1.6*dpr*px;
+  for(let k=0;k<brSolid.length;k++)if(brSolid[k]){ctx.strokeStyle=brCol[k];ctx.stroke(brSolid[k])}
+  /* a shared border is two-tone: the first kingdom's wide line with the second's narrower line on top */
+  for(let k=0;k<brShare.length;k++)if(brShare[k]){ctx.strokeStyle=brCol[k];ctx.lineWidth=(k&1?.9:1.8)*dpr*px;ctx.stroke(brShare[k])}
+  if(va>0){
+    ctx.globalAlpha=ga*va*.85;ctx.lineWidth=1*dpr*px;
+    for(let k=0;k<brVil.length;k++)if(brVil[k]){ctx.strokeStyle=brLight[k];ctx.stroke(brVil[k])}
+  }
+  ctx.restore();
+}
 function drawDomains(ox,oy,tz){
+  const ga=ctx.globalAlpha;
   const vx0=clamp(Math.floor(-ox/tz)-1,0,W),vx1=clamp(Math.ceil((cw-ox)/tz)+1,0,W),vy0=clamp(Math.floor(-oy/tz)-1,0,H),vy1=clamp(Math.ceil((ch-oy)/tz)+1,0,H);
   if(vx1<=vx0||vy1<=vy0)return;
   ctx.globalAlpha=domainAlpha(tz);ctx.imageSmoothingEnabled=true;
   ctx.drawImage(ovC,vx0*OVS,vy0*OVS,(vx1-vx0)*OVS,(vy1-vy0)*OVS,Math.round(ox+vx0*tz),Math.round(oy+vy0*tz),Math.round((vx1-vx0)*tz),Math.round((vy1-vy0)*tz));
   ctx.imageSmoothingEnabled=false;ctx.globalAlpha=1;
+  drawBorders(ox,oy,tz,ga);
 }
 
 /* ambient life that isn't simulated: birds, fish, fireflies */

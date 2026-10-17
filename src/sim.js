@@ -988,7 +988,7 @@ function genOres(){
 }
 /* what a new or loaded world starts without: derived layers, caches, transient effects and the storyteller's memory */
 function resetWorldState(){
-  own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;ovDirty=true;lastDomains=-99;ownSnap=null;
+  own=new Int16Array(N).fill(-1);ownScore=new Float32Array(N).fill(9);ownDirty=true;ovDirty=true;lastDomains=-99;ownSnap=null;ownTSnap=null;
   fires=new Set();lavas=new Set();burnSet=new Set();effects=[];story=newStory();
   bList=[];bDirty=true;logDirty=true;volcanoes.length=0;wfx.length=0;fallen.length=0;monoliths.length=0;dipPending=null;
 }
