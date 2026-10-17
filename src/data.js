@@ -214,17 +214,17 @@ const SPECIES={
     desc:'Glossy black scavengers. They fly over land and sea alike.'},
   eagle:{name:'Eagle',icon:'🦅',wild:1,fly:1,alt:7,pred:1,minor:1,hp:14,dmg:5,spd:.11,chase:.17,life:20,cap:10,breed:.0006,food:4,
     prey:['rabbit','rat','chicken','crab'],desc:'Sharp-eyed hunter of the skies. Takes rabbits, rats and unwary hens.'},
-  skeleton:{name:'Skeleton',icon:'💀',monster:1,hp:20,dmg:5,spd:.06,chase:.09,life:5,cap:40,breed:0,food:0,sight:10,
+  skeleton:{name:'Skeleton',icon:'💀',monster:1,hp:30,dmg:6,armor:.1,spd:.06,chase:.09,life:5,cap:40,breed:0,food:0,sight:10,
     desc:'Rattling bones that remember only hunger. They attack every living thing.'},
-  zombie:{name:'Zombie',icon:'🧟',monster:1,hp:34,dmg:4,spd:.035,chase:.05,life:3,cap:40,breed:0,food:0,sight:8,
+  zombie:{name:'Zombie',icon:'🧟',monster:1,hp:52,dmg:5,armor:.1,spd:.035,chase:.05,life:3,cap:40,breed:0,food:0,sight:8,
     desc:'Slow but relentless. Whoever it kills rises to join it.'},
-  dragon:{name:'Dragon',icon:'🐉',monster:1,fly:1,alt:9,hp:170,dmg:18,spd:.09,chase:.15,life:60,cap:3,breed:0,food:0,sight:16,
+  dragon:{name:'Dragon',icon:'🐉',monster:1,boss:1,big:1.25,armor:.3,acd:10,cleave:2.2,fly:1,alt:9,hp:650,dmg:32,spd:.08,chase:.12,life:60,cap:3,breed:0,food:0,sight:22,act:'dragon',
     desc:'Lord of the sky. Breathes fire on villages, forests and anyone who stands in its way.'},
-  wraith:{name:'Wraith',icon:'👻',monster:1,fly:1,alt:3,hp:24,dmg:6,spd:.08,chase:.1,life:4,cap:20,breed:0,food:0,sight:12,
+  wraith:{name:'Wraith',icon:'👻',monster:1,fly:1,alt:3,hp:34,dmg:7,armor:.15,spd:.08,chase:.1,life:4,cap:20,breed:0,food:0,sight:12,
     desc:'A restless spirit that drifts over land and water, hunting the living.'},
-  spider:{name:'Giant spider',icon:'🕷️',monster:1,hp:18,dmg:6,spd:.08,chase:.12,life:6,cap:30,breed:0,food:0,sight:9,
+  spider:{name:'Giant spider',icon:'🕷️',monster:1,boss:1,big:1.7,armor:.25,acd:7,cleave:1.2,hp:380,dmg:18,spd:.08,chase:.12,life:12,cap:6,breed:0,food:0,sight:13,act:'spider',
     desc:'Fast, venomous and everywhere in the jungle.'},
-  ogre:{name:'Ogre',icon:'🧌',monster:1,hp:110,dmg:14,spd:.045,chase:.07,life:20,cap:10,breed:0,food:0,sight:9,
+  ogre:{name:'Ogre',icon:'🧌',monster:1,boss:1,big:1.3,armor:.25,acd:10,cleave:1.7,hp:560,dmg:34,spd:.045,chase:.075,life:25,cap:6,breed:0,food:0,sight:13,act:'ogre',
     desc:'A hulking brute with a club. It smashes first and never asks questions.'},
   /* more creatures: sprites, voices, habitats and special behaviours live in fauna.js (S.range = ranged attacker) */
   goat:{name:'Goat',icon:'🐐',dom:1,hp:11,spd:.055,flee:.14,life:14,cap:24,breed:.0011,food:7,
@@ -267,16 +267,20 @@ const SPECIES={
     desc:'Born of winter, and it melts away as the weather warms.'},
   unicorn:{name:'Unicorn',icon:'🦄',wild:1,hp:34,spd:.09,flee:.22,life:40,cap:6,breed:.0004,food:14,act:'unicorn',
     desc:'Shy and radiant. It heals everything near it and coaxes flowers from the ground.'},
-  mage:{name:'Dark mage',icon:'🧙',monster:1,hp:42,dmg:6,spd:.05,chase:.07,life:20,cap:8,breed:0,food:0,sight:12,range:5.5,act:'mage',
+  mage:{name:'Dark mage',icon:'🧙',monster:1,armor:.1,hp:80,dmg:8,spd:.05,chase:.07,life:20,cap:8,breed:0,food:0,sight:12,range:5.5,act:'mage',
     desc:'Hurls bolts of dark fire from afar at every living thing.'},
-  demon:{name:'Demon',icon:'👹',monster:1,hp:100,dmg:13,spd:.05,chase:.09,life:40,cap:4,breed:0,food:0,sight:12,act:'demon',
+  demon:{name:'Demon',icon:'👹',monster:1,boss:1,big:1.35,armor:.35,acd:8,cleave:1.8,hp:640,dmg:30,spd:.05,chase:.1,life:40,cap:4,breed:0,food:0,sight:16,act:'demon',
     desc:'A horned fiend that leaves fire in its wake.'},
   golem:{name:'Crystal golem',icon:'💎',wild:1,pred:1,minor:1,territorial:.08,hp:160,dmg:12,spd:.025,chase:.05,life:100,cap:4,breed:0,food:0,act:'golem',
     prey:[],people:0,desc:'A walking heap of gemstone that guards its crystal fields and leaves gems behind.'},
   maneater:{name:'Maneater plant',icon:'🪴',monster:1,hp:32,dmg:8,spd:0,chase:.012,life:12,cap:30,breed:0,food:0,sight:3,act:'maneater',
     desc:'Rooted in the jungle, it bites anything that wanders within reach.'},
-  sandworm:{name:'Sand worm',icon:'🪱',monster:1,hp:130,dmg:16,spd:.05,chase:.08,life:50,cap:3,breed:0,food:0,sight:10,
+  sandworm:{name:'Sand worm',icon:'🪱',monster:1,boss:1,big:1.5,armor:.3,acd:9,cleave:2,hp:760,dmg:34,spd:.05,chase:.085,life:50,cap:3,breed:0,food:0,sight:14,act:'sandworm',
     desc:'A colossal burrower of the wastelands.'},
+  spiderling:{name:'Spiderling',icon:'🕷️',monster:1,minion:1,big:.55,hp:22,dmg:4,spd:.1,chase:.14,life:3,cap:60,breed:0,food:0,sight:9,
+    desc:'The brood of a giant spider: small, quick and many.'},
+  imp:{name:'Imp',icon:'😈',monster:1,minion:1,big:.45,hp:30,dmg:6,armor:.1,spd:.07,chase:.12,life:3,cap:40,breed:0,food:0,sight:11,act:'imp',
+    desc:'A scrap of hellfire with horns, called up by a demon.'},
   ghost:{name:'Ghost',icon:'🫥',wild:1,fly:1,alt:3,hp:12,spd:.04,flee:.06,life:20,cap:10,breed:0,food:0,act:'ghost',
     desc:'A shy spirit that rises from ruins at night and fades at dawn.'},
   /* the wider bestiary: more livestock, prey of every biome, hunters, flyers, waders and monsters (art and behaviour in fauna.js) */
@@ -308,17 +312,23 @@ const SPECIES={
     desc:'Raucous shore birds that wheel over beaches and harbours.'},
   parrot:{name:'Parrot',icon:'🦜',wild:1,fly:1,alt:4,hp:3,spd:.09,flee:.18,life:30,cap:20,breed:.0012,food:1,
     desc:'Loud and brilliantly coloured flocks of the jungle canopy.'},
-  troll:{name:'Troll',icon:'🗿',monster:1,hp:90,dmg:11,spd:.04,chase:.07,life:25,cap:4,breed:0,food:0,sight:9,act:'troll',
+  troll:{name:'Troll',icon:'🗿',monster:1,boss:1,big:1.35,armor:.25,acd:9,cleave:1.6,hp:620,dmg:30,spd:.04,chase:.075,life:25,cap:4,breed:0,food:0,sight:13,act:'troll',
     desc:'A moss-backed brute from the high rock. Wounds close over almost as fast as they open.'},
-  basilisk:{name:'Basilisk',icon:'🦎',monster:1,hp:50,dmg:9,spd:.045,chase:.08,life:20,cap:4,breed:0,food:0,sight:9,act:'basilisk',
+  basilisk:{name:'Basilisk',icon:'🦎',monster:1,boss:1,big:1.2,armor:.35,acd:8,hp:430,dmg:22,spd:.045,chase:.085,life:20,cap:4,breed:0,food:0,sight:11,act:'basilisk',
     desc:'A crested serpent-lizard whose stare locks its prey rigid.'},
-  thunderbird:{name:'Thunderbird',icon:'⚡',monster:1,fly:1,alt:9,hp:60,dmg:8,spd:.09,chase:.13,life:10,cap:3,breed:0,food:0,sight:12,act:'thunderbird',
+  thunderbird:{name:'Thunderbird',icon:'⚡',monster:1,boss:1,big:1.15,armor:.25,acd:9,hp:460,dmg:24,spd:.09,chase:.13,life:10,cap:3,breed:0,food:0,sight:16,act:'thunderbird',
     desc:'A storm-born raptor that hurls lightning down on the living.'},
 };
+/* how far a great beast's melee reaches, in tiles (it is big) */
+for(const [k,r] of Object.entries({dragon:2,sandworm:1.9,ogre:1.7,troll:1.65,demon:1.5,spider:1.45,basilisk:1.4}))SPECIES[k].reach=r;
 const SPECIES_KEYS=Object.keys(SPECIES);
 /* monsters hunt every living thing that is not a monster */
 for(const k of SPECIES_KEYS)if(SPECIES[k].monster){SPECIES[k].pred=1;SPECIES[k].prey=SPECIES_KEYS.filter(j=>!SPECIES[j].monster)}
 const isMon=u=>u.k===1&&!!SPECIES[u.sp].monster;
+/* great beasts (S.boss): the threats a kingdom raises its army against */
+const isBoss=u=>u.k===1&&!!SPECIES[u.sp].boss;
+/* percentage-of-health god powers only scratch a great beast */
+const harmFrac=u=>u.k===1&&SPECIES[u.sp].boss?.22:1;
 
 /* ---------- biomes: bm[i] ---------- */
 const BM={TEMP:0,FOREST:1,SAV:2,BIRCH:3,ROCK:4,JUNGLE:5,CRYS:6,CANDY:7,WASTE:8,LEMON:9,FLOWER:10,CLOVER:11,PARA:12,CORRUPT:13};

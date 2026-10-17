@@ -94,7 +94,7 @@ const GC=8,GW=Math.ceil(W/GC),GH=Math.ceil(H/GC),grid=[];
 for(let i=0;i<GW*GH;i++)grid.push([]);
 function rebuildGrid(){
   for(let i=0;i<grid.length;i++)grid[i].length=0;
-  for(let i=0;i<units.length;i++){const u=units[i];if(u.dead||u.inside)continue;grid[clamp(u.y/GC|0,0,GH-1)*GW+clamp(u.x/GC|0,0,GW-1)].push(u)}
+  for(let i=0;i<units.length;i++){const u=units[i];if(u.dead||u.inside||u.dig>step)continue;grid[clamp(u.y/GC|0,0,GH-1)*GW+clamp(u.x/GC|0,0,GW-1)].push(u)}
 }
 function nearest(u,r,pred){
   let best=null,bd=r*r;

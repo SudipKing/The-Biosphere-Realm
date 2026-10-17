@@ -95,6 +95,14 @@ function speak(o,t,race,child){
   if(race==='elf')osc(o,'sine',f*4,f*4.2,t,.05,.4,.03);
 }
 const SFX={
+  roar:(o,t)=>{vox(o,t,{type:'sawtooth',f0:110,mid:160,f1:48,d:1.5,a:.08,vib:22,vd:.1,ft:'lowpass',ff:520,q:3,p:.7});noiseHit(o,'bandpass',700,180,1,t,.05,1.3,.35)},
+  slam:(o,t)=>{osc(o,'sine',90,28,t,.002,.5,.9);noiseHit(o,'lowpass',500,70,1,t,.002,.7,.8)},
+  burrow:(o,t)=>{noiseHit(o,'lowpass',420,120,1,t,.05,1.1,.5);osc(o,'sine',55,34,t,.1,1,.4)},
+  erupt:(o,t)=>{noiseHit(o,'bandpass',900,200,1,t,.005,.9,.7);osc(o,'sine',70,26,t,.005,.8,.8)},
+  web:(o,t)=>{noiseHit(o,'highpass',3000,7000,1.5,t,.01,.35,.3);osc(o,'sine',2200,900,t,.002,.2,.1)},
+  hellfire:(o,t)=>{noiseHit(o,'bandpass',1500,300,1,t,.05,1.1,.45);osc(o,'sawtooth',180,55,t,.02,.9,.3)},
+  boulder:(o,t)=>{noiseHit(o,'bandpass',500,250,1,t,.01,.3,.3);osc(o,'sine',110,50,t+.3,.003,.3,.6)},
+  breath:(o,t)=>{noiseHit(o,'bandpass',900,2200,1,t,.08,.9,.55);osc(o,'sawtooth',120,70,t,.05,.8,.25)},
   clang:(o,t)=>{osc(o,'square',1860,1800,t,.002,.12,.08);osc(o,'square',2710,2650,t,.002,.09,.05);noiseHit(o,'bandpass',4200,3000,3,t,.002,.07,.2)},
   death:(o,t)=>{osc(o,'sawtooth',240,70,t,.005,.3,.12);osc(o,'sine',90,40,t+.05,.01,.25,.3);noiseHit(o,'lowpass',500,200,1,t+.04,.002,.12,.15)},
   thud:(o,t)=>{osc(o,'sine',150,55,t,.003,.14,.4);noiseHit(o,'lowpass',700,300,1,t,.002,.08,.2)},

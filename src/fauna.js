@@ -288,6 +288,8 @@ Object.assign(CALLS,{
   troll:(o,t)=>{vox(o,t,{type:'sawtooth',f0:72,mid:100,f1:46,d:1.3,a:.15,vib:9,vd:.12,ft:'lowpass',ff:360,q:3,p:.66});noiseHit(o,'lowpass',400,120,1,t+.1,.05,.8,.35)},
   basilisk:(o,t)=>{noiseHit(o,'highpass',3600,2200,1.5,t,.15,.9,.28);vox(o,t,{type:'sawtooth',f0:200,f1:130,d:.7,a:.1,vib:60,vd:.15,ft:'bandpass',ff:800,q:4,p:.25})},
   thunderbird:(o,t)=>{vox(o,t,{type:'sawtooth',f0:1100,mid:1700,f1:600,d:.9,a:.03,vib:14,vd:.08,ff:2400,q:2,p:.3});noiseHit(o,'lowpass',2000,200,1,t+.15,.002,.7,.5);osc(o,'sine',90,40,t+.15,.01,.6,.4)},
+  spiderling:(o,t)=>noiseHit(o,'highpass',5200,7500,1.5,t,.01,.25,.15),
+  imp:(o,t)=>{vox(o,t,{type:'square',f0:620,mid:900,f1:480,d:.4,a:.02,vib:40,vd:.1,ff:2200,q:3,p:.2})},
 /*CALLS-END*/
 });
 
@@ -360,10 +362,6 @@ const FAUNA={
     if(WX.rain>.4&&(u.hp-=.12)<=0)die(u);
     return false;
   },
-  demon(u){
-    if((step+u.id)%25===0&&R()<.35)ignite(tileOf(u),true);
-    return false;
-  },
   snowman(u){
     const i=tileOf(u),warm=season()!==3&&!isNight()&&WX.snow<.3;
     if(warm){if((u.hp-=.014)<=0){effects.push({type:'rite',x:u.x,y:u.y,c:[170,210,255],t:0,dur:24});die(u);return true}}
@@ -423,9 +421,92 @@ const FAUNA={
     return true;
   },
 /*ACT-BEGIN*/
+  /* ----- the great beasts. Each has a signature move; all of them hit back, shrug off blows (armor in data.js) and fight on ----- */
   troll(u){
-    /* wounds knit shut almost as fast as they open */
-    if(u.hp<u.maxhp&&(step+u.id)%5===0)u.hp=Math.min(u.maxhp,u.hp+.5);
+    /* wounds knit shut, unless fire has touched it: a burning troll does not heal */
+    const i=tileOf(u);if(fire[i]||lava[i])u.burn=step+150;
+    if(u.hp<u.maxhp&&u.burn<=step&&(step+u.id)%5===0)u.hp=Math.min(u.maxhp,u.hp+u.maxhp*.0011);
+    const t=u.target;if(!t)return false;
+    const d=Math.hypot(t.x-u.x,t.y-u.y);
+    /* ground slam: everyone crowding it is thrown back and stunned */
+    if(d<2.8&&step>=u.bcd&&crowd(u,2.6)>=1){u.bcd=step+170+((R()*120)|0);slam(u,2.7,.75,16)}
+    /* hurls a boulder at anyone it cannot reach */
+    else if(d>3.6&&d<11&&--u.fcd<=0){u.fcd=170+((R()*90)|0);throwRock(u,t)}
+    return false;
+  },
+  demon(u){
+    if((step+u.id)%25===0&&R()<.5)ignite(tileOf(u),true);
+    /* hellfire aura: everything beside it smoulders */
+    if((step+u.id)%10===0)eachNear(u.x,u.y,2.3,v=>{if(foeOf(u,v)){v.hp-=1.2+u.dmg*.05;v.burn=step+80;if(v.hp<=0)die(v)}});
+    /* its footsteps corrupt the land */
+    if((step+u.id)%90===0){const j=sampleNear(u.x,u.y,2.5,k=>canStand(u,k)&&bld[k]===-1&&bm[k]!==BM.CORRUPT,6);if(j>=0)setBiome(j,BM.CORRUPT,.04)}
+    const t=u.target;if(!t)return false;
+    const d=Math.hypot(t.x-u.x,t.y-u.y);
+    if(d>2.5&&d<13&&step>=u.bcd){u.bcd=step+300+((R()*140)|0);hellfire(u,t)}
+    if(d<14&&--u.fcd<=0){u.fcd=480+((R()*200)|0);summon(u,'imp',u.hp<u.maxhp*.5?3:2)}
+    return false;
+  },
+  imp(u){
+    if((step+u.id)%40===0&&R()<.3)ignite(tileOf(u),true);
+    return false;
+  },
+  spider(u){
+    const t=u.target;if(!t)return false;
+    const d=Math.hypot(t.x-u.x,t.y-u.y);
+    /* it spins its brood out of thin air once the fight starts */
+    if(step>=u.bcd&&d<12){u.bcd=step+360+((R()*160)|0);summon(u,'spiderling',3)}
+    /* webs: the victim and everyone near it is bound fast, and the venom does the rest */
+    if(d>2.4&&d<9&&--u.fcd<=0){u.fcd=120+((R()*70)|0);web(u,t)}
+    return false;
+  },
+  ogre(u){
+    const t=u.target;if(!t)return false;
+    const d=Math.hypot(t.x-u.x,t.y-u.y);
+    if(u.haste>step&&d<1.9){u.haste=0;hit(t,u.dmg*1.5,u,true);shove(t,u.x,u.y,2.2);t.frozen=step+20;slam(u,2.2,.5,10)}
+    else if(d>4.5&&d<12&&step>=u.bcd){u.bcd=step+250+((R()*120)|0);u.haste=step+34;sfx('roar',u.x,u.y)}
+    else if(d<2.3&&--u.fcd<=0&&crowd(u,2.2)>=2){u.fcd=190+((R()*80)|0);slam(u,2.4,.6,12)}
+    return false;
+  },
+  dragon(u){
+    const t=u.target;if(!t)return false;
+    const d=Math.hypot(t.x-u.x,t.y-u.y);
+    /* a cone of fire that sets the land alight */
+    if(d<8&&--u.fcd<=0){u.fcd=(u.rage>step?56:90)+((R()*50)|0);breatheCone(u,t)}
+    /* roar: the unarmed are rooted with terror */
+    if(d<15&&step>=u.bcd){u.bcd=step+440+((R()*220)|0);roar(u,10)}
+    /* below half health it beats its wings and hurls attackers away */
+    if(u.hp<u.maxhp*.5&&d<3.4&&step%240===u.id%240)slam(u,3.4,.5,12);
+    return false;
+  },
+  sandworm(u){
+    /* below ground nothing can touch it: it tunnels to its prey, or to a safe sandy hollow to heal */
+    if(u.dig){
+      if(u.dig<=step){emerge(u,u.dtile<0);return false}
+      const t=u.target;
+      if(u.dtile>=0){
+        const tx=(u.dtile%W)+.5,ty=((u.dtile/W)|0)+.5;u.tx=tx;u.ty=ty;
+        if(Math.hypot(tx-u.x,ty-u.y)>.7)tunnel(u,.14);
+        else{
+          u.hp=Math.min(u.maxhp,u.hp+u.maxhp*.0007);
+          if(u.hp>=u.maxhp*.75){emerge(u,false);return false}
+        }
+      }else{
+        if(!t||t.dead){emerge(u,false);return false}
+        u.tx=t.x;u.ty=t.y;tunnel(u,.115);
+        if(Math.hypot(t.x-u.x,t.y-u.y)<1.7)emerge(u,true);
+      }
+      return true;
+    }
+    /* badly hurt: dive and slip away to heal */
+    if(u.hp<u.maxhp*.3){
+      const j=safeBurrow(u);
+      if(j>=0){goUnder(u,j,step+2600);return true}
+    }
+    const t=u.target;if(!t)return false;
+    const d=Math.hypot(t.x-u.x,t.y-u.y);
+    /* it burrows to ambush when the prey is a little way off */
+    if(d>4&&d<12&&u.hp>u.maxhp*.4&&step>=u.bcd&&!fire[tileOf(u)]){u.bcd=step+420+((R()*200)|0);goUnder(u,-1,step+230);return true}
+    if(d<3.2&&--u.fcd<=0&&crowd(u,3)>=3){u.fcd=210+((R()*80)|0);slam(u,3.2,.6,14)}
     return false;
   },
   basilisk(u){
@@ -455,6 +536,116 @@ const FAUNA={
   },
 /*ACT-END*/
 };
+
+/* ---------- great-beast helpers ---------- */
+const foeOf=(u,v)=>!v.dead&&v!==u&&(u.charm==null?!isMon(v):(isMon(v)&&v.charm!==u.charm)||(v.k===0&&v.tribe!==u.charm&&hostile(v.tribe,u.charm)));
+function eachNear(x,y,r,fn){
+  const gx0=clamp((x-r)/GC|0,0,GW-1),gx1=clamp((x+r)/GC|0,0,GW-1),gy0=clamp((y-r)/GC|0,0,GH-1),gy1=clamp((y+r)/GC|0,0,GH-1);
+  for(let gy=gy0;gy<=gy1;gy++)for(let gx=gx0;gx<=gx1;gx++){
+    const cell=grid[gy*GW+gx];
+    for(let n=0;n<cell.length;n++){const v=cell[n];if(!v.dead&&Math.hypot(v.x-x,v.y-y)<r)fn(v)}
+  }
+}
+function crowd(u,r){let n=0;eachNear(u.x,u.y,r,v=>{if(foeOf(u,v))n++});return n}
+function shove(v,fx,fy,dist){
+  const dx=v.x-fx,dy=v.y-fy,d=Math.hypot(dx,dy)||1,nx=v.x+dx/d*dist,ny=v.y+dy/d*dist;
+  if(inb(nx|0,ny|0)&&canStand(v,(ny|0)*W+(nx|0))){v.x=nx;v.y=ny;v.tx=nx;v.ty=ny}
+}
+/* a stomp or buffet: damage, a shove and a short stun for every foe within r */
+function slam(u,r,dm,stun){
+  eachNear(u.x,u.y,r,v=>{if(foeOf(u,v)){hit(v,u.dmg*dm,u,true);if(!v.dead){shove(v,u.x,u.y,1.6);v.frozen=Math.max(v.frozen|0,step+stun)}}});
+  if(effects.length<300)effects.push({type:'quake',x:u.x,y:u.y+.2,r,t:0,dur:26});
+  sfx('slam',u.x,u.y);
+}
+function throwRock(u,t){
+  if(effects.length<300)effects.push({type:'boulder',x0:u.x,y0:u.y-1.4,x1:t.x,y1:t.y,t:0,dur:18});
+  hit(t,u.dmg*.8,u,false);
+  eachNear(t.x,t.y,1.3,v=>{if(v!==t&&foeOf(u,v))hit(v,u.dmg*.4,u,false)});
+  sfx('boulder',u.x,u.y);
+}
+function web(u,t){
+  const stunned=[];eachNear(t.x,t.y,1.4,v=>{if(foeOf(u,v))stunned.push(v)});
+  if(!stunned.includes(t))stunned.push(t);
+  for(const v of stunned){v.frozen=step+75;v.moving=false;v.venom=step+120;if(effects.length<300)effects.push({type:'web',x0:u.x,y0:u.y-.5,x1:v.x,y1:v.y-.2,t:0,dur:75})}
+  sfx('web',u.x,u.y);
+}
+function summon(u,sp,n){
+  if(units.length>1450||(cnt.sp[sp]||0)>=SPECIES[sp].cap)return;
+  for(let k=0;k<n;k++){
+    const a=addAnimal(sp,u.x|0,u.y|0);a.x=a.px=u.x+(R()-.5)*1.6;a.y=a.py=u.y+(R()-.5)*1.6;
+    if(!canStand(a,tileOf(a))){a.x=a.px=u.x;a.y=a.py=u.y}
+    a.target=u.target;a.life=Math.min(a.life,YEAR*1.2);cnt.sp[sp]=(cnt.sp[sp]||0)+1;
+    if(effects.length<300)effects.push({type:'rite',x:a.x,y:a.y,c:sp==='imp'?[255,90,40]:[150,110,190],t:0,dur:16});
+  }
+  sfx('cry',u.x,u.y,sp);
+}
+function roar(u,r){
+  eachNear(u.x,u.y,r,v=>{if(foeOf(u,v)&&v.k===0&&!(v.job==='soldier'||v.job==='general')){v.frozen=step+30;v.moving=false}});
+  if(effects.length<300)effects.push({type:'rite',x:u.x,y:u.y,c:[255,120,60],t:0,dur:40,big:true});
+  sfx('roar',u.x,u.y);
+}
+/* dragonfire: a cone, scorching the ground and burning everything caught in it */
+function breatheCone(u,t){
+  const a=Math.atan2(t.y-u.y,t.x-u.x),L=7.2,spread=.42;
+  for(let k=-1;k<=1;k++)if(effects.length<300)effects.push({type:'flame',x0:u.x,y0:u.y-1,x1:u.x+Math.cos(a+k*.3)*L,y1:u.y+Math.sin(a+k*.3)*L*.9-.3,t:0,dur:24});
+  for(let r=1.6;r<=L;r+=.9){
+    for(let k=-2;k<=2;k++){
+      const aa=a+k*spread/2,X=(u.x+Math.cos(aa)*r)|0,Y=(u.y+Math.sin(aa)*r)|0;
+      if(inb(X,Y)&&R()<.8)ignite(Y*W+X,true);
+    }
+  }
+  eachNear(u.x,u.y,L,v=>{
+    if(!foeOf(u,v))return;
+    let da=Math.atan2(v.y-u.y,v.x-u.x)-a;da=Math.abs(Math.atan2(Math.sin(da),Math.cos(da)));
+    if(da<spread+.12){v.burn=step+100;hit(v,u.dmg*.42,u)}
+  });
+  sfx('breath',u.x,u.y);
+}
+/* a rain of hellfire around the hunted */
+function hellfire(u,t){
+  for(let k=0;k<6;k++){
+    const x=t.x+(R()-.5)*6,y=t.y+(R()-.5)*6;if(!inb(x|0,y|0))continue;
+    if(effects.length<300)effects.push({type:'blast',x,y,r:2,t:0,dur:30+k*3,c:[255,96,32],dark:false,big:false});
+    ignite((y|0)*W+(x|0),true);
+    eachNear(x,y,1.6,v=>{if(foeOf(u,v))hit(v,u.dmg*.45,u)});
+  }
+  sfx('hellfire',t.x,t.y);
+}
+/* ---- the sand worm below ground ---- */
+function tunnel(u,spd){
+  const dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);
+  if(Math.abs(dx)>.05)u.dir=dx>0?1:-1;
+  if(d<=spd){u.x=u.tx;u.y=u.ty;return}
+  const nx=u.x+dx/d*spd,ny=u.y+dy/d*spd;
+  if(!inb(nx|0,ny|0)||!canStand(u,(ny|0)*W+(nx|0))){emerge(u,false);return}
+  u.x=nx;u.y=ny;u.moving=true;
+}
+function goUnder(u,tile,until){
+  u.dig=until;u.dtile=tile;if(tile>=0)u.target=null;u.task=null;
+  if(effects.length<300)effects.push({type:'quake',x:u.x,y:u.y+.2,r:1.8,t:0,dur:26});
+  sfx('burrow',u.x,u.y);
+}
+function emerge(u,ambush){
+  u.dig=0;u.dtile=-1;u.cd=0;u.bcd=step+260;u.moving=false;
+  u.px=u.x;u.py=u.y;
+  eachNear(u.x,u.y,2.5,v=>{if(foeOf(u,v)){hit(v,u.dmg*(ambush?1.5:.7),u,true);if(!v.dead){shove(v,u.x,u.y,1.8);v.frozen=Math.max(v.frozen|0,step+(ambush?24:12))}}});
+  const p=nearest(u,u.hp<u.maxhp*.5?4:SPECIES.sandworm.sight,v=>foeOf(u,v));if(p)u.target=p;
+  if(effects.length<300){effects.push({type:'quake',x:u.x,y:u.y+.2,r:2.8,t:0,dur:30});effects.push({type:'rite',x:u.x,y:u.y,c:[214,180,120],t:0,dur:30,big:true})}
+  sfx('erupt',u.x,u.y);
+}
+/* a sandy hollow far from any soldier, outside every border where possible: where a hurt worm will rest */
+function safeBurrow(u){
+  const lone=(k,r)=>{const p={x:k%W+.5,y:((k/W)|0)+.5};return !nearest(p,r,v=>v.k===0)};
+  const sandy=k=>bm[k]===BM.WASTE||bio(hgt[k])===2;
+  for(const pass of [0,1,2]){
+    for(let n=0;n<45;n++){
+      const k=sampleNear(u.x,u.y,pass===2?46:34,j=>canStand(u,j)&&!lava[j]&&!fire[j]&&bld[j]===-1&&(pass===2||(own[j]<0&&(pass===1||sandy(j)))),1);
+      if(k>=0&&lone(k,pass===2?10:14))return k;
+    }
+  }
+  return -1;
+}
+
 
 /* ---------- lasting effects of the extra powers (called from updateWorldFx, drawn by drawWorldFx through FXDRAW) ---------- */
 const WFX2={

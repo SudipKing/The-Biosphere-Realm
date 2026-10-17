@@ -145,7 +145,7 @@ function earthquake(p){
     if(f<.9&&bld[i]!==-1&&R()<.55*(1-f)){destroyBld(i);burn(i,500)}
     if(f<.75&&tree[i]&&R()<.12){tree[i]=0;markTile(i)}
   }
-  for(const u of units)if(!u.dead&&!u.inside){const f=Math.hypot(u.x-p.x,u.y-p.y)/r;if(f<1){u.hp-=u.maxhp*(.08+R()*.35*(1-f*.7));if(u.hp<=0)die(u)}}
+  for(const u of units)if(!u.dead&&!u.inside&&!(u.dig>step)){const f=Math.hypot(u.x-p.x,u.y-p.y)/r;if(f<1){u.hp-=u.maxhp*(.08+R()*.35*(1-f*.7))*harmFrac(u);if(u.hp<=0)die(u)}}
   sfx('rumble',x,y);bDirty=true;ownDirty=true;
   log(`The earth shook ${nearTribeText(x,y)}${deep?', and the sea floor heaved':''}.`,[190,150,100]);
 }

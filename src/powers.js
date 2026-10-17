@@ -224,7 +224,7 @@ Object.assign(TAPS,{
       n++;effects.push({type:'rite',x:u.x,y:u.y,c:[190,160,255],t:0,dur:16});
       const j=sampleNear(u.x|0,u.y|0,18,k=>canStand(u,k),14);
       if(j>=0){u.x=u.px=j%W+.5;u.y=u.py=((j/W)|0)+.5;u.tx=u.x;u.ty=u.y;u.target=null;u.task=null;u.cd=0}
-      u.hp-=u.maxhp*(.1+R()*.25);if(u.hp<=0)die(u);
+      u.hp-=u.maxhp*(.1+R()*.25)*harmFrac(u);if(u.hp<=0)die(u);
       else effects.push({type:'rite',x:u.x,y:u.y,c:[190,160,255],t:0,dur:16});
     }
     if(!n){toast('Nothing alive is close enough to throw.');return}
