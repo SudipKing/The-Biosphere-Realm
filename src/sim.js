@@ -913,6 +913,8 @@ function yearly(){
   }
   diplomacyYear();
   storyYear();
+  /* kingdoms ruled by Claude ask for their next move (ruler.js); the answers arrive later, between frames */
+  if(typeof RULER!=='undefined')RULER.rulerYear();
   for(const T of tribes){
     if(!T.alive||!T.temple||T.templeAt<0)continue;
     const cx=T.templeAt%W,cy=(T.templeAt/W)|0;let n=0;

@@ -403,3 +403,6 @@ dd .nm-in{font-weight:700}
 .bard-ask details{margin:4px 0 8px}
 .bard-err{border-left:3px solid var(--war);padding:4px 0 4px 10px;margin-top:8px}
 .bard-err ul{margin:4px 0;padding-left:18px}
+.rule{border-bottom:2px solid var(--muted);padding-bottom:8px;margin-bottom:10px}
+.rule code{font-size:11px}
+.rule .log{margin-top:4px}

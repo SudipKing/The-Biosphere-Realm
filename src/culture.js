@@ -452,6 +452,8 @@ function diplomacyYear(){
   for(let k=0;k<2;k++){
     const a=pick(alive),b=pick(alive);
     if(a===b||hostile(a.id,b.id)||allied(a.id,b.id)||Math.hypot(a.cx-b.cx,a.cy-b.cy)>120)continue;
+    /* a kingdom ruled by Claude makes its own alliances and wars (ruler.js); others may still turn on it */
+    if(a.claude)continue;
     const dp=a.fx.dipl+b.fx.dipl;
     const pa=.15*dp*(a.race===b.race?1.5:.6)*(a.rel===b.rel?1.5:1);
     if(R()<pa){

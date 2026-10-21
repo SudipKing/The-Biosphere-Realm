@@ -27,11 +27,22 @@ function eraNote(T,L){
   return `${meter('Research',pct,'#6fa8dc',`Toward the ${AGE_NAME[T.age+1]}: ${pct}%. ${pace}`)}
   <p class="mnote">${need.length&&(T.sci||0)<q.sci*1.5?`Still to dig: ${need.join(', ')} (or research half as far again). `:''}Teachers, a great hall and more people speed research. Each era upgrades homes, tools, weapons, boats and farms.</p>`;
 }
+/* ---- Claude on the throne (ruler.js): the switch, the bridge's state and the last decrees */
+function cxRule(T){
+  const S=RULER.status,on=!!T.claude,busy=S.busy.has(T.id);
+  const state=!on?'This kingdom rules itself.':busy?'Claude is weighing the next move…':S.online===false?`Claude cannot be reached: start the bridge on this computer with <code>node tools/ruler-bridge/bridge.js</code>.`:
+    `Claude chooses one move every ${RULER.RULE_YEARS} years${T.ruledAt!=null?`; next in year ${T.ruledAt+RULER.RULE_YEARS}`:''}.`;
+  const ds=(T.decrees||[]).slice(0,5);
+  return `<div class="rule"><div class="bard-row"><button class="btn sm" data-rule="${on?'off':'on'}" aria-pressed="${on}">${on?'👑 Claude rules · take the crown back':'👑 Let Claude rule'}</button>
+    ${on&&!busy?'<button class="btn sm" data-rule="now">Ask now</button>':''}</div>
+    <p class="mnote">${state}</p>
+    ${ds.length?`<ol class="log">${ds.map(d=>`<li><span class="yr">Y${d.y}</span><span>${d.ok?`<b>${esc(d.action.replace(/_/g,' '))}${d.target?' → '+esc(d.target):''}</b>. “${esc(d.decree)}”`:`<i>Refused</i>: ${esc(d.note)}`}</span></li>`).join('')}</ol>`:''}</div>`;
+}
 function cxOverview(T,L){
   const foes=wars.filter(w=>w.a===T.id||w.b===T.id).map(w=>tribes[w.a===T.id?w.b:w.a]);
   const al=alliesOf(T),fx=T.fx,keys=fxKeys(fx);
   const st=T.stab>=70?'Steady and orderly.':T.stab>=STAB_CALM?'Mostly calm.':T.stab>=REBEL_STAB?'Restless. Whispers of discontent.':'On the brink of rebellion.';
-  return `${T.golden>step?`<p>🌟 A golden age: more food, finer art and calmer streets for ${Math.ceil((T.golden-step)/YEAR)} more years.</p>`:''}
+  return `${T.alive?cxRule(T):''}${T.golden>step?`<p>🌟 A golden age: more food, finer art and calmer streets for ${Math.ceil((T.golden-step)/YEAR)} more years.</p>`:''}
   ${meter('Stability',T.stab,T.stab<REBEL_STAB?'#d4533a':T.stab<STAB_CALM?'#e0a23a':'#5cb86a',st)}
   ${meter('Devotion',T.devo,css(DOMAINS[T.rel.domain].c),T.temple?'The temple strengthens their blessings.':'No temple yet: blessings are only 65% effective.')}
   <dl><dt>People</dt><dd>${T.pop} ${T.pop===1?L.name.toLowerCase():L.plural.toLowerCase()}</dd>
@@ -165,6 +176,14 @@ cxEl('cxHead').addEventListener('click',e=>{
 });
 cxEl('cxBody').addEventListener('input',e=>{if(e.target.classList.contains('bard-reply'))bard.reply=e.target.value});
 cxEl('cxBody').addEventListener('click',e=>{
+  const rb=e.target.closest('[data-rule]');
+  if(rb&&codexT){
+    const T=codexT,a=rb.dataset.rule;
+    if(a==='on'){T.claude=true;T.ruledAt=null;RULER.ping().then(up=>{toast(up?`Claude now rules the ${T.title}.`:'Claude rules this kingdom once the bridge is running: node tools/ruler-bridge/bridge.js');renderCodex(true)})}
+    else if(a==='off'){T.claude=false;toast(`The ${T.title} rules itself again.`)}
+    else if(a==='now'&&!RULER.status.busy.has(T.id)){T.ruledAt=year();RULER.turn(T)}
+    renderCodex(true);return;
+  }
   const bb=e.target.closest('[data-bard]');
   if(bb&&codexT){
     const T=codexT,a=bb.dataset.bard;

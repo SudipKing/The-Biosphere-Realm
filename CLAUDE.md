@@ -130,3 +130,11 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 - In the game, `T.chronicle = {title, verses:[{text,from,to}], year, by, at}` is plain data saved with the tribe. `cleanChronicle` (save.js) re-checks its shape on load, and `cxBard` (codex.js) shows it escaped on the History tab. The sim never reads it.
 - **Copy-and-paste flow** (codex.js, `bard` state): Ask Claude freezes `liveFacts(T)`, Copy puts `CHRON.chatPrompt(...)` on the clipboard, and Check and keep runs `CHRON.validate` against the frozen facts. A failure lists the errors and turns Copy into a retry prompt. While the flow is open, `renderCodex` does not rebuild the History tab unless forced, so a paste is never lost.
 - `tools/chronicler/make-save.js` is a reusable headless harness: it loads the sim files into a `vm` with DOM stubs and writes a save.
+
+## Claude on the throne (src/ruler.js, tools/ruler-bridge, added later)
+
+- `RULER` (ruler.js, loaded after chronicle.js) lets Claude rule kingdoms with `T.claude` set. `yearly()` calls `RULER.rulerYear()`, which starts a `turn(T)` every `RULE_YEARS` (`T.ruledAt`). The turn is async: it POSTs `situation(T)` to the bridge and applies the answer between frames, never inside a sim step. A turn retries once with the reasons, re-checks against the live world (`checkDecision(d, situation(T))`), then calls `apply` and `remember` (`T.decrees`, at most 12).
+- New moves go in `ACTIONS`, `checkDecision` and `apply`. Keep the top of ruler.js free of game globals, because the bridge requires it in Node.
+- `diplomacyYear` skips random wars and alliances started by a Claude kingdom (`if(a.claude)continue`). Others can still target it.
+- Saved with the tribe: `claude`, `ruledAt` and `decrees` (`cleanDecrees` in save.js trims them on load).
+- `tools/claude.js` is the one headless `claude -p` call (no tools or settings, run in the temp folder), shared by the chronicler and the bridge. The bridge listens on 127.0.0.1:8787, allows only localhost and GitHub Pages origins (and answers Chrome's private-network preflight), and builds the prompt itself from `RULER.prompt`.

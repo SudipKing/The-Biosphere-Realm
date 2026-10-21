@@ -14,11 +14,12 @@
      --claude <path>     the claude executable (default: $CLAUDE_BIN or "claude")
      --dry-run           print the first prompt and stop; the model is not called */
 "use strict";
-const fs=require('fs'),path=require('path'),os=require('os'),{spawn}=require('child_process');
+const fs=require('fs'),path=require('path');
+const {askClaude}=require('../claude');
 const {readSave,writeSave,kingdomFacts}=require('./facts');
 const {validate,parseReply,toStored,SYSTEM,firstPrompt,retryPrompt,MIN_EVENTS}=require('../../src/chronicle.js');
 
-const MAX_TRIES=3,PARALLEL=3,TIMEOUT_MS=180000;
+const MAX_TRIES=3,PARALLEL=3;
 
 function args(argv){
   const o={kingdoms:[],model:'sonnet',claude:process.env.CLAUDE_BIN||'claude'};
@@ -37,32 +38,11 @@ function args(argv){
   return o;
 }
 
-/* one headless call: no tools, no project settings, no saved session; the prompt goes in on stdin */
-function askClaude(bin,model,prompt){
-  return new Promise((resolve,reject)=>{
-    const argv=['-p','--output-format','json','--model',model,'--tools','','--system-prompt',SYSTEM,
-      '--no-session-persistence','--strict-mcp-config','--setting-sources',''];
-    /* run from the temp folder so this repository's CLAUDE.md is not loaded into the chronicler */
-    const p=spawn(bin,argv,{cwd:os.tmpdir(),windowsHide:true});
-    let out='',err='';
-    const timer=setTimeout(()=>{p.kill();reject(new Error(`claude -p took longer than ${TIMEOUT_MS/1000}s`))},TIMEOUT_MS);
-    p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>err+=d);
-    p.on('error',e=>{clearTimeout(timer);reject(e.code==='ENOENT'?new Error(`cannot run "${bin}"; install Claude Code or pass --claude <path>`):e)});
-    p.on('close',code=>{
-      clearTimeout(timer);
-      let j;try{j=JSON.parse(out)}catch(e){return reject(new Error(`claude -p exited ${code}: ${(err||out).slice(0,300)}`))}
-      if(j.is_error)return reject(new Error(`claude -p failed: ${String(j.result).slice(0,300)}`));
-      resolve({text:j.result,usage:j.usage,ms:j.duration_ms});
-    });
-    p.stdin.end(prompt);
-  });
-}
-
 async function chronicleOne(o,facts,log){
   let prompt=firstPrompt(facts),last='';
   for(let attempt=1;attempt<=MAX_TRIES;attempt++){
     const t0=Date.now();let reply,errors;
-    try{reply=await askClaude(o.claude,o.model,prompt)}
+    try{reply=await askClaude({bin:o.claude,model:o.model,system:SYSTEM,prompt})}
     catch(e){log({kingdom:facts.kingdom,attempt,stage:'call',error:e.message});throw e}
     const parsed=parseReply(reply.text);
     errors=parsed.ok?validate(parsed.value,facts):[parsed.error];

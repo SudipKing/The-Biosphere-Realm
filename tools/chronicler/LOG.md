@@ -21,6 +21,14 @@ Notes kept while building. Newest at the bottom. Raw logs of every model call ar
 - **Frozen facts:** the world keeps running while you're off in Claude, and new events would renumber the event ids. So the game freezes the fact sheet when you press Ask, and checks the reply against that frozen copy.
 - **Tested in the browser:** a reply with an invented queen, a fake year and a bogus citation was rejected with 4 readable errors, and the copy button switched to a retry prompt. A real Claude reply from run 2 passed, was kept, and survived save and load. The single-file build loads with no errors.
 
+## 2026-10-21 (later): Claude rules a kingdom
+
+- **Shape:** Claude now plays a part in the game itself. A local bridge (`tools/ruler-bridge`) wraps `claude -p`. Every 3 years a kingdom set to "Let Claude rule" sends a situation report, and Claude picks one move and writes a decree. I chose this over the paid API because it uses my Claude Code access.
+- **Kept small:** the model only picks from 7 moves and writes up to 240 characters. The code builds the report, checks legality twice (against the report, then against the live world, because the world moves while Claude thinks), applies the move with the game's own functions, and logs it.
+- **Security:** a server on localhost could be called by any website, so the bridge only accepts situation reports (it builds the prompt itself), allows only localhost and my GitHub Pages origin, and listens on 127.0.0.1. Tested: another origin gets 403, and a free-form prompt is rejected.
+- **Live test:** Faeithil (elves, contemplative faith, just out of a war) chose `patronize_arts` with an elvish decree, and the code made a new poem right away. Mukden (goblins at war with Northhaven, full granaries) chose `found_village`, then `patronize_arts`. Both moves suit their situations. With the bridge stopped, the Codex says to start it and the game carries on.
+- 11 offline tests cover the checks (illegal war, peace or alliance moves, unknown targets, invented names in decrees, and the bridge refusing non-reports).
+
 ## Next
 
 - (your notes here)

@@ -79,6 +79,12 @@ function cleanChronicle(c){
   if(!verses.length)return undefined;
   return {title:c.title.slice(0,100),verses,year:c.year|0,by:typeof c.by==='string'?c.by.slice(0,80):'Claude',at:typeof c.at==='string'?c.at:''};
 }
+/* Claude's last decrees (ruler.js) are only shown, never acted on, but they come from a file, so they are trimmed to shape */
+function cleanDecrees(d){
+  if(!Array.isArray(d))return [];
+  const s=(v,n)=>typeof v==='string'?v.slice(0,n):'';
+  return d.filter(x=>x&&typeof x==='object').slice(0,12).map(x=>({y:x.y|0,action:s(x.action,24),target:x.target?s(x.target,80):null,decree:s(x.decree,240),ok:!!x.ok,note:s(x.note,200)}));
+}
 /* check everything and build the new world in local variables; nothing global changes until applyWorld */
 function buildWorld(o){
   if(!o||o.format!==SAVE_FORMAT)throw new Error('it is not a Biosphere Realm save');
@@ -107,7 +113,7 @@ function buildWorld(o){
     return Object.assign(rest,{patron:P[s.patron],second:s.second>=0?P[s.second]:null,doc,tenets:(s.tenets||[]).map(i=>TN[i]).filter(Boolean),
       names:[patronName,secondName]});
   });
-  const tribes=o.tribes.map(s=>Object.assign({},s,{chronicle:cleanChronicle(s.chronicle),sci:s.sci||0,general:s.general??-1,age:Math.min(ERA_MAX,s.age|0),rel:religions[s.rel],members:[],jobs:{},_gen:null,fx:s.fx&&typeof s.fx==='object'?Object.assign(zeroFx(),s.fx):null}));
+  const tribes=o.tribes.map(s=>Object.assign({},s,{chronicle:cleanChronicle(s.chronicle),claude:s.claude===true,ruledAt:Number.isFinite(s.ruledAt)?s.ruledAt:null,decrees:cleanDecrees(s.decrees),sci:s.sci||0,general:s.general??-1,age:Math.min(ERA_MAX,s.age|0),rel:religions[s.rel],members:[],jobs:{},_gen:null,fx:s.fx&&typeof s.fx==='object'?Object.assign(zeroFx(),s.fx):null}));
   const byId=new Map(),mk=s=>{const u=Object.assign(blankUnit(),s);byId.set(u.id,u);return u};
   const units=o.units.map(mk);
   const boats=o.boats.map(b=>Object.assign({},b,{pass:(b.pass||[]).map(mk)}));

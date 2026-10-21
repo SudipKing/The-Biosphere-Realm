@@ -3,3 +3,4 @@ dist/
 .claude/worktrees/
 tools/chronicler/runs/
 *.biosphere
+tools/ruler-bridge/runs/

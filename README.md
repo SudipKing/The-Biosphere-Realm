@@ -27,6 +27,10 @@ This writes `dist/the-biosphere-realm.html`, a self-contained copy you can share
 
 Open any kingdom's Realm Codex, go to **History** and press **Ask Claude for a chronicle**. Copy the prompt into Claude, paste the reply back, and the game checks every name, year and citation against the kingdom's recorded events before keeping it. This works on the published page too, because the game itself never calls Claude. To chronicle a whole world at once, use `tools/chronicler`, which runs `claude -p` headless. See [tools/chronicler/README.md](tools/chronicler/README.md).
 
+## Let Claude rule a kingdom
+
+Run `node tools/ruler-bridge/bridge.js` on your computer, open any kingdom's Realm Codex, and press **👑 Let Claude rule**. Every 3 years Claude reads the kingdom's situation and picks one move (war, peace, alliance, a new village, patronage of the arts, or waiting), with a royal decree. The game checks that every move is legal before it happens. The bridge uses your Claude Code login through `claude -p`, and it works from GitHub Pages too. See [tools/ruler-bridge/README.md](tools/ruler-bridge/README.md).
+
 ## Faith, culture and history
 
 Every people has its own pantheon, and each kingdom follows its own sect of it. **Click any kingdom in the side panel (or open its great hall) to read its Realm Codex**: overview, faith, culture and art, and a full history.
