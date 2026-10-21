@@ -14,6 +14,13 @@ Notes kept while building. Newest at the bottom. Raw logs of every model call ar
 - **Run 2:** 8 of 8 written. 1 retry, for "Ghorak'". That was *my code's fault*: the name check normalised `Ghorak's` but not `Ghorak'`. Fixed, with a test.
 - **In game:** the chronicle shows on the Codex History tab, survives a re-save from the game, and a malformed chronicle in a save is dropped on load instead of breaking it.
 
+## 2026-10-21
+
+- **Goal:** make it usable from the GitHub Pages build. A static page can't run `claude -p` or call an API, so the browser version keeps the model step with the player: copy the prompt into Claude, paste the reply back.
+- **One set of rules:** moved the prompt, fact sheet and validator into `src/chronicle.js`. The game loads it as a script and Node requires it, so the in-game check and the pipeline check can never disagree. All 13 tests still pass on the shared code.
+- **Frozen facts:** the world keeps running while you're off in Claude, and new events would renumber the event ids. So the game freezes the fact sheet when you press Ask, and checks the reply against that frozen copy.
+- **Tested in the browser:** a reply with an invented queen, a fake year and a bogus citation was rejected with 4 readable errors, and the copy button switched to a retry prompt. A real Claude reply from run 2 passed, was kept, and survived save and load. The single-file build loads with no errors.
+
 ## Next
 
 - (your notes here)

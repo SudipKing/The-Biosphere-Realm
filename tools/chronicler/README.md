@@ -2,7 +2,10 @@
 
 Claude writes a short chronicle for each kingdom in a saved world. Plain code decides what Claude gets to see and whether its reply goes into the save. The game then shows the chronicle in the kingdom's Realm Codex, on the History tab.
 
-It runs Claude Code headless (`claude -p`) as one step in a pipeline, so it uses Claude Code access and no paid API key.
+There are two ways to run it. Both use your own Claude access, so neither needs a paid API key, and both use the same rules from `src/chronicle.js`:
+
+- **In the game, including on GitHub Pages.** Open a kingdom's Realm Codex, go to the **History** tab and press **Ask Claude for a chronicle**. The game freezes a fact sheet. You copy the prompt into Claude (claude.ai, the app or Claude Code) and paste the reply back, and the game checks it before keeping it. If the reply fails, the game lists the problems and gives you a retry prompt that includes them. The page itself never contacts Claude, because a static page can't call a server.
+- **Headless, for a whole world at once.** `chronicle.js` runs Claude Code headless (`claude -p`) as one step in a pipeline and does the copy, paste and retry for every kingdom by itself.
 
 ```
 save.biosphere ──► facts.js ──► claude -p ──► validate.js ──► save-chronicled.biosphere ──► game (Codex › History)
@@ -17,7 +20,7 @@ save.biosphere ──► facts.js ──► claude -p ──► validate.js ─�
 | --- | --- | --- |
 | Read the save, pick kingdoms with at least 3 recorded events | code (`facts.js`) | Only real data goes in. Each event gets an id (`E1`, `E2`…) so it can be cited. |
 | Write the chronicle | **model** (`claude -p`, Sonnet, no tools) | Pick the events that matter, tell them as a story in the people's own voice, and cite the event ids each verse rests on. That is the model's only job. |
-| Check the reply | code (`validate.js`) | JSON shape; 3–6 verses of 40–700 characters; plain text only; every verse cites real event ids; verses run oldest to newest; **every name** (a capitalised word that does not start a sentence) appears somewhere in the facts; **every year** (`year 42`, `the year forty-two`, `the forty-second year`) is a year in the facts; at least 3 different events cited. |
+| Check the reply | code (`src/chronicle.js`, used by `validate.js` and by the game) | JSON shape; 3–6 verses of 40–700 characters; plain text only; every verse cites real event ids; verses run oldest to newest; **every name** (a capitalised word that does not start a sentence) appears somewhere in the facts; **every year** (`year 42`, `the year forty-two`, `the forty-second year`) is a year in the facts; at least 3 different events cited. |
 | Retry or give up | code (`chronicle.js`) | A rejected reply goes back to the model with the exact list of problems, up to 3 attempts. After that the kingdom is left out, never written half-checked. |
 | Store and show | code (`chronicle.js`, `src/save.js`, `src/codex.js`) | Store the chronicle as `T.chronicle` in a copy of the save. The game checks its shape again when it loads and drops a malformed one. It escapes the text and shows it with the year it was written. |
 
@@ -49,9 +52,10 @@ node --test tools/chronicler/validate.test.js
 
 ## Files
 
+- `../../src/chronicle.js`: the shared rules: fact sheet, prompt, validator and stored form. The game loads it as a script and Node requires it
 - `chronicle.js`: the pipeline (prompt, `claude -p` call, retry loop, pool of 3 parallel calls, log, write)
-- `facts.js`: save to fact sheet, plus the vocabulary used for the name check
-- `validate.js`: every rule the model's reply must pass
+- `facts.js`: reads and writes saves and builds a fact sheet from saved data
+- `validate.js`: re-exports the validator from `src/chronicle.js`
 - `validate.test.js`: offline tests for the validator
 - `make-save.js`: grows a world headlessly and writes a `.biosphere` file
 - `runs/`: one JSONL log per run (git-ignored)

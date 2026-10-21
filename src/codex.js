@@ -83,13 +83,59 @@ function cxCulture(T,L){
     <p class="gdom">${a.form} by ${a.creator}, year ${a.year}. ${a.desc}${a.lost?' (Destroyed.)':''}</p>
     ${a.i!=null&&!a.lost?`<button class="btn sm cx-fly" data-i="${a.i}">Show on map</button>`:''}</div>`).join(''):'<p class="empty">No works yet. Artists need a great hall, full stores and peace of mind.</p>'}`;
 }
-/* a chronicle written outside the game by tools/chronicler (Claude, checked against the save's facts) and loaded with the save */
+/* ---- the court chronicle: Claude writes it, CHRON (chronicle.js) checks it. It arrives either in a save made by
+   tools/chronicler (claude -p) or by hand here: the game freezes a fact sheet, the player copies the prompt into Claude,
+   pastes the reply back, and only a reply that passes every check is kept. The page itself never calls the model. */
+let bard={tid:-1,facts:null,reply:'',errors:null};
+function liveFacts(T){
+  const rel=T.rel,par=T.parent>=0?tribes[T.parent]:null;
+  return CHRON.factSheet(T,{people:RACES[T.race].plural,faith:rel.name,patronGod:rel.patron.name,secondGod:rel.second&&rel.second.name,
+    doctrine:rel.docId,parentTitle:par&&par.title,worldYear:year(),legend:legendOf(T)});
+}
+const bardOpen=T=>bard.tid===T.id&&!!bard.facts;
+function bardStart(T){bard={tid:T.id,facts:liveFacts(T),reply:'',errors:null}}
+function bardPrompt(){return CHRON.chatPrompt(bard.errors&&bard.errors.length?CHRON.retryPrompt(bard.facts,bard.reply,bard.errors):CHRON.firstPrompt(bard.facts))}
+function copyText(text,what){
+  const done=()=>toast(`${what} copied. Paste it into Claude.`);
+  const fallback=()=>{const ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}ta.remove();
+    ok?done():toast('Copying is blocked here. Open "See the prompt" and copy it by hand.')};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(done,fallback);else fallback();
+}
+function bardCheck(T){
+  const r=CHRON.parseReply(bard.reply);
+  bard.errors=r.ok?CHRON.validate(r.value,bard.facts):[r.error];
+  if(bard.errors.length)return;
+  T.chronicle=CHRON.toStored(r.value,bard.facts,{by:'Claude, pasted in the game',at:new Date().toISOString()});
+  bard={tid:-1,facts:null,reply:'',errors:null};
+  toast(`The chronicle of the ${T.title} passed every check and is kept with the world.`);
+}
+function cxBardAsk(T){
+  const f=bard.facts,errs=bard.errors;
+  return `<div class="bard-ask">
+    <h4>Ask Claude for a chronicle</h4>
+    <p class="mnote">The facts are frozen at year ${f.worldYear}: ${f.events.length} recorded events. Claude writes the story; the game checks every name, year and citation before keeping it.</p>
+    <p><b>1.</b> Copy the prompt and paste it into Claude (claude.ai, the Claude app or Claude Code).</p>
+    <div class="bard-row"><button class="btn sm" data-bard="copy">${errs&&errs.length?'Copy the retry prompt':'Copy prompt'}</button>
+      <button class="btn sm" data-bard="cancel">Cancel</button></div>
+    <details><summary>See the prompt</summary><textarea class="bard-prompt" readonly rows="6">${esc(bardPrompt())}</textarea></details>
+    <p><b>2.</b> Paste Claude's whole reply here.</p>
+    <textarea class="bard-reply" rows="6" placeholder='{"title": "...", "verses": [...]}' aria-label="Claude's reply">${esc(bard.reply)}</textarea>
+    <div class="bard-row"><button class="btn sm" data-bard="check">Check and keep</button></div>
+    ${errs&&errs.length?`<div class="bard-err" role="alert"><p><b>Not kept.</b> The reply broke ${errs.length} rule${errs.length>1?'s':''}:</p>
+      <ul>${errs.map(e=>`<li>${esc(e)}</li>`).join('')}</ul>
+      <p class="mnote">Copy the retry prompt (it lists these problems for Claude), paste Claude's new reply above and check again.</p></div>`:''}
+  </div>`;
+}
 function cxBard(T){
-  const c=T.chronicle;if(!c)return '';
-  const yr=v=>v.from===v.to?`Y${v.from}`:`Y${v.from}–${v.to}`;
+  const c=T.chronicle,yr=v=>v.from===v.to?`Y${v.from}`:`Y${v.from}–${v.to}`;
+  if(bardOpen(T))return cxBardAsk(T);
+  const ask=T.hist.length>=CHRON.MIN_EVENTS?`<button class="btn sm" data-bard="start">${c?'Ask Claude for a new chronicle':'✍ Ask Claude for a chronicle'}</button>`:'';
+  if(!c)return ask?`<div class="bard-row">${ask}</div>`:'';
   return `<h4>${esc(c.title)}</h4>
   <ol class="log bard">${c.verses.map(v=>`<li><span class="yr">${yr(v)}</span><span>${esc(v.text)}</span></li>`).join('')}</ol>
-  <p class="mnote">Told by the court chronicler as of year ${c.year}${year()>c.year?`, ${year()-c.year} year${year()-c.year>1?"s":""} ago`:''}. Written by ${esc(c.by||'Claude')} from this kingdom's recorded events; every name and year was checked against them.</p>`;
+  <p class="mnote">Told by the court chronicler as of year ${c.year}${year()>c.year?`, ${year()-c.year} year${year()-c.year>1?"s":""} ago`:''}. Written by ${esc(c.by||'Claude')} from this kingdom's recorded events; every name and year was checked against them.</p>
+  ${ask?`<div class="bard-row">${ask}</div>`:''}`;
 }
 function cxHistory(T){
   const par=T.parent>=0?tribes[T.parent]:null;
@@ -101,7 +147,9 @@ function cxHistory(T){
 }
 function renderCodex(force){
   if(!codexT)return;
-  const ae=document.activeElement;if(!force&&ae&&ae.tagName==='INPUT'&&cxEl('codex').contains(ae))return;
+  const ae=document.activeElement;if(!force&&ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')&&cxEl('codex').contains(ae))return;
+  /* while a chronicle is being asked for, the History tab holds still so a paste or a click is never lost */
+  if(!force&&codexTab==='history'&&bardOpen(codexT))return;
   const T=codexT,L=RACES[T.race],d=T.rel.patron,body=cxEl('cxBody'),st=body.scrollTop;
   cxEl('cxHead').innerHTML=`<span class="sw3" style="background:${css(T.color)}"></span>
     <div><h3>${L.icon} ${L.title} ${nmIn(T.name,'king',`data-id="${T.id}"`,'Kingdom name','big')}</h3><p>${d.epi.charAt(0).toUpperCase()+d.epi.slice(1)}${T.alive?'':' (fallen)'} \u00b7 ${T.rel.name}</p></div>
@@ -115,7 +163,17 @@ cxEl('cxHead').addEventListener('click',e=>{
   if(e.target.closest('#cxClose'))closeCodex();
   else if(e.target.closest('#cxGo')&&codexT)flyTo(codexT.cx+.5,codexT.cy+.5,Math.max(cam.tpz,2*dpr));
 });
+cxEl('cxBody').addEventListener('input',e=>{if(e.target.classList.contains('bard-reply'))bard.reply=e.target.value});
 cxEl('cxBody').addEventListener('click',e=>{
+  const bb=e.target.closest('[data-bard]');
+  if(bb&&codexT){
+    const T=codexT,a=bb.dataset.bard;
+    if(a==='start')bardStart(T);
+    else if(a==='cancel')bard={tid:-1,facts:null,reply:'',errors:null};
+    else if(a==='copy'){copyText(bardPrompt(),bard.errors&&bard.errors.length?'The retry prompt':'The prompt');return}
+    else if(a==='check'){const ta=cxEl('cxBody').querySelector('.bard-reply');if(ta)bard.reply=ta.value;bardCheck(T)}
+    renderCodex(true);return;
+  }
   const tw=e.target.closest('.cx-town');if(tw){flyTo(+tw.dataset.x+.5,+tw.dataset.y+.5,Math.max(cam.tpz,2.5*dpr));return}
   const b=e.target.closest('.cx-fly');if(!b)return;
   const i=+b.dataset.i;flyTo(i%W+.5,((i/W)|0)+.5,Math.max(cam.tpz,3*dpr));

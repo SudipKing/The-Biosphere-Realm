@@ -16,22 +16,9 @@
 "use strict";
 const fs=require('fs'),path=require('path'),os=require('os'),{spawn}=require('child_process');
 const {readSave,writeSave,kingdomFacts}=require('./facts');
-const {validate,parseReply,toStored,LIMITS}=require('./validate');
+const {validate,parseReply,toStored,SYSTEM,firstPrompt,retryPrompt,MIN_EVENTS}=require('../../src/chronicle.js');
 
-const MAX_TRIES=3,PARALLEL=3,MIN_EVENTS=3,TIMEOUT_MS=180000;
-
-const SYSTEM=`You are the court chronicler of a kingdom in a fantasy world simulation.
-You receive a fact sheet as JSON and write that kingdom's chronicle.
-Rules:
-- Use only what the facts say. Do not invent people, places, gods, battles or dates.
-- Every name you write must appear in the facts.
-- Write in the voice of the kingdom's own people (stately for humans, lyrical for elves, carved and terse for dwarves, boastful for orcs).
-- Tell it as a story: choose the events that matter most and say why they mattered. Do not list every event.
-- Write years as digits, like "year 42".
-- ${LIMITS.versesMin} to ${LIMITS.versesMax} verses, oldest events first, each ${LIMITS.textMin} to ${LIMITS.textMax} characters of plain text.
-- Each verse lists the ids of the events it tells in "cites".
-Reply with only this JSON, no other text:
-{"title": "a title for the chronicle", "verses": [{"text": "...", "cites": ["E1", "E2"]}]}`;
+const MAX_TRIES=3,PARALLEL=3,TIMEOUT_MS=180000;
 
 function args(argv){
   const o={kingdoms:[],model:'sonnet',claude:process.env.CLAUDE_BIN||'claude'};
@@ -69,11 +56,6 @@ function askClaude(bin,model,prompt){
     });
     p.stdin.end(prompt);
   });
-}
-
-function firstPrompt(facts){return `Fact sheet:\n${JSON.stringify(facts,null,1)}`}
-function retryPrompt(facts,reply,errors){
-  return `${firstPrompt(facts)}\n\nYour last reply was:\n${reply}\n\nIt was rejected for these reasons:\n${errors.map(e=>'- '+e).join('\n')}\n\nWrite the chronicle again and fix every problem.`;
 }
 
 async function chronicleOne(o,facts,log){

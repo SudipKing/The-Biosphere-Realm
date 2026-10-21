@@ -25,7 +25,7 @@ This writes `dist/the-biosphere-realm.html`, a self-contained copy you can share
 
 ## AI chronicles
 
-The Chronicler (`tools/chronicler`) has Claude write each kingdom's history from a saved world. Plain code checks every name and year against the save before it is stored, and the chronicle then appears on the kingdom's History tab. See [tools/chronicler/README.md](tools/chronicler/README.md).
+Open any kingdom's Realm Codex, go to **History** and press **Ask Claude for a chronicle**. Copy the prompt into Claude, paste the reply back, and the game checks every name, year and citation against the kingdom's recorded events before keeping it. This works on the published page too, because the game itself never calls Claude. To chronicle a whole world at once, use `tools/chronicler`, which runs `claude -p` headless. See [tools/chronicler/README.md](tools/chronicler/README.md).
 
 ## Faith, culture and history
 

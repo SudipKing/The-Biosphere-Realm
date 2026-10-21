@@ -126,5 +126,7 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 ## The Chronicler (tools/chronicler, added later)
 
 - A Node pipeline outside the game: `facts.js` turns a `.biosphere` save into a fact sheet per kingdom, `claude -p` writes a chronicle citing event ids, `validate.js` checks every name, year, citation and length, and `chronicle.js` retries with the errors (3 tries) and writes `T.chronicle` into a copy of the save. See `tools/chronicler/README.md` for who is responsible for what.
+- **Shared rules.** `src/chronicle.js` defines the global `CHRON` (fact sheet, prompt, validator, stored form). It loads before `codex.js` and is also `require`d by the Node tool, so it must never touch the page or the sim.
 - In the game, `T.chronicle = {title, verses:[{text,from,to}], year, by, at}` is plain data saved with the tribe. `cleanChronicle` (save.js) re-checks its shape on load, and `cxBard` (codex.js) shows it escaped on the History tab. The sim never reads it.
+- **Copy-and-paste flow** (codex.js, `bard` state): Ask Claude freezes `liveFacts(T)`, Copy puts `CHRON.chatPrompt(...)` on the clipboard, and Check and keep runs `CHRON.validate` against the frozen facts. A failure lists the errors and turns Copy into a retry prompt. While the flow is open, `renderCodex` does not rebuild the History tab unless forced, so a paste is never lost.
 - `tools/chronicler/make-save.js` is a reusable headless harness: it loads the sim files into a `vm` with DOM stubs and writes a save.
