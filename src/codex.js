@@ -83,10 +83,19 @@ function cxCulture(T,L){
     <p class="gdom">${a.form} by ${a.creator}, year ${a.year}. ${a.desc}${a.lost?' (Destroyed.)':''}</p>
     ${a.i!=null&&!a.lost?`<button class="btn sm cx-fly" data-i="${a.i}">Show on map</button>`:''}</div>`).join(''):'<p class="empty">No works yet. Artists need a great hall, full stores and peace of mind.</p>'}`;
 }
+/* a chronicle written outside the game by tools/chronicler (Claude, checked against the save's facts) and loaded with the save */
+function cxBard(T){
+  const c=T.chronicle;if(!c)return '';
+  const yr=v=>v.from===v.to?`Y${v.from}`:`Y${v.from}–${v.to}`;
+  return `<h4>${esc(c.title)}</h4>
+  <ol class="log bard">${c.verses.map(v=>`<li><span class="yr">${yr(v)}</span><span>${esc(v.text)}</span></li>`).join('')}</ol>
+  <p class="mnote">Told by the court chronicler as of year ${c.year}${year()>c.year?`, ${year()-c.year} year${year()-c.year>1?"s":""} ago`:''}. Written by ${esc(c.by||'Claude')} from this kingdom's recorded events; every name and year was checked against them.</p>`;
+}
 function cxHistory(T){
   const par=T.parent>=0?tribes[T.parent]:null;
   return `<p class="legend">${legendOf(T)}</p>
   ${par?`<p class="mnote">Lineage: the ${par.title}${par.alive?'':' (now fallen)'}.</p>`:''}
+  ${cxBard(T)}
   <h4>Chronicle</h4>
   <ol class="log">${T.hist.length?T.hist.slice(0,40).map(l=>`<li><span class="yr">Y${l.y}</span><span style="border-left:3px solid ${css(l.c)};padding-left:8px">${l.m}</span></li>`).join(''):'<li class="empty">Nothing recorded yet.</li>'}</ol>`;
 }
