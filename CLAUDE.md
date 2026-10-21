@@ -122,3 +122,9 @@ Scripts share one global scope and load in this order (see `index.html`): `data,
 - One kingdom per race at world start, so faith diversity comes only from schisms and rebellions. Consider more starting kingdoms or a world-size option.
 - Ideas the player liked or asked about: trade and caravans, race-specific music, mobile polish, optional goals or feats, a shareable world postcard image, map presets and world size.
 - The player wants WorldBox-level detail: visible units, animals and homes, so keep sprites readable at every zoom.
+
+## The Chronicler (tools/chronicler, added later)
+
+- A Node pipeline outside the game: `facts.js` turns a `.biosphere` save into a fact sheet per kingdom, `claude -p` writes a chronicle citing event ids, `validate.js` checks every name, year, citation and length, and `chronicle.js` retries with the errors (3 tries) and writes `T.chronicle` into a copy of the save. See `tools/chronicler/README.md` for who is responsible for what.
+- In the game, `T.chronicle = {title, verses:[{text,from,to}], year, by, at}` is plain data saved with the tribe. `cleanChronicle` (save.js) re-checks its shape on load, and `cxBard` (codex.js) shows it escaped on the History tab. The sim never reads it.
+- `tools/chronicler/make-save.js` is a reusable headless harness: it loads the sim files into a `vm` with DOM stubs and writes a save.

@@ -71,6 +71,14 @@ function saveWorld(){
   };
 }
 
+/* a kingdom's chronicle comes from tools/chronicler, outside the game, so only a well-formed one is kept */
+function cleanChronicle(c){
+  if(!c||typeof c.title!=='string'||!Array.isArray(c.verses)||!c.verses.length)return undefined;
+  const verses=c.verses.filter(v=>v&&typeof v.text==='string'&&Number.isFinite(v.from)&&Number.isFinite(v.to)).slice(0,8)
+    .map(v=>({text:v.text.slice(0,900),from:v.from|0,to:v.to|0}));
+  if(!verses.length)return undefined;
+  return {title:c.title.slice(0,100),verses,year:c.year|0,by:typeof c.by==='string'?c.by.slice(0,80):'Claude',at:typeof c.at==='string'?c.at:''};
+}
 /* check everything and build the new world in local variables; nothing global changes until applyWorld */
 function buildWorld(o){
   if(!o||o.format!==SAVE_FORMAT)throw new Error('it is not a Biosphere Realm save');
@@ -99,7 +107,7 @@ function buildWorld(o){
     return Object.assign(rest,{patron:P[s.patron],second:s.second>=0?P[s.second]:null,doc,tenets:(s.tenets||[]).map(i=>TN[i]).filter(Boolean),
       names:[patronName,secondName]});
   });
-  const tribes=o.tribes.map(s=>Object.assign({},s,{sci:s.sci||0,general:s.general??-1,age:Math.min(ERA_MAX,s.age|0),rel:religions[s.rel],members:[],jobs:{},_gen:null,fx:s.fx&&typeof s.fx==='object'?Object.assign(zeroFx(),s.fx):null}));
+  const tribes=o.tribes.map(s=>Object.assign({},s,{chronicle:cleanChronicle(s.chronicle),sci:s.sci||0,general:s.general??-1,age:Math.min(ERA_MAX,s.age|0),rel:religions[s.rel],members:[],jobs:{},_gen:null,fx:s.fx&&typeof s.fx==='object'?Object.assign(zeroFx(),s.fx):null}));
   const byId=new Map(),mk=s=>{const u=Object.assign(blankUnit(),s);byId.set(u.id,u);return u};
   const units=o.units.map(mk);
   const boats=o.boats.map(b=>Object.assign({},b,{pass:(b.pass||[]).map(mk)}));

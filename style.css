@@ -198,6 +198,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .arth{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .stars{color:var(--accent);letter-spacing:1px;white-space:nowrap}
 .legend{font-style:italic;line-height:1.55;margin:4px 0 8px}
+.log.bard li span:last-child{font-style:italic;line-height:1.55}
 @media (max-width:860px){.codex{left:8px;right:8px;width:auto;top:8px;bottom:8px}}
 
 @media (max-width:1600px){.brand small{display:none}}

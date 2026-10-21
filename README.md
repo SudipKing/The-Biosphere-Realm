@@ -23,6 +23,10 @@ python3 build.py
 
 This writes `dist/the-biosphere-realm.html`, a self-contained copy you can share or drop anywhere.
 
+## AI chronicles
+
+The Chronicler (`tools/chronicler`) has Claude write each kingdom's history from a saved world. Plain code checks every name and year against the save before it is stored, and the chronicle then appears on the kingdom's History tab. See [tools/chronicler/README.md](tools/chronicler/README.md).
+
 ## Faith, culture and history
 
 Every people has its own pantheon, and each kingdom follows its own sect of it. **Click any kingdom in the side panel (or open its great hall) to read its Realm Codex**: overview, faith, culture and art, and a full history.
