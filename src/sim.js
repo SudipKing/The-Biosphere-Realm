@@ -167,7 +167,23 @@ function cleave(u,t,dmg,r){
   while(n++<4){const v=nearest(t,r,w=>!seen.includes(w)&&ok(w));if(!v)break;seen.push(v);hit(v,dmg,u,true)}
 }
 const isThreat=v=>v.k===1&&SPECIES[v.sp].pred&&!SPECIES[v.sp].minor;
-function enemyNear(u,r){return nearest(u,r,v=>(isThreat(v)&&v.charm!==u.tribe)||(v.k===0&&v.tribe!==u.tribe&&hostile(v.tribe,u.tribe)))}
+function enemyNear(u,r){
+  if(wars.length&&atWar(tribes[u.tribe]))return nearest(u,r,v=>(isThreat(v)&&v.charm!==u.tribe)||(v.k===0&&v.tribe!==u.tribe&&hostile(v.tribe,u.tribe)));
+  /* at peace no person is an enemy, so only cells holding a threat are searched (same answer as the full search) */
+  let best=null,bd=r*r;
+  const gx0=clamp((u.x-r)/GC|0,0,GW-1),gx1=clamp((u.x+r)/GC|0,0,GW-1),gy0=clamp((u.y-r)/GC|0,0,GH-1),gy1=clamp((u.y+r)/GC|0,0,GH-1);
+  for(let gy=gy0;gy<=gy1;gy++)for(let gx=gx0;gx<=gx1;gx++){
+    const c=gy*GW+gx;if(!gridThreat[c])continue;
+    const cell=grid[c];
+    for(let n=0;n<cell.length;n++){
+      const v=cell[n];
+      if(v.dead||v===u||v.inside||v.k!==1)continue;
+      const dx=v.x-u.x,dy=v.y-u.y,d=dx*dx+dy*dy;
+      if(d<bd&&isThreat(v)&&v.charm!==u.tribe){bd=d;best=v}
+    }
+  }
+  return best;
+}
 
 /* ---------- people ---------- */
 function updPerson(u){
@@ -383,12 +399,34 @@ function wantOre(T){
   if(nx)for(const k in nx)if(r[k]<nx[k])return ORE[k.toUpperCase()];
   return R()<.5?ORE.IRON:ORE.COAL;
 }
+/* ore tiles by type, listed once per step (ore is sparse, so this beats scanning thousands of tiles per miner) */
+let oreAt=-1,oreArr=null;const oreList=[];
+function oreTiles(){
+  if(oreAt!==step||oreArr!==ore){
+    oreAt=step;oreArr=ore;for(const a of oreList)if(a)a.length=0;
+    for(let i=0;i<N;i++){const o=ore[i];if(o)(oreList[o]||(oreList[o]=[])).push(i)}
+  }
+  return oreList;
+}
+/* the ore tile ringFind would return: the nearest square ring out to r first, then the shortest distance, then scan order */
+function oreNear(x,y,r,T,o0,o1,skip){
+  x|=0;y|=0;const L=oreTiles();let best=-1,bc=r+1,bd=0;
+  for(let o=o0;o<=o1;o++){
+    const a=L[o];if(!a||o===skip)continue;
+    for(let n=0;n<a.length;n++){
+      const i=a[n];if(ore[i]!==o)continue;
+      const dx=i%W-x,dy=((i/W)|0)-y,c=Math.max(dx<0?-dx:dx,dy<0?-dy:dy);if(c>bc)continue;
+      if(fire[i]||lava[i]||bld[i]!==-1||(own[i]>=0&&own[i]!==T.id))continue;
+      const d=dx*dx+dy*dy;
+      if(c<bc||d<bd||(d===bd&&i<best)){bc=c;bd=d;best=i}
+    }
+  }
+  return best;
+}
 function getOre(u,T){
   const want=wantOre(T);
-  const ok=i=>!fire[i]&&!lava[i]&&bld[i]===-1&&(own[i]<0||own[i]===T.id);
-  let t=ringFind(u.x,u.y,24,i=>ore[i]===want&&ok(i));
-  if(t<0)t=ringFind(u.x,u.y,40,i=>ore[i]===want&&ok(i));
-  if(t<0)t=ringFind(u.x,u.y,16,i=>ore[i]>0&&ore[i]!==ORE.GEMS&&ok(i));
+  let t=oreNear(u.x,u.y,40,T,want,want,-1);
+  if(t<0)t=oreNear(u.x,u.y,16,T,1,oreList.length-1,ORE.GEMS);
   if(t<0)return false;
   setT(u,t);u.task='mine';return true;
 }
@@ -587,7 +625,8 @@ function updateTribes(){
     if(R()<T.houses*.0025)T.food++;
     if(T.temple&&R()<.004)T.food++;
     if(R()<T.stock*.0015)T.food++;
-    T.sci+=(.004*T.pop+.03*(T.jobs.teacher||0)+(T.hall>=0?.04:0)+.015*T.towns.length)*(RACES[T.race].tech||1)*(1+T.fx.craft*.5);
+    /* research: people, teachers, the hall and villages, plus scholars kept by a full storehouse and the monuments of a long peace */
+    T.sci+=(.006*T.pop+.04*(T.jobs.teacher||0)+(T.hall>=0?.06:0)+(T.temple?.03:0)+.025*T.towns.length+Math.min(.12,(T.mat+T.food)*.00008))*(RACES[T.race].tech||1)*(1+T.fx.craft*.5);
     if((step+T.id)%20===0){checkAge(T);T.fx=computeFx(T)}
     if((step+T.id*13)%(YEAR>>1)===0)rebalanceJobs(T);
     if((step+T.id)%40===0)tendGeneral(T);
@@ -599,9 +638,11 @@ function updateTribes(){
     if(T.stab>70&&R()<.002*T.houses)T.food++;
     if(T.fx.grow>0&&R()<.025*T.fx.grow){const g=sampleNear(T.cx,T.cy,14,i=>fertile(i)&&!tree[i]&&bld[i]===-1&&burnt[i]<=step&&!fire[i]&&!nearBld(i),10);if(g>=0){tree[g]=1;markTile(g)}}
     culturalTick(T);
-    if(T.food>=8&&T.pop<Math.min(70,T.houses*3+2)&&cnt.people<800&&T.members.length&&!isNight()){
+    /* births: more families mean more children, a full larder helps, and nights (which last for years) only slow them.
+       The cap grows with the villages so a thriving kingdom keeps growing */
+    if(T.food>=8&&T.pop<Math.min(60+25*T.towns.length,180,T.houses*3+3)&&cnt.people<850&&T.members.length){
       const m=T.towns.length>1&&R()<.5?pickSmallTown(T):pick(T.members);
-      if(m&&adult(m)&&!m.inside&&R()<.014*RACES[T.race].fert*(1+T.fx.fert)*(m.traits.includes('Fertile')?1.6:1)*(bm[tileOf(m)]===BM.FLOWER?1.5:1)){
+      if(m&&adult(m)&&!m.inside&&R()<(.012+.0009*Math.min(T.pop,60))*(T.food>T.pop*4?1.35:1)*(isNight()?.6:1)*RACES[T.race].fert*(1+T.fx.fert)*(m.traits.includes('Fertile')?1.6:1)*(bm[tileOf(m)]===BM.FLOWER?1.5:1)){
         let mate=m;for(let k=0;k<8;k++){const c=pick(T.members);if(adult(c)&&c!==m&&(c.town|0)===(m.town|0)){mate=c;break}}
         addPerson(T,m.x|0,m.y|0,m,mate);T.food-=8;
       }

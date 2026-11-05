@@ -92,9 +92,12 @@ function randomLand(pred,tries=4000){for(let t=0;t<tries;t++){const i=(R()*N)|0;
 /* spatial grid so creatures find neighbours fast */
 const GC=8,GW=Math.ceil(W/GC),GH=Math.ceil(H/GC),grid=[];
 for(let i=0;i<GW*GH;i++)grid.push([]);
+/* threats (predators that hunt people) per cell, so a village at peace skips the crowded cells that hold none */
+const gridThreat=new Uint16Array(GW*GH);
 function rebuildGrid(){
   for(let i=0;i<grid.length;i++)grid[i].length=0;
-  for(let i=0;i<units.length;i++){const u=units[i];if(u.dead||u.inside||u.dig>step)continue;grid[clamp(u.y/GC|0,0,GH-1)*GW+clamp(u.x/GC|0,0,GW-1)].push(u)}
+  gridThreat.fill(0);
+  for(let i=0;i<units.length;i++){const u=units[i];if(u.dead||u.inside||u.dig>step)continue;const c=clamp(u.y/GC|0,0,GH-1)*GW+clamp(u.x/GC|0,0,GW-1);grid[c].push(u);if(u.k===1&&isThreat(u))gridThreat[c]++}
 }
 function nearest(u,r,pred){
   let best=null,bd=r*r;

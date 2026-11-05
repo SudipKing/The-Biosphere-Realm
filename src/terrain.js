@@ -218,20 +218,21 @@ function updateTerrain(){
   /* paradox ground and trees shimmer through every colour */
   if(frameN%9===0)for(let i=0;i<N;i++)if(bm[i]===BM.PARA)markTile(i);
   curSea=season();
-  const t0=performance.now();
+  /* at 9x a season lasts a quarter second, so the sweep would never rest: there it gets half the time and half the uploads */
+  const fast=speed>=3,lim=fast?TERRAIN_MS*.5:TERRAIN_MS,t0=performance.now();
   let n=0;
   while(tileQ.length&&n<1100){
     const i=tileQ.pop();tileFlag[i]=0;renderTile(i);n++;
-    if((n&31)===0&&performance.now()-t0>TERRAIN_MS)break;
+    if((n&31)===0&&performance.now()-t0>lim)break;
   }
   /* a season now lasts a quarter year, so the sweep must be able to cover the whole map in a few seconds even at speed */
   let scan=0,fresh=0;
   while(scan<9000&&fresh<1500){
     const i=perm[permPtr];permPtr=permPtr+1===N?0:permPtr+1;scan++;
-    if(tq[i]!==curSea&&!tileFlag[i]){renderTile(i);fresh++;if((fresh&31)===0&&performance.now()-t0>TERRAIN_MS)break}
+    if(tq[i]!==curSea&&!tileFlag[i]){renderTile(i);fresh++;if((fresh&31)===0&&performance.now()-t0>lim)break}
   }
   /* uploads are the costly part: at most CHUNK_UPLOADS a frame, taken in turn, so a season sweep never floods the GPU */
-  for(let k=0,up=0;k<chunks.length&&up<CHUNK_UPLOADS;k++){
+  for(let k=0,up=0,cu=fast?CHUNK_UPLOADS>>1:CHUNK_UPLOADS;k<chunks.length&&up<cu;k++){
     const ch=chunks[upPtr];upPtr=(upPtr+1)%chunks.length;
     if(ch.dirty){uploadChunk(ch);up++}
   }

@@ -420,7 +420,7 @@ $('seedIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('newWorld').clic
 /* what every fresh or loaded world needs from the interface */
 function afterWorld(){
   initFlocks();select(null);closePanels();dipPending=null;follow=false;warpLeft=warpTotal=0;clearCmd();
-  cam.fit=fitPz();cam.vx=cam.vy=0;cam.flyTo=null;renderPanel(true);warmSprites();
+  cam.fit=fitPz();cam.vx=cam.vy=0;cam.flyTo=null;renderPanel(true);warmSprites();resetSurf();
 }
 $('newWorld').addEventListener('click',()=>{
   genWorld($('seedIn').value);syncRaceTiles(new Set());afterWorld();
@@ -631,8 +631,10 @@ function tick(t,dt){
        A step only starts if the average step still fits in what is left of the budget */
     /* the budget grows with the speed button: with one flat budget a big world (a step costs 5 to 10 ms from about
        year 50) could afford only one step a frame, so 3x and 9x ran no faster than 1x and the buttons looked dead.
-       Fast-forward may now trade some frame rate for speed; the 1x budget is unchanged */
-    const budget=SIM_BUDGET*(speed===1?1:speed===2?1.8:3);
+       Fast-forward may trade some frame rate for speed, but no more than about a frame's worth: a 30 ms budget let a big
+       world spiral (a slow frame queued more steps, which made the next frame slower), so a crowded world now runs a
+       little under 9x instead of stuttering. The 1x budget is unchanged */
+    const budget=SIM_BUDGET*(speed===1?1:speed===2?1.4:1.6);
     acc+=dt*SPS[speed]/1000;let n=0;const t0=performance.now();
     while(acc>=1&&n<12&&(n===0||performance.now()-t0+stepMs<budget)){const s=performance.now();simStep();stepMs+=(performance.now()-s-stepMs)*.1;acc--;n++}
     if(acc>=1)acc=.99;

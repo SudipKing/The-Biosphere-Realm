@@ -182,7 +182,7 @@ function shadowSprite(){
 /* shared 3D pass for buildings: a gentle light-to-shade gradient across the sprite, a lit rim on its upper-left edges and a
    shaded rim on the lower-right ones. Works on any baked sprite and leaves its outline pixels alone */
 function shade3d(s){
-  const w=s.w,h=s.h,x=s.c.getContext('2d'),im=x.getImageData(0,0,w,h),d=im.data;
+  const w=s.w,h=s.h,x=s.c.getContext('2d'),im=s.im||x.getImageData(0,0,w,h),d=im.data;
   const solid=(X,Y)=>{if(X<0||Y<0||X>=w||Y>=h)return false;const o=(Y*w+X)*4;return d[o+3]>200&&!(d[o]===OUTC[0]&&d[o+1]===OUTC[1]&&d[o+2]===OUTC[2])};
   const out=new Uint8ClampedArray(d);
   for(let Y=0;Y<h;Y++)for(let X=0;X<w;X++){

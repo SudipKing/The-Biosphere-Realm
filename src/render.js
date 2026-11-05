@@ -70,22 +70,34 @@ function unitSprite(u,fr){
   const job=u.k===0&&adult(u)?u.job:null,T=u.k===0?tribes[u.tribe]:null,veh=T&&job?rides(u,T):false;
   /* the signature covers everything the sprite shows that can change: colour, job, age, looks, era, mount and species (Mutate) */
   const sig=u.k===0?T.ci*32+(adult(u)?JOB_KEYS.indexOf(job)+2:0)+(u.genes.skin*16+u.genes.hair)*4096+T.age*1e6+(veh?1e7:0):u.sp==='horse'&&u.owner>=0?tribes[u.owner].ci:-1;
-  if(u._sg!==sig||u._ssp!==u.sp||!u._sp){u._sg=sig;u._ssp=u.sp;u._sp=[null,null]}
+  const old=u._sp;
+  if(u._sg!==sig||u._ssp!==u.sp||!old){u._sg=sig;u._ssp=u.sp;u._sp=[null,null]}
   let s=u._sp[fr];
   if(!s){
-    if(u.k===0)s=spr(`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}|${job||''}|${T.age}|${veh?1:0}`,()=>personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr,job,T.age,veh?{vehicle:true}:null));
+    if(u.k===0){
+      const key=`p|${u.race}|${u.genes.skin}|${u.genes.hair}|${T.ci}|${fr}|${job||''}|${T.age}|${veh?1:0}`;
+      s=SPR.get(key);
+      if(!s){
+        /* a new era or a new job can ask for a hundred new looks at once, so a frame bakes at most UNIT_BAKES and
+           the rest keep their last look (or their other walk frame) until a later frame */
+        const prev=u._sp[fr^1]||(old!==u._sp&&old?old[fr]||old[fr^1]:null);
+        if(prev&&unitBakes>=UNIT_BAKES){if(old!==u._sp&&old){u._sp=old;u._sg=-2}return prev}
+        unitBakes++;s=personSprite(u.race,u.genes.skin,u.genes.hair,T.color,fr,job,T.age,veh?{vehicle:true}:null);SPR.set(key,s);
+      }
+    }
     else s=animalSpr(u,fr);
     u._sp[fr]=s;
   }
   return s;
 }
+const UNIT_BAKES=3;let unitBakes=0;
 /* draw list objects are pooled and reused every frame */
 const drawPool=[],items=[],vis=[],visB=[],fireSpots=[];
 function drawItem(y){let it=drawPool[items.length];if(!it){it={y:0,b:null,u:null,boat:null,mono:null,x:0,ry:0};drawPool.push(it)}it.y=y;it.b=it.u=it.boat=it.mono=null;items.push(it);return it}
 const byY=(a,b)=>a.y-b.y;
 /* bake the sprites a fresh world needs up front, so the first zoom-in doesn't stall */
 function warmSprites(){
-  for(const u of units){unitSprite(u,0);unitSprite(u,1)}
+  unitBakes=-1e9;for(const u of units){unitSprite(u,0);unitSprite(u,1)}unitBakes=0;
   if(bDirty)rebuildBList();
   for(const b of bList){const T=b.t>=0?tribes[b.t]:null;if(T)buildingSprite(T.race,b.ty,T.ci,T.rel.domain,b.tier,b.v)}
 }
@@ -152,7 +164,7 @@ function buildOverlay(){
     ovOwnRow(J.y,J.px0,J.px1);
     if(J.y>J.py0){ovColourRow(J.y-1,J.px0,J.px1,J.cols);if(first<0)first=J.y-1;last=J.y-1}
     J.y++;
-    if(performance.now()-t0>OV_MS)break;
+    if(performance.now()-t0>(speed>=3?OV_MS*.5:OV_MS))break;
   }
   if(J.y>=J.py1){
     ovColourRow(J.py1-1,J.px0,J.px1,J.cols);if(first<0)first=J.py1-1;last=J.py1-1;
@@ -238,6 +250,59 @@ const CLOUD_D=cloudTexture(true),CLOUD_L=cloudTexture(false);
 let cloudX=0,cloudY=0,fishT=0;
 const drops=[];
 
+/* surf: foam hugs every shore and two lines of breakers roll in after it. Each band is baked once into its own layer
+   (SFS px per tile, from each water pixel's distance to the nearest land) and the frame only cross-fades the three, so
+   the sea moves for three draw calls. The coastline is fingerprinted every 90 frames and the layers rebake when it changed */
+const SFS=4,SURF_BANDS=[[0,.34,232],[.62,.92,150],[1.22,1.5,110]];let surfC=null,surfSig=-1,surfAt=-1e9,surfLand=null,surfRow=H;
+const SURF_LX=new Int16Array(25),SURF_LY=new Int16Array(25);
+function coastSig(){let s=0;for(let i=0;i<N;i++)if(bio(hgt[i])<=1)s=(s+i*2654435761+7)|0;return s}
+/* a new or loaded world bakes its surf at once, so the old coast never shows */
+function resetSurf(){if(!surfC)return;surfSig=coastSig();surfRow=H;buildSurf(0,H);for(const L of surfC)L.x.putImageData(L.im,0,0)}
+/* bakes tile rows y0..y1 into the band buffers (the caller puts them on the canvases) */
+function buildSurf(y0,y1){
+  const sw=W*SFS,sh=H*SFS;
+  if(!surfC)surfC=SURF_BANDS.map(()=>{const c=document.createElement('canvas');c.width=sw;c.height=sh;const x=c.getContext('2d'),im=x.createImageData(sw,sh);return{c,x,im,b:new Uint32Array(im.data.buffer)}});
+  const land=surfLand||(surfLand=new Uint8Array(N)),lx=SURF_LX,ly=SURF_LY;
+  if(y0===0)for(let i=0;i<N;i++)land[i]=bio(hgt[i])>1?1:0;
+  for(const L of surfC)L.b.fill(0,y0*SFS*sw,y1*SFS*sw);
+  for(let ty=y0;ty<y1;ty++)for(let tx=0;tx<W;tx++){
+    const i=ty*W+tx;if(land[i])continue;
+    /* only water within two tiles of land can carry surf; its land neighbours are listed once for all its pixels */
+    let nl=0;
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const X=tx+dx,Y=ty+dy;if(X>=0&&Y>=0&&X<W&&Y<H&&land[Y*W+X]){lx[nl]=X;ly[nl]=Y;nl++}}
+    if(!nl)continue;
+    for(let sy=0;sy<SFS;sy++)for(let sx=0;sx<SFS;sx++){
+      const fx=tx+(sx+.5)/SFS,fy=ty+(sy+.5)/SFS;let d2=81;
+      for(let k=0;k<nl;k++){
+        const X=lx[k],Y=ly[k],ex=fx<X?X-fx:fx>X+1?fx-X-1:0,ey=fy<Y?Y-fy:fy>Y+1?fy-Y-1:0,e=ex*ex+ey*ey;if(e<d2)d2=e;
+      }
+      const d=Math.sqrt(d2);if(d>SURF_BANDS[2][1])continue;
+      const px=tx*SFS+sx,py=ty*SFS+sy,n=hash(px,py);
+      for(let k=0;k<3;k++){
+        const B=SURF_BANDS[k];if(d<B[0]||d>B[1])continue;
+        /* breakers are broken lines, the shore foam is nearly solid */
+        if(k&&n<.3)continue;
+        const m=(d-B[0])/(B[1]-B[0]),a=(B[2]*(k?Math.sin(m*Math.PI):1-m*.55)*(.75+n*.25))|0;
+        surfC[k].b[py*sw+px]=packRGBA(236,248,255,a);
+      }
+    }
+  }
+}
+function drawSurf(ox,oy,tz,nowT){
+  if(!surfC){surfSig=coastSig();buildSurf(0,H);surfC.forEach(L=>L.x.putImageData(L.im,0,0))}
+  /* a changed coast is rebaked a band of rows per frame, and shown once all of it is ready */
+  if(surfRow<H){const t0=performance.now();while(surfRow<H&&performance.now()-t0<1.5){buildSurf(surfRow,Math.min(H,surfRow+6));surfRow+=6}if(surfRow>=H)surfC.forEach(L=>L.x.putImageData(L.im,0,0))}
+  else if(frameN-surfAt>=90){surfAt=frameN;const s=coastSig();if(s!==surfSig){surfSig=s;surfRow=0}}
+  const vx0=clamp(Math.floor(-ox/tz)-1,0,W),vx1=clamp(Math.ceil((cw-ox)/tz)+1,0,W),vy0=clamp(Math.floor(-oy/tz)-1,0,H),vy1=clamp(Math.ceil((ch-oy)/tz)+1,0,H);
+  if(vx1<=vx0||vy1<=vy0)return;
+  /* the swell: the outer breaker peaks, then the inner one, then the shore foam as the wave lands */
+  const ph=reduceMotion?.25:(nowT/2800)%1,al=[.62+.22*Math.sin((ph-.5)*TWO_PI),Math.sin(ph*Math.PI),Math.sin(((ph+.5)%1)*Math.PI)];
+  const sx=vx0*SFS,sy=vy0*SFS,sw=(vx1-vx0)*SFS,sh=(vy1-vy0)*SFS,X=Math.round(ox+vx0*tz),Y=Math.round(oy+vy0*tz),w=Math.round((vx1-vx0)*tz),h=Math.round((vy1-vy0)*tz);
+  ctx.imageSmoothingEnabled=tz<SFS*2;
+  for(let k=0;k<3;k++){if(al[k]<.03)continue;ctx.globalAlpha=al[k]*(k?.8:1);ctx.drawImage(surfC[k].c,sx,sy,sw,sh,X,Y,w,h)}
+  ctx.globalAlpha=1;ctx.imageSmoothingEnabled=false;
+}
+
 /* ---------- combat visuals: all render-side, fed by HITQ/DEATHQ from sim.js ---------- */
 const corpses=[];
 const TINT=new WeakMap();
@@ -274,6 +339,8 @@ function drawCorpses(SX,SY,pz,now){
     if(age>=mark)continue;
     corpses[n++]=c;
     const X=SX(c.x*TS),Y=SY((c.y+.35)*TS);
+    /* off screen it only ages */
+    if(X<-64||Y<-64||X>cw+64||Y>ch+64)continue;
     const ma=Math.min(1,age/250)*(1-age/mark)*.55;
     ctx.fillStyle='rgba(120,20,20,'+ma+')';
     ctx.beginPath();ctx.ellipse(X,Y-pz*.5,pz*5*Math.min(1,.4+age/400),pz*2.2,0,0,7);ctx.fill();
@@ -349,7 +416,7 @@ function drawPropRow(ty,xa,xb,ox,oy,pz){
    (3px per tile) refreshed about once a second and drawn with a single call. */
 const FAR_TZ=6,FL=3,FCOL=new Map();let flC=null,flX=null,flImg=null,flBuf=null,flAt=-1e9;
 function meanCol(s){
-  const d=s.c.getContext('2d').getImageData(0,0,s.w,s.h).data;let r=0,g=0,b=0,n=0;
+  const d=(s.im||s.c.getContext('2d').getImageData(0,0,s.w,s.h)).data;let r=0,g=0,b=0,n=0;
   for(let k=0;k<d.length;k+=4)if(d[k+3]>200){r+=d[k];g+=d[k+1];b+=d[k+2];n++}
   if(!n)return [0xff406030,0xff507838,0xff283c20];
   r/=n;g/=n;b/=n;const pk=(f)=>(0xff000000|(Math.min(255,b*f)<<16)|(Math.min(255,g*f)<<8)|Math.min(255,r*f))>>>0;
@@ -475,7 +542,7 @@ function farExtras(u,x,y,SX,SY,pz,tz,dt){
   }
 }
 function draw(dt){
-  frameN++;const nowT=performance.now();propBakes=0;
+  frameN++;const nowT=performance.now();propBakes=0;unitBakes=0;
   updateTerrain();
   if(bDirty)rebuildBList();
   updateCamera(dt);
@@ -495,6 +562,7 @@ function draw(dt){
     ctx.drawImage(c.c,X0,Y0,X1-X0,Y1-Y0);
   }
   ctx.imageSmoothingEnabled=false;
+  drawSurf(ox,oy,tz,nowT);
   if(showDomains){if(ovDirty||!ovC)buildOverlay();drawDomains(ox,oy,tz)}
   const x0=Math.floor(-ox/tz)-3,x1=Math.ceil((cw-ox)/tz)+3,y0=Math.floor(-oy/tz)-2,y1=Math.ceil((ch-oy)/tz)+4;
   const inView=(x,y)=>x>=x0&&x<x1&&y>=y0&&y<y1;

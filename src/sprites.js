@@ -31,7 +31,8 @@ function bake(g,outline=true){
     if(!col&&outline&&(at(X-2,Y-1)||at(X,Y-1)||at(X-1,Y-2)||at(X-1,Y)))col=OUTC;
     if(col){const o=(Y*w+X)*4;d[o]=col[0];d[o+1]=col[1];d[o+2]=col[2];d[o+3]=col.length>3?col[3]:255}
   }
-  x.putImageData(im,0,0);return{c,w,h,f:null};
+  /* the pixels stay with the sprite (im), so later passes (shade3d, meanCol) never read a GPU canvas back */
+  x.putImageData(im,0,0);return{c,w,h,f:null,im};
 }
 function flipped(s){
   if(!s.f){const c=document.createElement('canvas');c.width=s.w;c.height=s.h;const x=c.getContext('2d');x.translate(s.w,0);x.scale(-1,1);x.drawImage(s.c,0,0);s.f=c}

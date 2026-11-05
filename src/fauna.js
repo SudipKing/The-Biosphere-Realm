@@ -357,7 +357,8 @@ function strayed(sp,j){
 }
 /* the wild (unowned, not monsters) is held to a budget that grows with the number of people, so beasts never swamp the world.
    A rare species (under a quarter of its cap) may still breed and wander back in, so none dies out */
-function wildMax(){return Math.round(Math.min(480,160+cnt.people*1.1))}
+/* the wild thins as the peoples grow, so a crowded world stays smooth */
+function wildMax(){return Math.round(Math.min(420,160+cnt.people*.55))}
 function stockCap(T){return Math.min(18,2+T.houses*.8)}
 function genFauna(herd){for(const sp in FHAB){const h=FHAB[sp];herd(sp,h[0],h[1],j=>h[2](j)&&habOK(sp,j))}}
 function faunaYear(){
